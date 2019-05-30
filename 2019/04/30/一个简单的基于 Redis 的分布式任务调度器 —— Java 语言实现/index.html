@@ -5,14 +5,14 @@
   
 
   
-  <title>一个简单的基于 Redis 的分布式任务调度器 —— Java 语言实现 | Hexo</title>
+  <title>一个简单的基于 Redis 的分布式任务调度器 —— Java 语言实现 | HUAN</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
   <meta name="description" content="本文来自于 https://juejin.im/post/5cc6ade4f265da038d0b4fd6   折腾了一周的 Java Quartz集群任务调度，很遗憾没能搞定，网上的相关文章也少得可怜，在多节点（多进程）环境下 Quartz 似乎无法动态增减任务，恼火。无奈之下自己撸了一个简单的任务调度器，结果只花了不到 2天时间，而且感觉非常简单好用，代码量也不多，扩展性很好。  实现一个分">
 <meta name="keywords" content="Java,分布式">
 <meta property="og:type" content="article">
 <meta property="og:title" content="一个简单的基于 Redis 的分布式任务调度器 —— Java 语言实现">
-<meta property="og:url" content="http://yoursite.com/2019/04/30/一个简单的基于 Redis 的分布式任务调度器 —— Java 语言实现/index.html">
-<meta property="og:site_name" content="Hexo">
+<meta property="og:url" content="http://sillyfan.top/2019/04/30/一个简单的基于 Redis 的分布式任务调度器 —— Java 语言实现/index.html">
+<meta property="og:site_name" content="HUAN">
 <meta property="og:description" content="本文来自于 https://juejin.im/post/5cc6ade4f265da038d0b4fd6   折腾了一周的 Java Quartz集群任务调度，很遗憾没能搞定，网上的相关文章也少得可怜，在多节点（多进程）环境下 Quartz 似乎无法动态增减任务，恼火。无奈之下自己撸了一个简单的任务调度器，结果只花了不到 2天时间，而且感觉非常简单好用，代码量也不多，扩展性很好。  实现一个分">
 <meta property="og:locale" content="default">
 <meta property="og:image" content="https://user-gold-cdn.xitu.io/2019/4/29/16a682144a242fdf?imageView2/0/w/1280/h/960/ignore-error/1">
@@ -23,7 +23,7 @@
 <meta name="twitter:description" content="本文来自于 https://juejin.im/post/5cc6ade4f265da038d0b4fd6   折腾了一周的 Java Quartz集群任务调度，很遗憾没能搞定，网上的相关文章也少得可怜，在多节点（多进程）环境下 Quartz 似乎无法动态增减任务，恼火。无奈之下自己撸了一个简单的任务调度器，结果只花了不到 2天时间，而且感觉非常简单好用，代码量也不多，扩展性很好。  实现一个分">
 <meta name="twitter:image" content="https://user-gold-cdn.xitu.io/2019/4/29/16a682144a242fdf?imageView2/0/w/1280/h/960/ignore-error/1">
   
-    <link rel="alternate" href="/atom.xml" title="Hexo" type="application/atom+xml">
+    <link rel="alternate" href="/atom.xml" title="HUAN" type="application/atom+xml">
   
   
     <link rel="icon" href="/favicon.png">
@@ -42,7 +42,7 @@
   <div id="header-outer" class="outer">
     <div id="header-title" class="inner">
       <h1 id="logo-wrap">
-        <a href="/" id="logo">Hexo</a>
+        <a href="/" id="logo">HUAN</a>
       </h1>
       
     </div>
@@ -62,7 +62,7 @@
         <a id="nav-search-btn" class="nav-icon" title="Search"></a>
       </nav>
       <div id="search-form-wrap">
-        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://yoursite.com"></form>
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://sillyfan.top"></form>
       </div>
     </div>
   </div>
@@ -151,7 +151,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://yoursite.com/2019/04/30/一个简单的基于 Redis 的分布式任务调度器 —— Java 语言实现/" data-id="cjw9y6btu0011ja2abngwbgnq" class="article-share-link">Share</a>
+      <a data-url="http://sillyfan.top/2019/04/30/一个简单的基于 Redis 的分布式任务调度器 —— Java 语言实现/" data-id="cjwafr7n8000ys92a1i7yst84" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Java/">Java</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/分布式/">分布式</a></li></ul>
@@ -162,19 +162,19 @@
     
 <nav id="article-nav">
   
-    <a href="/2019/05/01/如何优化代码中大量的if-else,switch-case/" id="article-nav-newer" class="article-nav-link-wrap">
+    <a href="/2019/04/30/高并发架构的CDN知识介绍/" id="article-nav-newer" class="article-nav-link-wrap">
       <strong class="article-nav-caption">Newer</strong>
       <div class="article-nav-title">
         
-          如何优化代码中大量的if/else,switch/case?
+          高并发架构的CDN知识介绍
         
       </div>
     </a>
   
   
-    <a href="/2019/04/30/高并发架构的CDN知识介绍/" id="article-nav-older" class="article-nav-link-wrap">
+    <a href="/2019/01/25/about/" id="article-nav-older" class="article-nav-link-wrap">
       <strong class="article-nav-caption">Older</strong>
-      <div class="article-nav-title">高并发架构的CDN知识介绍</div>
+      <div class="article-nav-title">关于</div>
     </a>
   
 </nav>
@@ -256,7 +256,7 @@
   
   <div class="outer">
     <div id="footer-info" class="inner">
-      &copy; 2019 John Doe<br>
+      &copy; 2019 huan<br>
       Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
     </div>
   </div>

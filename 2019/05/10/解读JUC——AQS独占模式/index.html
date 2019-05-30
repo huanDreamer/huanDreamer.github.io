@@ -5,14 +5,14 @@
   
 
   
-  <title>解读 JUC —— AQS 独占模式 | Hexo</title>
+  <title>解读 JUC —— AQS 独占模式 | HUAN</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
   <meta name="description" content="本文转载自 https://juejin.im/post/5cd1d1876fb9a031eb58ae4d   1. 前言说起 JUC，我们常常会想起其中的线程池（ExecutorService）。然而，我们今天来看看另一个核心模块 AQS。 AQS 是 AbstractQueuedSynchronizer 的简称，在 JUC 中作为各种同步器的基石。举个例子，常见的 ReentrantLock">
 <meta name="keywords" content="Java,源码">
 <meta property="og:type" content="article">
 <meta property="og:title" content="解读 JUC —— AQS 独占模式">
-<meta property="og:url" content="http://yoursite.com/2019/05/10/解读JUC——AQS独占模式/index.html">
-<meta property="og:site_name" content="Hexo">
+<meta property="og:url" content="http://sillyfan.top/2019/05/10/解读JUC——AQS独占模式/index.html">
+<meta property="og:site_name" content="HUAN">
 <meta property="og:description" content="本文转载自 https://juejin.im/post/5cd1d1876fb9a031eb58ae4d   1. 前言说起 JUC，我们常常会想起其中的线程池（ExecutorService）。然而，我们今天来看看另一个核心模块 AQS。 AQS 是 AbstractQueuedSynchronizer 的简称，在 JUC 中作为各种同步器的基石。举个例子，常见的 ReentrantLock">
 <meta property="og:locale" content="default">
 <meta property="og:image" content="https://user-gold-cdn.xitu.io/2019/5/8/16a939a72c2cb3ce?imageView2/0/w/1280/h/960/ignore-error/1">
@@ -23,7 +23,7 @@
 <meta name="twitter:description" content="本文转载自 https://juejin.im/post/5cd1d1876fb9a031eb58ae4d   1. 前言说起 JUC，我们常常会想起其中的线程池（ExecutorService）。然而，我们今天来看看另一个核心模块 AQS。 AQS 是 AbstractQueuedSynchronizer 的简称，在 JUC 中作为各种同步器的基石。举个例子，常见的 ReentrantLock">
 <meta name="twitter:image" content="https://user-gold-cdn.xitu.io/2019/5/8/16a939a72c2cb3ce?imageView2/0/w/1280/h/960/ignore-error/1">
   
-    <link rel="alternate" href="/atom.xml" title="Hexo" type="application/atom+xml">
+    <link rel="alternate" href="/atom.xml" title="HUAN" type="application/atom+xml">
   
   
     <link rel="icon" href="/favicon.png">
@@ -42,7 +42,7 @@
   <div id="header-outer" class="outer">
     <div id="header-title" class="inner">
       <h1 id="logo-wrap">
-        <a href="/" id="logo">Hexo</a>
+        <a href="/" id="logo">HUAN</a>
       </h1>
       
     </div>
@@ -62,7 +62,7 @@
         <a id="nav-search-btn" class="nav-icon" title="Search"></a>
       </nav>
       <div id="search-form-wrap">
-        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://yoursite.com"></form>
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://sillyfan.top"></form>
       </div>
     </div>
   </div>
@@ -168,7 +168,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://yoursite.com/2019/05/10/解读JUC——AQS独占模式/" data-id="cjw9y6bu4001qja2ach39u0n1" class="article-share-link">Share</a>
+      <a data-url="http://sillyfan.top/2019/05/10/解读JUC——AQS独占模式/" data-id="cjwafr7ni001ns92amcwvlg0u" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Java/">Java</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/源码/">源码</a></li></ul>
@@ -273,7 +273,7 @@
   
   <div class="outer">
     <div id="footer-info" class="inner">
-      &copy; 2019 John Doe<br>
+      &copy; 2019 huan<br>
       Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
     </div>
   </div>

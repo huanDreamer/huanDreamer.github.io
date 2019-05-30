@@ -5,14 +5,14 @@
   
 
   
-  <title>死磕 java并发包之LongAdder源码分析 | Hexo</title>
+  <title>死磕 java并发包之LongAdder源码分析 | HUAN</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
   <meta name="description" content="本文转载自 https://juejin.im/post/5cd842aa6fb9a032332b4bb8   问题（1）java8中为什么要新增LongAdder？ （2）LongAdder的实现方式？ （3）LongAdder与AtomicLong的对比？ 简介LongAdder是java8中新增的原子类，在多线程环境中，它比AtomicLong性能要高出不少，特别是写多的场景。 它是怎么实">
 <meta name="keywords" content="Java">
 <meta property="og:type" content="article">
 <meta property="og:title" content="死磕 java并发包之LongAdder源码分析">
-<meta property="og:url" content="http://yoursite.com/2019/05/13/死磕java并发包之LongAdder源码分析/index.html">
-<meta property="og:site_name" content="Hexo">
+<meta property="og:url" content="http://sillyfan.top/2019/05/13/死磕java并发包之LongAdder源码分析/index.html">
+<meta property="og:site_name" content="HUAN">
 <meta property="og:description" content="本文转载自 https://juejin.im/post/5cd842aa6fb9a032332b4bb8   问题（1）java8中为什么要新增LongAdder？ （2）LongAdder的实现方式？ （3）LongAdder与AtomicLong的对比？ 简介LongAdder是java8中新增的原子类，在多线程环境中，它比AtomicLong性能要高出不少，特别是写多的场景。 它是怎么实">
 <meta property="og:locale" content="default">
 <meta property="og:image" content="https://gitee.com/alan-tang-tt/yuan/raw/master/%E6%AD%BB%E7%A3%95%20java%E5%B9%B6%E5%8F%91%E5%8C%85/resource/LongAdder1.png">
@@ -24,7 +24,7 @@
 <meta name="twitter:description" content="本文转载自 https://juejin.im/post/5cd842aa6fb9a032332b4bb8   问题（1）java8中为什么要新增LongAdder？ （2）LongAdder的实现方式？ （3）LongAdder与AtomicLong的对比？ 简介LongAdder是java8中新增的原子类，在多线程环境中，它比AtomicLong性能要高出不少，特别是写多的场景。 它是怎么实">
 <meta name="twitter:image" content="https://gitee.com/alan-tang-tt/yuan/raw/master/%E6%AD%BB%E7%A3%95%20java%E5%B9%B6%E5%8F%91%E5%8C%85/resource/LongAdder1.png">
   
-    <link rel="alternate" href="/atom.xml" title="Hexo" type="application/atom+xml">
+    <link rel="alternate" href="/atom.xml" title="HUAN" type="application/atom+xml">
   
   
     <link rel="icon" href="/favicon.png">
@@ -43,7 +43,7 @@
   <div id="header-outer" class="outer">
     <div id="header-title" class="inner">
       <h1 id="logo-wrap">
-        <a href="/" id="logo">Hexo</a>
+        <a href="/" id="logo">HUAN</a>
       </h1>
       
     </div>
@@ -63,7 +63,7 @@
         <a id="nav-search-btn" class="nav-icon" title="Search"></a>
       </nav>
       <div id="search-form-wrap">
-        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://yoursite.com"></form>
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://sillyfan.top"></form>
       </div>
     </div>
   </div>
@@ -156,7 +156,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://yoursite.com/2019/05/13/死磕java并发包之LongAdder源码分析/" data-id="cjw9y6bu0001gja2ae7961o3m" class="article-share-link">Share</a>
+      <a data-url="http://sillyfan.top/2019/05/13/死磕java并发包之LongAdder源码分析/" data-id="cjwafr7nj001ps92amtfn6vvy" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Java/">Java</a></li></ul>
@@ -261,7 +261,7 @@
   
   <div class="outer">
     <div id="footer-info" class="inner">
-      &copy; 2019 John Doe<br>
+      &copy; 2019 huan<br>
       Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
     </div>
   </div>
