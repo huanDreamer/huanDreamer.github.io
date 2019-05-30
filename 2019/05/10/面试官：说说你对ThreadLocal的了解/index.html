@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html>
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="utf-8">
+  
+
+  
+  <title>面试官：说说你对ThreadLocal的了解 | Hexo</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="本文转载自 https://juejin.im/post/5cd2dcf4f265da03804386d0   一般有多个孩子的家庭，买玩具都得买多个。如果就买一个，嘿嘿就比较刺激了。这就是避免共享，给孩子每人一个玩具对应到我们Java中也就是每个线程都有自己的本地变量，咱们自己玩自己的，避免争抢，和谐相处使得线程安全。 Java就是通过ThreadLocal来实现线程本地存储的。 这思路也很清">
+<meta name="keywords" content="Java">
+<meta property="og:type" content="article">
+<meta property="og:title" content="面试官：说说你对ThreadLocal的了解">
+<meta property="og:url" content="http://yoursite.com/2019/05/10/面试官：说说你对ThreadLocal的了解/index.html">
+<meta property="og:site_name" content="Hexo">
+<meta property="og:description" content="本文转载自 https://juejin.im/post/5cd2dcf4f265da03804386d0   一般有多个孩子的家庭，买玩具都得买多个。如果就买一个，嘿嘿就比较刺激了。这就是避免共享，给孩子每人一个玩具对应到我们Java中也就是每个线程都有自己的本地变量，咱们自己玩自己的，避免争抢，和谐相处使得线程安全。 Java就是通过ThreadLocal来实现线程本地存储的。 这思路也很清">
+<meta property="og:locale" content="default">
+<meta property="og:image" content="https://user-gold-cdn.xitu.io/2019/5/8/16a97cde94bb4de0?imageView2/0/w/1280/h/960/ignore-error/1">
+<meta property="og:updated_time" content="2019-05-30T00:52:25.435Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="面试官：说说你对ThreadLocal的了解">
+<meta name="twitter:description" content="本文转载自 https://juejin.im/post/5cd2dcf4f265da03804386d0   一般有多个孩子的家庭，买玩具都得买多个。如果就买一个，嘿嘿就比较刺激了。这就是避免共享，给孩子每人一个玩具对应到我们Java中也就是每个线程都有自己的本地变量，咱们自己玩自己的，避免争抢，和谐相处使得线程安全。 Java就是通过ThreadLocal来实现线程本地存储的。 这思路也很清">
+<meta name="twitter:image" content="https://user-gold-cdn.xitu.io/2019/5/8/16a97cde94bb4de0?imageView2/0/w/1280/h/960/ignore-error/1">
+  
+    <link rel="alternate" href="/atom.xml" title="Hexo" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png">
+  
+  
+    <link href="//fonts.googleapis.com/css?family=Source+Code+Pro" rel="stylesheet" type="text/css">
+  
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+</html>
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">Hexo</a>
+      </h1>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
+        
+        <a id="nav-search-btn" class="nav-icon" title="Search"></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://yoursite.com"></form>
+      </div>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main"><article id="post-面试官：说说你对ThreadLocal的了解" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2019/05/10/面试官：说说你对ThreadLocal的了解/" class="article-date">
+  <time datetime="2019-05-10T02:49:48.048Z" itemprop="datePublished">2019-05-10</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      面试官：说说你对ThreadLocal的了解
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <blockquote>
+<p>本文转载自 <a href="https://juejin.im/post/5cd2dcf4f265da03804386d0" target="_blank" rel="noopener">https://juejin.im/post/5cd2dcf4f265da03804386d0</a> </p>
+</blockquote>
+<p>一般有多个孩子的家庭，买玩具都得买多个。如果就买一个，嘿嘿就比较刺激了。这就是<strong>避免共享</strong>，给孩子每人一个玩具对应到我们Java中也就是每个线程都有自己的本地变量，咱们自己玩自己的，避免争抢，和谐相处使得线程安全。</p>
+<p>Java就是通过<code>ThreadLocal</code>来实现线程本地存储的。</p>
+<p>这思路也很清晰，就是每个线程要有自己的本地变量呗，那就Thread里面搞一个私有属性呗<code>ThreadLocal.ThreadLocalMap threadLocals = null;</code> 就是如下图所示的这个关系</p>
+<p><img src="https://user-gold-cdn.xitu.io/2019/5/8/16a97cde94bb4de0?imageView2/0/w/1280/h/960/ignore-error/1" alt></p>
+<h2 id="ThreadLocal"><a href="#ThreadLocal" class="headerlink" title="ThreadLocal"></a>ThreadLocal</h2><p>简单的应用如下</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">public class Demo &#123;</span><br><span class="line">		private static final ThreadLocal&lt;Foo&gt; fooLocal = new ThreadLocal&lt;Foo&gt;();</span><br><span class="line"> </span><br><span class="line">		public static Foo getFoo() &#123;</span><br><span class="line">			return fooLocal.get();</span><br><span class="line">		&#125;</span><br><span class="line"> </span><br><span class="line">		public static void setFoo(Foo foo) &#123;</span><br><span class="line">			fooLocal.set(foo);</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br></pre></td></tr></table></figure>
+
+<p>再深入了解一下内部情况，<code>ThreadLocalMap</code>是<code>ThreadLocal</code>的内部静态类，它虽然叫<code>Map</code>但是和<code>java.util.Map</code>没有啥亲戚关系，只是它实现的功能像<code>Map</code></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">static class ThreadLocalMap &#123;</span><br><span class="line">        static class Entry extends WeakReference&lt;ThreadLocal&lt;?&gt;&gt; &#123;</span><br><span class="line">            Object value;</span><br><span class="line">            Entry(ThreadLocal&lt;?&gt; k, Object v) &#123;</span><br><span class="line">                super(k);</span><br><span class="line">                value = v;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        private static final int INITIAL_CAPACITY = 16;</span><br><span class="line">        private Entry[] table;</span><br></pre></td></tr></table></figure>
+
+<p>可以看到<code>ThreadLocalMap</code>里面有个<code>Entry</code>数组，只有数组没有像<code>HashMap</code>那样有链表，因此当hash冲突的之后，<code>ThreadLocalMap</code>是<strong>采用线性探测的方式解决hash冲突。</strong></p>
+<p>线性探测，就是先根据初始<code>key</code>的<code>hashcode</code>值确定元素在<code>table</code>数组中的位置，如果这个位置上已经有其他<code>key</code>值的元素被占用，则利用固定的算法寻找一定步长的下个位置，依次直至找到能够存放的位置。在<code>ThreadLocalMap</code>步长是1。</p>
+<p><strong>用这种方式解决hash冲突的效率很低，因此要注意ThreadLocal的数量</strong>。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">/**</span><br><span class="line">         * Increment i modulo len. </span><br><span class="line">         */</span><br><span class="line">        private static int nextIndex(int i, int len) &#123;</span><br><span class="line">            return ((i + 1 &lt; len) ? i + 1 : 0);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        /**</span><br><span class="line">         * Decrement i modulo len.</span><br><span class="line">         */</span><br><span class="line">        private static int prevIndex(int i, int len) &#123;</span><br><span class="line">            return ((i - 1 &gt;= 0) ? i - 1 : len - 1);</span><br><span class="line">        &#125;</span><br></pre></td></tr></table></figure>
+
+<p>而且可以看到这个<code>Entry</code>把<code>ThreadLocal</code>的弱引用作为key。那为什么要搞成弱引用(只要发生了GC弱引用对象就会被回收)呢？</p>
+<p>首先<code>ThreadLocal</code>内部没有存储任何的值，它的作用只是当我们的<code>ThreadLocalMap的key</code>，让线程可以拿到对应的<code>value</code>。当我们不需要用这个key的时候我们，我们把<code>fooLocal=null</code>这样强引用就没了。假设Entry里面也是强引用的话，那等于这个<code>ThreadLocal</code>实例还有个强引用在，那么我们想让GC回收<code>fooLocal</code>就回收不了了。那可能有人想，你弄成弱引用不是很危险啊，万一GC一下不是没了？别怕只要<code>fooLocal</code>这个强引用在这个<code>ThreadLocal</code>实例就不会回收的。(关于强软弱虚引用可以看我之前的文章<a href="https://juejin.im/post/5cd386be51882511282b8746" target="_blank" rel="noopener">四种引用方式的区别</a>)</p>
+<p>因此弄成弱引用，主要是让没用的<code>ThreadLocal</code>得以GC清除。</p>
+<p>这里可能还有人问那key清除掉了，value咋办，这个Entry还在的呀。是的，当在使用线程池的情况下，由于线程的生命周期很长，某些大对象的key被移除了之后，value一直存在的就可能会导致内存泄漏。</p>
+<p>不过java考虑到这点了。当调用<code>get()、set()</code>方法时会去找到那个key被干掉的entry然后干掉它。并且提供了<code>remove()</code>方法。虽然<code>get()、set()</code>会清理<code>key</code>为<code>null的Entry</code>,但是不是每次调用就会清理的，只有当<code>get</code>时候直接hash没中，或者<code>set</code>时候也是直接hash没中，开始线性探测时候，碰到key为null的才会清理。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br></pre></td><td class="code"><pre><span class="line">//get 方法</span><br><span class="line">        private Entry getEntry(ThreadLocal&lt;?&gt; key) &#123;</span><br><span class="line">            int i = key.threadLocalHashCode &amp;amp; (table.length - 1);</span><br><span class="line">            Entry e = table[i];</span><br><span class="line">            if (e != null &amp;amp;&amp;amp; e.get() == key)</span><br><span class="line">                return e;                           //命中就直接返回</span><br><span class="line">            else</span><br><span class="line">                return getEntryAfterMiss(key, i, e); //直接没命中</span><br><span class="line">        &#125;</span><br><span class="line">        private Entry getEntryAfterMiss(ThreadLocal&lt;?&gt; key, int i, Entry e) &#123;</span><br><span class="line">            Entry[] tab = table;</span><br><span class="line">            int len = tab.length;</span><br><span class="line">            while (e != null) &#123; //开始探测了</span><br><span class="line">                ThreadLocal&lt;?&gt; k = e.get();</span><br><span class="line">                if (k == key)  //命中了就返回</span><br><span class="line">                    return e;</span><br><span class="line">                if (k == null)  //探测到key是null的就清理</span><br><span class="line">                    expungeStaleEntry(i);</span><br><span class="line">                else</span><br><span class="line">                    i = nextIndex(i, len); //否则继续</span><br><span class="line">                e = tab[i];</span><br><span class="line">            &#125;</span><br><span class="line">            return null;</span><br><span class="line">        &#125;</span><br><span class="line">        //set 方法</span><br><span class="line">        private void set(ThreadLocal&lt;?&gt; key, Object value) &#123;</span><br><span class="line">            Entry[] tab = table;</span><br><span class="line">            int len = tab.length;</span><br><span class="line">            int i = key.threadLocalHashCode &amp;amp; (len-1);</span><br><span class="line">            for (Entry e = tab[i];</span><br><span class="line">                 e != null;</span><br><span class="line">                 e = tab[i = nextIndex(i, len)]) &#123;</span><br><span class="line">                ThreadLocal&lt;?&gt; k = e.get();</span><br><span class="line">                if (k == key) &#123;</span><br><span class="line">                    e.value = value;    //如果已经有就替换原有的value</span><br><span class="line">                    return;</span><br><span class="line">                &#125;</span><br><span class="line">                if (k == null) &#123;</span><br><span class="line">                    replaceStaleEntry(key, value, i);</span><br><span class="line">                    return;</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">            tab[i] = new Entry(key, value);</span><br><span class="line">            int sz = ++size;</span><br><span class="line">            if (!cleanSomeSlots(i, sz) &amp;amp;&amp;amp; sz &gt;= threshold)</span><br><span class="line">                rehash();</span><br><span class="line">        &#125;</span><br></pre></td></tr></table></figure>
+
+<p>因此，当不需要<code>threadlocal</code>的时候还是显示调用<code>remove()</code>方法较好。</p>
+<h2 id="结语"><a href="#结语" class="headerlink" title="结语"></a>结语</h2><p>线程本地存储本质就是<strong>避免共享</strong>，在使用中注意内存泄露问题和hash碰撞问题即可。使用还是很广泛的像spring中事务就用到<code>threadlocal</code>。</p>
+<hr>
+<p>如有错误欢迎指正！</p>
+<p>个人公众号:yes的练级攻略</p>
+<p>有相关面试进阶(分布式、性能调优、经典书籍pdf)资料等待领取</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://yoursite.com/2019/05/10/面试官：说说你对ThreadLocal的了解/" data-id="cjw9y6bu5001sja2ar4l5yw0e" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Java/">Java</a></li></ul>
+
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2019/05/10/解读JUC——AQS独占模式/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Newer</strong>
+      <div class="article-nav-title">
+        
+          解读 JUC —— AQS 独占模式
+        
+      </div>
+    </a>
+  
+  
+    <a href="/2019/05/08/Java开发必须要掌握的20个核心技术/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">Java开发必须要掌握的20个核心技术</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tags</h3>
+    <div class="widget">
+      <ul class="tag-list"><li class="tag-list-item"><a class="tag-list-link" href="/tags/HDFS/">HDFS</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Hadoop/">Hadoop</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Java/">Java</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/MySQL/">MySQL</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Reactor/">Reactor</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/RxJava/">RxJava</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Spring/">Spring</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/TCP-IP/">TCP/IP</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Vue-js/">Vue.js</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/java/">java</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/分布式/">分布式</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/后端/">后端</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/微服务/">微服务</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/数据库/">数据库</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/服务器/">服务器</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/架构/">架构</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/源码/">源码</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tag Cloud</h3>
+    <div class="widget tagcloud">
+      <a href="/tags/HDFS/" style="font-size: 10px;">HDFS</a> <a href="/tags/Hadoop/" style="font-size: 10px;">Hadoop</a> <a href="/tags/Java/" style="font-size: 20px;">Java</a> <a href="/tags/MySQL/" style="font-size: 10px;">MySQL</a> <a href="/tags/Reactor/" style="font-size: 10px;">Reactor</a> <a href="/tags/RxJava/" style="font-size: 10px;">RxJava</a> <a href="/tags/Spring/" style="font-size: 13.33px;">Spring</a> <a href="/tags/TCP-IP/" style="font-size: 10px;">TCP/IP</a> <a href="/tags/Vue-js/" style="font-size: 10px;">Vue.js</a> <a href="/tags/java/" style="font-size: 10px;">java</a> <a href="/tags/分布式/" style="font-size: 10px;">分布式</a> <a href="/tags/后端/" style="font-size: 10px;">后端</a> <a href="/tags/微服务/" style="font-size: 10px;">微服务</a> <a href="/tags/数据库/" style="font-size: 10px;">数据库</a> <a href="/tags/服务器/" style="font-size: 10px;">服务器</a> <a href="/tags/架构/" style="font-size: 16.67px;">架构</a> <a href="/tags/源码/" style="font-size: 10px;">源码</a>
+    </div>
+  </div>
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Archives</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/05/">May 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/04/">April 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/01/">January 2019</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Recent Posts</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2019/05/30/README/">(no title)</a>
+          </li>
+        
+          <li>
+            <a href="/2019/05/30/Effective Java/">(no title)</a>
+          </li>
+        
+          <li>
+            <a href="/2019/05/30/hello-world/">Hello World</a>
+          </li>
+        
+          <li>
+            <a href="/2019/05/28/熟练掌握各种MQ？那面试官很可能用这道题目先摸摸你的老底！/">熟练掌握各种MQ？那面试官很可能用这道题目先摸摸你的老底！</a>
+          </li>
+        
+          <li>
+            <a href="/2019/05/22/从模板方法模式到JDBCTemplate/">从模板方法模式到JDBCTemplate</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2019 John Doe<br>
+      Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  <link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+  <script src="/fancybox/jquery.fancybox.pack.js"></script>
+
+
+<script src="/js/script.js"></script>
+
+
+
+  </div>
+</body>
+</html>

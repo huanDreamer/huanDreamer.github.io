@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html>
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="utf-8">
+  
+
+  
+  <title>Java8新的异步编程方式 CompletableFuture(三) | Hexo</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="本文转载自 https://juejin.im/post/59eae7636fb9a045117044c6   前面两篇文章已经整理了CompletableFuture大部分的特性，本文会整理完CompletableFuture余下的特性，以及将它跟RxJava进行比较。 3.6 EitherEither 表示的是两个CompletableFuture，当其中任意一个CompletableFut">
+<meta name="keywords" content="Java,RxJava">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Java8新的异步编程方式 CompletableFuture(三)">
+<meta property="og:url" content="http://yoursite.com/2019/05/14/Java8新的异步编程方式CompletableFuture(3)/index.html">
+<meta property="og:site_name" content="Hexo">
+<meta property="og:description" content="本文转载自 https://juejin.im/post/59eae7636fb9a045117044c6   前面两篇文章已经整理了CompletableFuture大部分的特性，本文会整理完CompletableFuture余下的特性，以及将它跟RxJava进行比较。 3.6 EitherEither 表示的是两个CompletableFuture，当其中任意一个CompletableFut">
+<meta property="og:locale" content="default">
+<meta property="og:updated_time" content="2019-05-30T00:52:25.404Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Java8新的异步编程方式 CompletableFuture(三)">
+<meta name="twitter:description" content="本文转载自 https://juejin.im/post/59eae7636fb9a045117044c6   前面两篇文章已经整理了CompletableFuture大部分的特性，本文会整理完CompletableFuture余下的特性，以及将它跟RxJava进行比较。 3.6 EitherEither 表示的是两个CompletableFuture，当其中任意一个CompletableFut">
+  
+    <link rel="alternate" href="/atom.xml" title="Hexo" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png">
+  
+  
+    <link href="//fonts.googleapis.com/css?family=Source+Code+Pro" rel="stylesheet" type="text/css">
+  
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+</html>
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">Hexo</a>
+      </h1>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
+        
+        <a id="nav-search-btn" class="nav-icon" title="Search"></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://yoursite.com"></form>
+      </div>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main"><article id="post-Java8新的异步编程方式CompletableFuture(3)" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2019/05/14/Java8新的异步编程方式CompletableFuture(3)/" class="article-date">
+  <time datetime="2019-05-14T03:46:27.027Z" itemprop="datePublished">2019-05-14</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      Java8新的异步编程方式 CompletableFuture(三)
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <blockquote>
+<p>本文转载自 <a href="https://juejin.im/post/59eae7636fb9a045117044c6" target="_blank" rel="noopener">https://juejin.im/post/59eae7636fb9a045117044c6</a> </p>
+</blockquote>
+<p>前面两篇文章已经整理了CompletableFuture大部分的特性，本文会整理完CompletableFuture余下的特性，以及将它跟RxJava进行比较。</p>
+<h2 id="3-6-Either"><a href="#3-6-Either" class="headerlink" title="3.6 Either"></a>3.6 Either</h2><p>Either 表示的是两个CompletableFuture，当其中任意一个CompletableFuture计算完成的时候就会执行。</p>
+<table>
+<thead>
+<tr>
+<th align="center">方法名</th>
+<th align="center">描述</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center">acceptEither(CompletionStage&lt;? extends T&gt; other, Consumer&lt;? super T&gt; action)</td>
+<td align="center">当任意一个CompletableFuture完成的时候，action这个消费者就会被执行。</td>
+</tr>
+<tr>
+<td align="center">acceptEitherAsync(CompletionStage&lt;? extends T&gt; other, Consumer&lt;? super T&gt; action)</td>
+<td align="center">当任意一个CompletableFuture完成的时候，action这个消费者就会被执行。使用ForkJoinPool</td>
+</tr>
+<tr>
+<td align="center">acceptEitherAsync(CompletionStage&lt;? extends T&gt; other, Consumer&lt;? super T&gt; action, Executor executor)</td>
+<td align="center">当任意一个CompletableFuture完成的时候，action这个消费者就会被执行。使用指定的线程池</td>
+</tr>
+<tr>
+<td align="center">`Random random =  Random();</td>
+<td align="center"></td>
+</tr>
+</tbody></table>
+<pre><code>CompletableFuture&lt;String&gt; future1 = CompletableFuture.supplyAsync(()-&gt;{
+
+     {
+        Thread.sleep(random.nextInt());
+    }  (InterruptedException e) {
+        e.printStackTrace();
+    }
+
+     ;
+});
+
+CompletableFuture&lt;String&gt; future2 = CompletableFuture.supplyAsync(()-&gt;{
+
+     {
+        Thread.sleep(random.nextInt());
+    }  (InterruptedException e) {
+        e.printStackTrace();
+    }
+
+     ;
+});
+
+CompletableFuture&lt;Void&gt; future =  future1.acceptEither(future2,str-&gt;System.out.println(+str));
+
+ {
+    future.get();
+}  (InterruptedException e) {
+    e.printStackTrace();
+}  (ExecutionException e) {
+    e.printStackTrace();
+}`</code></pre><p>执行结果：The future is from future1 或者 The future is from future2。<br>因为future1和future2，执行的顺序是随机的。</p>
+<p>applyToEither 跟 acceptEither 类似。</p>
+<table>
+<thead>
+<tr>
+<th align="center">方法名</th>
+<th align="center">描述</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center">applyToEither(CompletionStage&lt;? extends T&gt; other, Function&lt;? super T,U&gt; fn)</td>
+<td align="center">当任意一个CompletableFuture完成的时候，fn会被执行，它的返回值会当作新的CompletableFuture<u>的计算结果。</u></td>
+</tr>
+<tr>
+<td align="center">applyToEitherAsync(CompletionStage&lt;? extends T&gt; other, Function&lt;? super T,U&gt; fn)</td>
+<td align="center">当任意一个CompletableFuture完成的时候，fn会被执行，它的返回值会当作新的CompletableFuture<u>的计算结果。使用ForkJoinPool</u></td>
+</tr>
+<tr>
+<td align="center">applyToEitherAsync(CompletionStage&lt;? extends T&gt; other, Function&lt;? super T,U&gt; fn, Executor executor)</td>
+<td align="center">当任意一个CompletableFuture完成的时候，fn会被执行，它的返回值会当作新的CompletableFuture<u>的计算结果。使用指定的线程池</u></td>
+</tr>
+<tr>
+<td align="center">`Random random =  Random();</td>
+<td align="center"></td>
+</tr>
+</tbody></table>
+<pre><code>CompletableFuture&lt;String&gt; future1 = CompletableFuture.supplyAsync(()-&gt;{
+
+     {
+        Thread.sleep(random.nextInt());
+    }  (InterruptedException e) {
+        e.printStackTrace();
+    }
+
+     ;
+});
+
+CompletableFuture&lt;String&gt; future2 = CompletableFuture.supplyAsync(()-&gt;{
+
+     {
+        Thread.sleep(random.nextInt());
+    }  (InterruptedException e) {
+        e.printStackTrace();
+    }
+
+     ;
+});
+
+CompletableFuture&lt;String&gt; future =  future1.applyToEither(future2,str-&gt;+str);
+
+ {
+    System.out.println(future.get());
+}  (InterruptedException e) {
+    e.printStackTrace();
+}  (ExecutionException e) {
+    e.printStackTrace();
+}`</code></pre><p>执行结果也跟上面的程序类似。</p>
+<h2 id="3-7-其他方法"><a href="#3-7-其他方法" class="headerlink" title="3.7 其他方法"></a>3.7 其他方法</h2><p>allOf、anyOf是CompletableFuture的静态方法。</p>
+<h3 id="3-7-1-allOf"><a href="#3-7-1-allOf" class="headerlink" title="3.7.1 allOf"></a>3.7.1 allOf</h3><table>
+<thead>
+<tr>
+<th align="center">方法名</th>
+<th align="center">描述</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center">allOf(CompletableFuture&lt;?&gt;… cfs)</td>
+<td align="center">在所有Future对象完成后结束，并返回一个future。</td>
+</tr>
+</tbody></table>
+<p>allOf()方法所返回的CompletableFuture，并不能组合前面多个CompletableFuture的计算结果。于是我们借助Java 8的Stream来组合多个future的结果。<br>`CompletableFuture<string> future1 = CompletableFuture.supplyAsync(() -&gt; );</string></p>
+<pre><code>CompletableFuture&lt;String&gt; future2 = CompletableFuture.supplyAsync(() -&gt; );
+
+CompletableFuture&lt;String&gt; future3 = CompletableFuture.supplyAsync(() -&gt; );
+
+CompletableFuture.allOf(future1, future2, future3)
+        .thenApply(v -&gt;
+        Stream.of(future1, future2, future3)
+                .map(CompletableFuture::join)
+                .collect(Collectors.joining()))
+        .thenAccept(System.out::print);`</code></pre><p>执行结果：</p>
+<p><code>tony cafei aaron</code></p>
+<h3 id="3-7-2-anyOf"><a href="#3-7-2-anyOf" class="headerlink" title="3.7.2 anyOf"></a>3.7.2 anyOf</h3><table>
+<thead>
+<tr>
+<th align="center">方法名</th>
+<th align="center">描述</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center">anyOf(CompletableFuture&lt;?&gt;… cfs)</td>
+<td align="center">在任何一个Future对象结束后结束，并返回一个future。</td>
+</tr>
+<tr>
+<td align="center">`Random rand =  Random();</td>
+<td align="center"></td>
+</tr>
+<tr>
+<td align="center">CompletableFuture<string> future1 = CompletableFuture.supplyAsync(() -&gt; {</string></td>
+<td align="center"></td>
+</tr>
+<tr>
+<td align="center">{</td>
+<td align="center"></td>
+</tr>
+<tr>
+<td align="center">Thread.sleep(rand.nextInt());</td>
+<td align="center"></td>
+</tr>
+<tr>
+<td align="center">}  (InterruptedException e) {</td>
+<td align="center"></td>
+</tr>
+<tr>
+<td align="center">e.printStackTrace();</td>
+<td align="center"></td>
+</tr>
+<tr>
+<td align="center">}</td>
+<td align="center"></td>
+</tr>
+<tr>
+<td align="center">;</td>
+<td align="center"></td>
+</tr>
+<tr>
+<td align="center">});</td>
+<td align="center"></td>
+</tr>
+<tr>
+<td align="center">CompletableFuture<string> future2 = CompletableFuture.supplyAsync(() -&gt; {</string></td>
+<td align="center"></td>
+</tr>
+<tr>
+<td align="center">{</td>
+<td align="center"></td>
+</tr>
+<tr>
+<td align="center">Thread.sleep(rand.nextInt());</td>
+<td align="center"></td>
+</tr>
+<tr>
+<td align="center">}  (InterruptedException e) {</td>
+<td align="center"></td>
+</tr>
+<tr>
+<td align="center">e.printStackTrace();</td>
+<td align="center"></td>
+</tr>
+<tr>
+<td align="center">}</td>
+<td align="center"></td>
+</tr>
+<tr>
+<td align="center">;</td>
+<td align="center"></td>
+</tr>
+<tr>
+<td align="center">});</td>
+<td align="center"></td>
+</tr>
+<tr>
+<td align="center">CompletableFuture<string> future3 = CompletableFuture.supplyAsync(() -&gt; {</string></td>
+<td align="center"></td>
+</tr>
+<tr>
+<td align="center">{</td>
+<td align="center"></td>
+</tr>
+<tr>
+<td align="center">Thread.sleep(rand.nextInt());</td>
+<td align="center"></td>
+</tr>
+<tr>
+<td align="center">}  (InterruptedException e) {</td>
+<td align="center"></td>
+</tr>
+<tr>
+<td align="center">e.printStackTrace();</td>
+<td align="center"></td>
+</tr>
+<tr>
+<td align="center">}</td>
+<td align="center"></td>
+</tr>
+<tr>
+<td align="center">;</td>
+<td align="center"></td>
+</tr>
+<tr>
+<td align="center">});</td>
+<td align="center"></td>
+</tr>
+</tbody></table>
+<pre><code>CompletableFuture&lt;Object&gt; future =  CompletableFuture.anyOf(future1,future2,future3);
+
+ {
+    System.out.println(future.get());
+}  (InterruptedException e) {
+    e.printStackTrace();
+}  (ExecutionException e) {
+    e.printStackTrace();
+}`</code></pre><p>使用anyOf()时，只要某一个future完成，就结束了。所以执行结果可能是”from future1”、”from future2”、”from future3”中的任意一个。</p>
+<p>anyOf 和 acceptEither、applyToEither的区别在于，后两者只能使用在两个future中，而anyOf可以使用在多个future中。</p>
+<h2 id="3-8-CompletableFuture异常处理"><a href="#3-8-CompletableFuture异常处理" class="headerlink" title="3.8 CompletableFuture异常处理"></a>3.8 CompletableFuture异常处理</h2><p>CompletableFuture在运行时如果遇到异常，可以使用get()并抛出异常进行处理，但这并不是一个最好的方法。CompletableFuture本身也提供了几种方式来处理异常。</p>
+<h3 id="3-8-1-exceptionally"><a href="#3-8-1-exceptionally" class="headerlink" title="3.8.1 exceptionally"></a>3.8.1 exceptionally</h3><table>
+<thead>
+<tr>
+<th align="center">方法名</th>
+<th align="center">描述</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center">exceptionally(Function fn)</td>
+<td align="center">只有当CompletableFuture抛出异常的时候，才会触发这个exceptionally的计算，调用function计算值。</td>
+</tr>
+<tr>
+<td align="center">`CompletableFuture.supplyAsync(() -&gt; )</td>
+<td align="center"></td>
+</tr>
+<tr>
+<td align="center">.thenApply(s -&gt; {</td>
+<td align="center"></td>
+</tr>
+<tr>
+<td align="center">s = ;</td>
+<td align="center"></td>
+</tr>
+<tr>
+<td align="center">length = s.length();</td>
+<td align="center"></td>
+</tr>
+<tr>
+<td align="center">length;</td>
+<td align="center"></td>
+</tr>
+<tr>
+<td align="center">}).thenAccept(i -&gt; System.out.println(i))</td>
+<td align="center"></td>
+</tr>
+<tr>
+<td align="center">.exceptionally(t -&gt; {</td>
+<td align="center"></td>
+</tr>
+<tr>
+<td align="center">System.out.println( + t);</td>
+<td align="center"></td>
+</tr>
+<tr>
+<td align="center">;</td>
+<td align="center"></td>
+</tr>
+<tr>
+<td align="center">});`</td>
+<td align="center"></td>
+</tr>
+</tbody></table>
+<p>执行结果：</p>
+<p><code>Unexpected error:java.util.concurrent.CompletionException: java.lang.NullPointerException</code></p>
+<p>对上面的代码稍微做了一下修改，修复了空指针的异常。</p>
+<p>`CompletableFuture.supplyAsync(() -&gt; )<br>                .thenApply(s -&gt; {</p>
+<pre><code>     length = s.length();
+     length;
+}).thenAccept(i -&gt; System.out.println(i))
+.exceptionally(t -&gt; {
+    System.out.println( + t);
+     ;
+});`</code></pre><p>执行结果：</p>
+<p>``</p>
+<h3 id="3-8-2-whenComplete"><a href="#3-8-2-whenComplete" class="headerlink" title="3.8.2 whenComplete"></a>3.8.2 whenComplete</h3><p>whenComplete 在上一篇文章其实已经介绍过了，在这里跟exceptionally的作用差不多，可以捕获任意阶段的异常。如果没有异常的话，就执行action。<br>`CompletableFuture.supplyAsync(() -&gt; )<br>                .thenApply(s -&gt; {<br>                    s = ;<br>                     length = s.length();<br>                     length;<br>                }).thenAccept(i -&gt; System.out.println(i))<br>                .whenComplete((result, throwable) -&gt; {</p>
+<pre><code>     (throwable != ) {
+       System.out.println(+throwable);
+    }  {
+        System.out.println(result);
+    }
+
+});`</code></pre><p>执行结果：</p>
+<p><code>Unexpected error:java.util.concurrent.CompletionException: java.lang.NullPointerException</code></p>
+<p>跟whenComplete相似的方法是handle，handle的用法在上一篇文章中也已经介绍过。</p>
+<h1 id="四-CompletableFuture-VS-Java8-Stream-VS-RxJava1-amp-RxJava2"><a href="#四-CompletableFuture-VS-Java8-Stream-VS-RxJava1-amp-RxJava2" class="headerlink" title="四. CompletableFuture VS Java8 Stream VS RxJava1 &amp; RxJava2"></a>四. CompletableFuture VS Java8 Stream VS RxJava1 &amp; RxJava2</h1><p>CompletableFuture 有很多特性跟RxJava很像，所以将CompletableFuture、Java 8 Stream和RxJava做一个相互的比较。</p>
+<table>
+<thead>
+<tr>
+<th align="center"></th>
+<th align="center">composable</th>
+<th align="center">lazy</th>
+<th align="center">resuable</th>
+<th align="center">async</th>
+<th align="center">cached</th>
+<th align="center">push</th>
+<th align="center">back pressure</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center">CompletableFuture</td>
+<td align="center">支持</td>
+<td align="center">不支持</td>
+<td align="center">支持</td>
+<td align="center">支持</td>
+<td align="center">支持</td>
+<td align="center">支持</td>
+<td align="center">不支持</td>
+</tr>
+<tr>
+<td align="center">Stream</td>
+<td align="center">支持</td>
+<td align="center">支持</td>
+<td align="center">不支持</td>
+<td align="center">不支持</td>
+<td align="center">不支持</td>
+<td align="center">不支持</td>
+<td align="center">不支持</td>
+</tr>
+<tr>
+<td align="center">Observable(RxJava1)</td>
+<td align="center">支持</td>
+<td align="center">支持</td>
+<td align="center">支持</td>
+<td align="center">支持</td>
+<td align="center">支持</td>
+<td align="center">支持</td>
+<td align="center">支持</td>
+</tr>
+<tr>
+<td align="center">Observable(RxJava2)</td>
+<td align="center">支持</td>
+<td align="center">支持</td>
+<td align="center">支持</td>
+<td align="center">支持</td>
+<td align="center">支持</td>
+<td align="center">支持</td>
+<td align="center">不支持</td>
+</tr>
+<tr>
+<td align="center">Flowable(RxJava2)</td>
+<td align="center">支持</td>
+<td align="center">支持</td>
+<td align="center">支持</td>
+<td align="center">支持</td>
+<td align="center">支持</td>
+<td align="center">支持</td>
+<td align="center">支持</td>
+</tr>
+</tbody></table>
+<h1 id="五-总结"><a href="#五-总结" class="headerlink" title="五. 总结"></a>五. 总结</h1><p>Java 8提供了一种函数风格的异步和事件驱动编程模型CompletableFuture，它不会造成堵塞。CompletableFuture背后依靠的是fork/join框架来启动新的线程实现异步与并发。当然，我们也能通过指定线程池来做这些事情。</p>
+<p>CompletableFuture特别是对微服务架构而言，会有很大的作为。举一个具体的场景，电商的商品页面可能会涉及到商品详情服务、商品评论服务、相关商品推荐服务等等。获取商品的信息时（/productdetails?productid=xxx），需要调用多个服务来处理这一个请求并返回结果。这里可能会涉及到并发编程，我们完全可以使用Java 8的CompletableFuture或者RxJava来实现。</p>
+<p>先前的文章：<br><a href="https://juejin.im/post/59eae61b51882549fc512b34" target="_blank" rel="noopener">Java8新的异步编程方式 CompletableFuture(一)</a><br><a href="https://juejin.im/post/59eae6e4f265da430e4e4cb5" target="_blank" rel="noopener">Java8新的异步编程方式 CompletableFuture(二)</a></p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://yoursite.com/2019/05/14/Java8新的异步编程方式CompletableFuture(3)/" data-id="cjw9y6bte0005ja2azhqtazc2" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Java/">Java</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/RxJava/">RxJava</a></li></ul>
+
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2019/05/16/Java的12个语法糖/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Newer</strong>
+      <div class="article-nav-title">
+        
+          Java的12个语法糖
+        
+      </div>
+    </a>
+  
+  
+    <a href="/2019/05/14/Java8新的异步编程方式CompletableFuture(2)/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">Java8新的异步编程方式 CompletableFuture(二)</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tags</h3>
+    <div class="widget">
+      <ul class="tag-list"><li class="tag-list-item"><a class="tag-list-link" href="/tags/HDFS/">HDFS</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Hadoop/">Hadoop</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Java/">Java</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/MySQL/">MySQL</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Reactor/">Reactor</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/RxJava/">RxJava</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Spring/">Spring</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/TCP-IP/">TCP/IP</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Vue-js/">Vue.js</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/java/">java</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/分布式/">分布式</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/后端/">后端</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/微服务/">微服务</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/数据库/">数据库</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/服务器/">服务器</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/架构/">架构</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/源码/">源码</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tag Cloud</h3>
+    <div class="widget tagcloud">
+      <a href="/tags/HDFS/" style="font-size: 10px;">HDFS</a> <a href="/tags/Hadoop/" style="font-size: 10px;">Hadoop</a> <a href="/tags/Java/" style="font-size: 20px;">Java</a> <a href="/tags/MySQL/" style="font-size: 10px;">MySQL</a> <a href="/tags/Reactor/" style="font-size: 10px;">Reactor</a> <a href="/tags/RxJava/" style="font-size: 10px;">RxJava</a> <a href="/tags/Spring/" style="font-size: 13.33px;">Spring</a> <a href="/tags/TCP-IP/" style="font-size: 10px;">TCP/IP</a> <a href="/tags/Vue-js/" style="font-size: 10px;">Vue.js</a> <a href="/tags/java/" style="font-size: 10px;">java</a> <a href="/tags/分布式/" style="font-size: 10px;">分布式</a> <a href="/tags/后端/" style="font-size: 10px;">后端</a> <a href="/tags/微服务/" style="font-size: 10px;">微服务</a> <a href="/tags/数据库/" style="font-size: 10px;">数据库</a> <a href="/tags/服务器/" style="font-size: 10px;">服务器</a> <a href="/tags/架构/" style="font-size: 16.67px;">架构</a> <a href="/tags/源码/" style="font-size: 10px;">源码</a>
+    </div>
+  </div>
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Archives</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/05/">May 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/04/">April 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/01/">January 2019</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Recent Posts</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2019/05/30/README/">(no title)</a>
+          </li>
+        
+          <li>
+            <a href="/2019/05/30/Effective Java/">(no title)</a>
+          </li>
+        
+          <li>
+            <a href="/2019/05/30/hello-world/">Hello World</a>
+          </li>
+        
+          <li>
+            <a href="/2019/05/28/熟练掌握各种MQ？那面试官很可能用这道题目先摸摸你的老底！/">熟练掌握各种MQ？那面试官很可能用这道题目先摸摸你的老底！</a>
+          </li>
+        
+          <li>
+            <a href="/2019/05/22/从模板方法模式到JDBCTemplate/">从模板方法模式到JDBCTemplate</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2019 John Doe<br>
+      Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  <link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+  <script src="/fancybox/jquery.fancybox.pack.js"></script>
+
+
+<script src="/js/script.js"></script>
+
+
+
+  </div>
+</body>
+</html>

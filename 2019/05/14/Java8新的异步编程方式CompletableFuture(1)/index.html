@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html>
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="utf-8">
+  
+
+  
+  <title>Java8新的异步编程方式 CompletableFuture(一) | Hexo</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="本文转载自 https://juejin.im/post/59eae61b51882549fc512b34   一. FutureJDK 5引入了Future模式。Future接口是Java多线程Future模式的实现，在java.util.concurrent包中，可以来进行异步计算。 Future模式是多线程设计常用的一种设计模式。Future模式可以理解成：我有一个任务，提交给了Futur">
+<meta name="keywords" content="Java">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Java8新的异步编程方式 CompletableFuture(一)">
+<meta property="og:url" content="http://yoursite.com/2019/05/14/Java8新的异步编程方式CompletableFuture(1)/index.html">
+<meta property="og:site_name" content="Hexo">
+<meta property="og:description" content="本文转载自 https://juejin.im/post/59eae61b51882549fc512b34   一. FutureJDK 5引入了Future模式。Future接口是Java多线程Future模式的实现，在java.util.concurrent包中，可以来进行异步计算。 Future模式是多线程设计常用的一种设计模式。Future模式可以理解成：我有一个任务，提交给了Futur">
+<meta property="og:locale" content="default">
+<meta property="og:updated_time" content="2019-05-30T00:52:25.403Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Java8新的异步编程方式 CompletableFuture(一)">
+<meta name="twitter:description" content="本文转载自 https://juejin.im/post/59eae61b51882549fc512b34   一. FutureJDK 5引入了Future模式。Future接口是Java多线程Future模式的实现，在java.util.concurrent包中，可以来进行异步计算。 Future模式是多线程设计常用的一种设计模式。Future模式可以理解成：我有一个任务，提交给了Futur">
+  
+    <link rel="alternate" href="/atom.xml" title="Hexo" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png">
+  
+  
+    <link href="//fonts.googleapis.com/css?family=Source+Code+Pro" rel="stylesheet" type="text/css">
+  
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+</html>
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">Hexo</a>
+      </h1>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
+        
+        <a id="nav-search-btn" class="nav-icon" title="Search"></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://yoursite.com"></form>
+      </div>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main"><article id="post-Java8新的异步编程方式CompletableFuture(1)" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2019/05/14/Java8新的异步编程方式CompletableFuture(1)/" class="article-date">
+  <time datetime="2019-05-14T03:45:42.042Z" itemprop="datePublished">2019-05-14</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      Java8新的异步编程方式 CompletableFuture(一)
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <blockquote>
+<p>本文转载自 <a href="https://juejin.im/post/59eae61b51882549fc512b34" target="_blank" rel="noopener">https://juejin.im/post/59eae61b51882549fc512b34</a> </p>
+</blockquote>
+<h1 id="一-Future"><a href="#一-Future" class="headerlink" title="一. Future"></a>一. Future</h1><p>JDK 5引入了Future模式。Future接口是Java多线程Future模式的实现，在java.util.concurrent包中，可以来进行异步计算。</p>
+<p>Future模式是多线程设计常用的一种设计模式。Future模式可以理解成：我有一个任务，提交给了Future，Future替我完成这个任务。期间我自己可以去做任何想做的事情。一段时间之后，我就便可以从Future那儿取出结果。</p>
+<p>Future的接口很简单，只有五个方法。<br>`{</p>
+<pre><code>;
+
+;
+
+;
+
+;
+
+;</code></pre><p>}`</p>
+<p>Future接口的方法介绍如下：</p>
+<pre><code>* boolean cancel (boolean mayInterruptIfRunning) 取消任务的执行。参数指定是否立即中断任务执行，或者等等任务结束
+* boolean isCancelled () 任务是否已经取消，任务正常完成前将其取消，则返回 true
+* boolean isDone () 任务是否已经完成。需要注意的是如果任务正常终止、异常或取消，都将返回true
+* V get () throws InterruptedException, ExecutionException 等待任务执行结束，然后获得V类型的结果。InterruptedException 线程被中断异常， ExecutionException任务执行异常，如果任务被取消，还会抛出CancellationException
+* V get (long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException 同上面的get功能一样，多了设置超时时间。参数timeout指定超时时间，uint指定时间的单位，在枚举类TimeUnit中有相关的定义。如果计 算超时，将抛出TimeoutException</code></pre><p>一般情况下，我们会结合Callable和Future一起使用，通过ExecutorService的submit方法执行Callable，并返回Future。<br>`ExecutorService executor = Executors.newCachedThreadPool();</p>
+<pre><code>Future&lt;String&gt; future = executor.submit(() -&gt; { 
+    System.out.println();
+    Thread.sleep();
+     ;
+});
+
+ {
+    Thread.sleep();
+}  (InterruptedException e) {
+}
+
+System.out.println();  
+
+ {
+    System.out.println(future.get());  
+}  (InterruptedException e) {
+}  (ExecutionException e) {
+
+}  {
+    executor.shutdown();
+}`</code></pre><p>比起future.get()，其实更推荐使用get (long timeout, TimeUnit unit) 方法，设置了超时时间可以防止程序无限制的等待future的结果。</p>
+<h1 id="二-CompletableFuture介绍"><a href="#二-CompletableFuture介绍" class="headerlink" title="二. CompletableFuture介绍"></a>二. CompletableFuture介绍</h1><h2 id="2-1-Future模式的缺点"><a href="#2-1-Future模式的缺点" class="headerlink" title="2.1 Future模式的缺点"></a>2.1 Future模式的缺点</h2><pre><code>* Future虽然可以实现获取异步执行结果的需求，但是它没有提供通知的机制，我们无法得知Future什么时候完成。
+* 要么使用阻塞，在future.get()的地方等待future返回的结果，这时又变成同步操作。要么使用isDone()轮询地判断Future是否完成，这样会耗费CPU的资源。</code></pre><h2 id="2-2-CompletableFuture介绍"><a href="#2-2-CompletableFuture介绍" class="headerlink" title="2.2 CompletableFuture介绍"></a>2.2 CompletableFuture介绍</h2><p>Netty、Guava分别扩展了Java 的 Future 接口，方便异步编程。</p>
+<p>Java 8新增的CompletableFuture类正是吸收了所有Google Guava中ListenableFuture和SettableFuture的特征，还提供了其它强大的功能，让Java拥有了完整的非阻塞编程模型：Future、Promise 和 Callback(在Java8之前，只有无Callback 的Future)。</p>
+<p>CompletableFuture能够将回调放到与任务不同的线程中执行，也能将回调作为继续执行的同步函数，在与任务相同的线程中执行。它避免了传统回调最大的问题，那就是能够将控制流分离到不同的事件处理器中。</p>
+<p>CompletableFuture弥补了Future模式的缺点。在异步的任务完成后，需要用其结果继续操作时，无需等待。可以直接通过thenAccept、thenApply、thenCompose等方式将前面异步处理的结果交给另外一个异步事件处理线程来处理。</p>
+<h1 id="三-CompletableFuture特性"><a href="#三-CompletableFuture特性" class="headerlink" title="三. CompletableFuture特性"></a>三. CompletableFuture特性</h1><h2 id="3-1-CompletableFuture的静态工厂方法"><a href="#3-1-CompletableFuture的静态工厂方法" class="headerlink" title="3.1 CompletableFuture的静态工厂方法"></a>3.1 CompletableFuture的静态工厂方法</h2><table>
+<thead>
+<tr>
+<th align="center">方法名</th>
+<th align="center">描述</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center">runAsync(Runnable runnable)</td>
+<td align="center">使用ForkJoinPool.commonPool()作为它的线程池执行异步代码。</td>
+</tr>
+<tr>
+<td align="center">runAsync(Runnable runnable, Executor executor)</td>
+<td align="center">使用指定的thread pool执行异步代码。</td>
+</tr>
+<tr>
+<td align="center">supplyAsync(Supplier<u> supplier)</u></td>
+<td align="center">使用ForkJoinPool.commonPool()作为它的线程池执行异步代码，异步操作有返回值</td>
+</tr>
+<tr>
+<td align="center">supplyAsync(Supplier<u> supplier, Executor executor)</u></td>
+<td align="center">使用指定的thread pool执行异步代码，异步操作有返回值</td>
+</tr>
+</tbody></table>
+<p>runAsync 和 supplyAsync 方法的区别是runAsync返回的CompletableFuture是没有返回值的。<br>`CompletableFuture<void> future = CompletableFuture.runAsync(() -&gt; {<br>            System.out.println();<br>        });</void></p>
+<pre><code> {
+    future.get();
+}  (InterruptedException e) {
+    e.printStackTrace();
+}  (ExecutionException e) {
+    e.printStackTrace();
+}
+
+System.out.println();`</code></pre><p>而supplyAsync返回的CompletableFuture是由返回值的，下面的代码打印了future的返回值。</p>
+<p>`CompletableFuture<string> future = CompletableFuture.supplyAsync(() -&gt; );</string></p>
+<pre><code> {
+    System.out.println(future.get());
+}  (InterruptedException e) {
+    e.printStackTrace();
+}  (ExecutionException e) {
+    e.printStackTrace();
+}
+
+System.out.println();`</code></pre><h2 id="3-2-Completable"><a href="#3-2-Completable" class="headerlink" title="3.2 Completable"></a>3.2 Completable</h2><table>
+<thead>
+<tr>
+<th align="center">方法名</th>
+<th align="center">描述</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center">complete(T t)</td>
+<td align="center">完成异步执行，并返回future的结果</td>
+</tr>
+<tr>
+<td align="center">completeExceptionally(Throwable ex)</td>
+<td align="center">异步执行不正常的结束</td>
+</tr>
+</tbody></table>
+<p>future.get()在等待执行结果时，程序会一直block，如果此时调用complete(T t)会立即执行。<br>`CompletableFuture<string> future  = CompletableFuture.supplyAsync(() -&gt; );</string></p>
+<pre><code>future.complete();
+
+ {
+    System.out.println(future.get());
+}  (InterruptedException e) {
+    e.printStackTrace();
+}  (ExecutionException e) {
+    e.printStackTrace();
+}`</code></pre><p>执行结果：</p>
+<p><code>World</code></p>
+<p>可以看到future调用complete(T t)会立即执行。但是complete(T t)只能调用一次，后续的重复调用会失效。</p>
+<p>如果future已经执行完毕能够返回结果，此时再调用complete(T t)则会无效。<br>`CompletableFuture<string> future = CompletableFuture.supplyAsync(() -&gt; );</string></p>
+<pre><code> {
+    Thread.sleep();
+}  (InterruptedException e) {
+    e.printStackTrace();
+}
+
+future.complete();
+
+ {
+    System.out.println(future.get());
+}  (InterruptedException e) {
+    e.printStackTrace();
+}  (ExecutionException e) {
+    e.printStackTrace();
+}`</code></pre><p>执行结果：</p>
+<p><code>Hello</code></p>
+<p>如果使用completeExceptionally(Throwable ex)则抛出一个异常，而不是一个成功的结果。</p>
+<p>`CompletableFuture<string> future = CompletableFuture.supplyAsync(() -&gt; );</string></p>
+<pre><code>future.completeExceptionally( Exception());
+
+ {
+    System.out.println(future.get());
+}  (InterruptedException e) {
+    e.printStackTrace();
+}  (ExecutionException e) {
+    e.printStackTrace();
+}`</code></pre><p>执行结果：</p>
+<p><code>java.util.concurrent.ExecutionException: java.lang.Exception
+...</code></p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://yoursite.com/2019/05/14/Java8新的异步编程方式CompletableFuture(1)/" data-id="cjw9y6bt80001ja2amly10jc0" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Java/">Java</a></li></ul>
+
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2019/05/14/Java8新的异步编程方式CompletableFuture(2)/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Newer</strong>
+      <div class="article-nav-title">
+        
+          Java8新的异步编程方式 CompletableFuture(二)
+        
+      </div>
+    </a>
+  
+  
+    <a href="/2019/05/14/Java8的CompletableFuture进阶之道/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">Java8的CompletableFuture进阶之道</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tags</h3>
+    <div class="widget">
+      <ul class="tag-list"><li class="tag-list-item"><a class="tag-list-link" href="/tags/HDFS/">HDFS</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Hadoop/">Hadoop</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Java/">Java</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/MySQL/">MySQL</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Reactor/">Reactor</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/RxJava/">RxJava</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Spring/">Spring</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/TCP-IP/">TCP/IP</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Vue-js/">Vue.js</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/java/">java</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/分布式/">分布式</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/后端/">后端</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/微服务/">微服务</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/数据库/">数据库</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/服务器/">服务器</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/架构/">架构</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/源码/">源码</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tag Cloud</h3>
+    <div class="widget tagcloud">
+      <a href="/tags/HDFS/" style="font-size: 10px;">HDFS</a> <a href="/tags/Hadoop/" style="font-size: 10px;">Hadoop</a> <a href="/tags/Java/" style="font-size: 20px;">Java</a> <a href="/tags/MySQL/" style="font-size: 10px;">MySQL</a> <a href="/tags/Reactor/" style="font-size: 10px;">Reactor</a> <a href="/tags/RxJava/" style="font-size: 10px;">RxJava</a> <a href="/tags/Spring/" style="font-size: 13.33px;">Spring</a> <a href="/tags/TCP-IP/" style="font-size: 10px;">TCP/IP</a> <a href="/tags/Vue-js/" style="font-size: 10px;">Vue.js</a> <a href="/tags/java/" style="font-size: 10px;">java</a> <a href="/tags/分布式/" style="font-size: 10px;">分布式</a> <a href="/tags/后端/" style="font-size: 10px;">后端</a> <a href="/tags/微服务/" style="font-size: 10px;">微服务</a> <a href="/tags/数据库/" style="font-size: 10px;">数据库</a> <a href="/tags/服务器/" style="font-size: 10px;">服务器</a> <a href="/tags/架构/" style="font-size: 16.67px;">架构</a> <a href="/tags/源码/" style="font-size: 10px;">源码</a>
+    </div>
+  </div>
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Archives</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/05/">May 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/04/">April 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/01/">January 2019</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Recent Posts</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2019/05/30/README/">(no title)</a>
+          </li>
+        
+          <li>
+            <a href="/2019/05/30/Effective Java/">(no title)</a>
+          </li>
+        
+          <li>
+            <a href="/2019/05/30/hello-world/">Hello World</a>
+          </li>
+        
+          <li>
+            <a href="/2019/05/28/熟练掌握各种MQ？那面试官很可能用这道题目先摸摸你的老底！/">熟练掌握各种MQ？那面试官很可能用这道题目先摸摸你的老底！</a>
+          </li>
+        
+          <li>
+            <a href="/2019/05/22/从模板方法模式到JDBCTemplate/">从模板方法模式到JDBCTemplate</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2019 John Doe<br>
+      Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  <link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+  <script src="/fancybox/jquery.fancybox.pack.js"></script>
+
+
+<script src="/js/script.js"></script>
+
+
+
+  </div>
+</body>
+</html>

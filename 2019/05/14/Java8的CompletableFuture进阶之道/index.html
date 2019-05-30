@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html>
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="utf-8">
+  
+
+  
+  <title>Java8的CompletableFuture进阶之道 | Hexo</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="本文转载自 https://juejin.im/post/5ca47aa0e51d457131257269   简介作为Java 8 Concurrency API改进而引入，本文是CompletableFuture类的功能和用例的介绍。同时在Java 9 也有对CompletableFuture有一些改进，之后再进入讲解。 Future计算Future异步计算很难操作，通常我们希望将任何计算逻">
+<meta name="keywords" content="Java">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Java8的CompletableFuture进阶之道">
+<meta property="og:url" content="http://yoursite.com/2019/05/14/Java8的CompletableFuture进阶之道/index.html">
+<meta property="og:site_name" content="Hexo">
+<meta property="og:description" content="本文转载自 https://juejin.im/post/5ca47aa0e51d457131257269   简介作为Java 8 Concurrency API改进而引入，本文是CompletableFuture类的功能和用例的介绍。同时在Java 9 也有对CompletableFuture有一些改进，之后再进入讲解。 Future计算Future异步计算很难操作，通常我们希望将任何计算逻">
+<meta property="og:locale" content="default">
+<meta property="og:updated_time" content="2019-05-30T00:52:25.405Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Java8的CompletableFuture进阶之道">
+<meta name="twitter:description" content="本文转载自 https://juejin.im/post/5ca47aa0e51d457131257269   简介作为Java 8 Concurrency API改进而引入，本文是CompletableFuture类的功能和用例的介绍。同时在Java 9 也有对CompletableFuture有一些改进，之后再进入讲解。 Future计算Future异步计算很难操作，通常我们希望将任何计算逻">
+  
+    <link rel="alternate" href="/atom.xml" title="Hexo" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png">
+  
+  
+    <link href="//fonts.googleapis.com/css?family=Source+Code+Pro" rel="stylesheet" type="text/css">
+  
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+</html>
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">Hexo</a>
+      </h1>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
+        
+        <a id="nav-search-btn" class="nav-icon" title="Search"></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://yoursite.com"></form>
+      </div>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main"><article id="post-Java8的CompletableFuture进阶之道" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2019/05/14/Java8的CompletableFuture进阶之道/" class="article-date">
+  <time datetime="2019-05-14T03:26:08.008Z" itemprop="datePublished">2019-05-14</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      Java8的CompletableFuture进阶之道
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <blockquote>
+<p>本文转载自 <a href="https://juejin.im/post/5ca47aa0e51d457131257269" target="_blank" rel="noopener">https://juejin.im/post/5ca47aa0e51d457131257269</a> </p>
+</blockquote>
+<h1 id="简介"><a href="#简介" class="headerlink" title="简介"></a>简介</h1><p>作为Java 8 Concurrency API改进而引入，本文是CompletableFuture类的功能和用例的介绍。同时在Java 9 也有对CompletableFuture有一些改进，之后再进入讲解。</p>
+<h1 id="Future计算"><a href="#Future计算" class="headerlink" title="Future计算"></a>Future计算</h1><p>Future异步计算很难操作，通常我们希望将任何计算逻辑视为一系列步骤。但是在异步计算的情况下，表示为回调的方法往往分散在代码中或者深深地嵌套在彼此内部。但是当我们需要处理其中一个步骤中可能发生的错误时，情况可能会变得更复杂。</p>
+<p>Futrue接口是Java 5中作为异步计算而新增的，但它没有任何方法去进行计算组合或者处理可能出现的错误。</p>
+<p>在Java 8中，引入了CompletableFuture类。与Future接口一起，它还实现了CompletionStage接口。此接口定义了可与其他Future组合成异步计算契约。</p>
+<p>CompletableFuture同时是一个组合和一个框架，具有大约50种不同的构成，结合，执行异步计算步骤和处理错误。</p>
+<p>如此庞大的API可能会令人难以招架，下文将调一些重要的做重点介绍。</p>
+<h1 id="使用CompletableFuture作为Future实现"><a href="#使用CompletableFuture作为Future实现" class="headerlink" title="使用CompletableFuture作为Future实现"></a>使用CompletableFuture作为Future实现</h1><p>首先，CompletableFuture类实现Future接口，因此你可以将其用作Future实现，但需要额外的完成实现逻辑。</p>
+<p>例如，你可以使用无构参构造函数创建此类的实例，然后使用<code>complete</code>方法完成。消费者可以使用get方法来阻塞当前线程，直到<code>get()</code>结果。</p>
+<p>在下面的示例中，我们有一个创建CompletableFuture实例的方法，然后在另一个线程中计算并立即返回Future。</p>
+<p>计算完成后，该方法通过将结果提供给完整方法来完成Future：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">public Future&lt;String&gt; calculateAsync() throws InterruptedException &#123;</span><br><span class="line">    CompletableFuture&lt;String&gt; completableFuture </span><br><span class="line">      = new CompletableFuture&lt;&gt;();</span><br><span class="line"> </span><br><span class="line">    Executors.newCachedThreadPool().submit(() -&gt; &#123;</span><br><span class="line">        Thread.sleep(500);</span><br><span class="line">        completableFuture.complete(&quot;Hello&quot;);</span><br><span class="line">        return null;</span><br><span class="line">    &#125;);</span><br><span class="line"> </span><br><span class="line">    return completableFuture;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>为了分离计算，我们使用了<em>Executor</em> API ，这种创建和完成<em>CompletableFuture的方法</em>可以与任何并发包（包括原始线程）一起使用。</p>
+<p>请注意，<strong>该<code>calculateAsync</code>方法返回一个<code>Future</code>实例。</strong></p>
+<p>我们只是调用方法，接收<em>Future</em>实例并在我们准备阻塞结果时调用它的<em>get</em>方法。</p>
+<p>另请注意，<em>get</em>方法抛出一些已检查的异常，即<em>ExecutionException</em>（封装计算期间发生的异常）和<em>InterruptedException</em>（表示执行方法的线程被中断的异常）：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">Future&lt;String&gt; completableFuture = calculateAsync();</span><br><span class="line"> </span><br><span class="line">// ... </span><br><span class="line"> </span><br><span class="line">String result = completableFuture.get();</span><br><span class="line">assertEquals(&quot;Hello&quot;, result);</span><br></pre></td></tr></table></figure>
+
+<p>如果你已经知道计算的结果，也可以用变成同步的方式来返回结果。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">Future&lt;String&gt; completableFuture = </span><br><span class="line">  CompletableFuture.completedFuture(&quot;Hello&quot;);</span><br><span class="line"> </span><br><span class="line">// ...</span><br><span class="line"> </span><br><span class="line">String result = completableFuture.get();</span><br><span class="line">assertEquals(&quot;Hello&quot;, result);</span><br></pre></td></tr></table></figure>
+
+<p>作为在某些场景中，你可能希望取消Future任务的执行。</p>
+<p>假设我们没有找到结果并决定完全取消异步执行任务。这可以通过Future的取消方法完成。此方法<code>mayInterruptIfRunning</code>，但在CompletableFuture的情况下，它没有任何效果，因为中断不用于控制CompletableFuture的处理。</p>
+<p>这是异步方法的修改版本：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">public Future&lt;String&gt; calculateAsyncWithCancellation() throws InterruptedException &#123;</span><br><span class="line">    CompletableFuture&lt;String&gt; completableFuture = new CompletableFuture&lt;&gt;();</span><br><span class="line"> </span><br><span class="line">    Executors.newCachedThreadPool().submit(() -&gt; &#123;</span><br><span class="line">        Thread.sleep(500);</span><br><span class="line">        completableFuture.cancel(false);</span><br><span class="line">        return null;</span><br><span class="line">    &#125;);</span><br><span class="line"> </span><br><span class="line">    return completableFuture;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>当我们使用Future.get()方法阻塞结果时，<code>cancel()</code>表示取消执行，它将抛出CancellationException：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">Future&lt;String&gt; future = calculateAsyncWithCancellation();</span><br><span class="line">future.get(); // CancellationException</span><br></pre></td></tr></table></figure>
+
+<h1 id="API介绍"><a href="#API介绍" class="headerlink" title="API介绍"></a>API介绍</h1><h2 id="static方法说明"><a href="#static方法说明" class="headerlink" title="static方法说明"></a>static方法说明</h2><p>上面的代码很简单，下面介绍几个 <strong>static</strong> 方法，它们使用任务来实例化一个 CompletableFuture 实例。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">CompletableFuture.runAsync(Runnable runnable);</span><br><span class="line">CompletableFuture.runAsync(Runnable runnable, Executor executor);</span><br><span class="line"></span><br><span class="line">CompletableFuture.supplyAsync(Supplier&lt;U&gt; supplier);</span><br><span class="line">CompletableFuture.supplyAsync(Supplier&lt;U&gt; supplier, Executor executor)</span><br></pre></td></tr></table></figure>
+
+<pre><code>* runAsync 方法接收的是 Runnable 的实例，但是它没有返回值
+* supplyAsync 方法是JDK8函数式接口，无参数，会返回一个结果
+* 这两个方法是 executor 的升级，表示让任务在指定的线程池中执行，不指定的话，通常任务是在 ForkJoinPool.commonPool() 线程池中执行的。</code></pre><h2 id="supplyAsync-使用"><a href="#supplyAsync-使用" class="headerlink" title="supplyAsync()使用"></a>supplyAsync()使用</h2><p>静态方法<code>runAsync</code>和<code>supplyAsync</code>允许我们相应地从Runnable和Supplier功能类型中创建CompletableFuture实例。</p>
+<p>该Runnable的接口是在线程使用旧的接口，它不允许返回值。</p>
+<p>Supplier接口是一个不具有参数，并返回参数化类型的一个值的单个方法的通用功能接口。</p>
+<p>这允许将Supplier的实例作为lambda表达式提供，该表达式执行计算并返回结果：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">CompletableFuture&lt;String&gt; future</span><br><span class="line">  = CompletableFuture.supplyAsync(() -&gt; &quot;Hello&quot;);</span><br><span class="line"> </span><br><span class="line">// ...</span><br><span class="line"> </span><br><span class="line">assertEquals(&quot;Hello&quot;, future.get());</span><br></pre></td></tr></table></figure>
+
+<h2 id="thenRun-使用"><a href="#thenRun-使用" class="headerlink" title="thenRun()使用"></a>thenRun()使用</h2><p>在两个任务任务A，任务B中，如果既不需要任务A的值也不想在任务B中引用，那么你可以将Runnable lambda 传递给<code>thenRun()</code>方法。在下面的示例中，在调用future.get()方法之后，我们只需在控制台中打印一行：</p>
+<p>模板</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">CompletableFuture.runAsync(() -&gt; &#123;&#125;).thenRun(() -&gt; &#123;&#125;); </span><br><span class="line">CompletableFuture.supplyAsync(() -&gt; &quot;resultA&quot;).thenRun(() -&gt; &#123;&#125;);</span><br></pre></td></tr></table></figure>
+
+<pre><code>* 第一行用的是 `thenRun(Runnable runnable)`，任务 A 执行完执行 B，并且 B 不需要 A 的结果。
+* 第二行用的是 `thenRun(Runnable runnable)`，任务 A 执行完执行 B，会返回`resultA`，但是 B 不需要 A 的结果。</code></pre><p>实战</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">CompletableFuture&lt;String&gt; completableFuture </span><br><span class="line">  = CompletableFuture.supplyAsync(() -&gt; &quot;Hello&quot;);</span><br><span class="line"> </span><br><span class="line">CompletableFuture&lt;Void&gt; future = completableFuture</span><br><span class="line">  .thenRun(() -&gt; System.out.println(&quot;Computation finished.&quot;));</span><br><span class="line"> </span><br><span class="line">future.get();</span><br></pre></td></tr></table></figure>
+
+<h2 id="thenAccept-使用"><a href="#thenAccept-使用" class="headerlink" title="thenAccept()使用"></a>thenAccept()使用</h2><p>在两个任务任务A，任务B中，如果你不需要在Future中有返回值，则可以用 <code>thenAccept</code>方法接收将计算结果传递给它。最后的future.get（）调用返回Void类型的实例。</p>
+<p>模板</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">CompletableFuture.runAsync(() -&gt; &#123;&#125;).thenAccept(resultA -&gt; &#123;&#125;); </span><br><span class="line"></span><br><span class="line">CompletableFuture.supplyAsync(() -&gt; &quot;resultA&quot;).thenAccept(resultA -&gt; &#123;&#125;);</span><br></pre></td></tr></table></figure>
+
+<pre><code>* 第一行中，`runAsync`不会有返回值，第二个方法`thenAccept`，接收到的resultA值为null，同时任务B也不会有返回结果
+* 第二行中，`supplyAsync`有返回值，同时任务B不会有返回结果。</code></pre><p>实战</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">CompletableFuture&lt;String&gt; completableFuture</span><br><span class="line">  = CompletableFuture.supplyAsync(() -&gt; &quot;Hello&quot;);</span><br><span class="line"> </span><br><span class="line">CompletableFuture&lt;Void&gt; future = completableFuture</span><br><span class="line">  .thenAccept(s -&gt; System.out.println(&quot;Computation returned: &quot; + s));</span><br><span class="line"> </span><br><span class="line">future.get();</span><br></pre></td></tr></table></figure>
+
+<h2 id="thenApply-使用"><a href="#thenApply-使用" class="headerlink" title="thenApply()使用"></a>thenApply()使用</h2><p>在两个任务任务A，任务B中，任务B想要任务A计算的结果，可以用<code>thenApply</code>方法来接受一个函数实例，用它来处理结果，并返回一个Future函数的返回值：</p>
+<p>模板</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">CompletableFuture.runAsync(() -&gt; &#123;&#125;).thenApply(resultA -&gt; &quot;resultB&quot;);</span><br><span class="line">CompletableFuture.supplyAsync(() -&gt; &quot;resultA&quot;).thenApply(resultA -&gt; resultA + &quot; resultB&quot;);</span><br></pre></td></tr></table></figure>
+
+<pre><code>* 第二行用的是 thenApply(Function fn)，任务 A 执行完执行 B，B 需要 A 的结果，同时任务 B 有返回值。</code></pre><p>实战</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">CompletableFuture&lt;String&gt; completableFuture</span><br><span class="line">  = CompletableFuture.supplyAsync(() -&gt; &quot;Hello&quot;);</span><br><span class="line"> </span><br><span class="line">CompletableFuture&lt;String&gt; future = completableFuture</span><br><span class="line">  .thenApply(s -&gt; s + &quot; World&quot;);</span><br><span class="line"> </span><br><span class="line">assertEquals(&quot;Hello World&quot;, future.get());</span><br></pre></td></tr></table></figure>
+
+<p>当然，多个任务的情况下，如果任务 B 后面还有任务 C，往下继续调用 .thenXxx() 即可。</p>
+<h2 id="thenCompose-使用"><a href="#thenCompose-使用" class="headerlink" title="thenCompose()使用"></a>thenCompose()使用</h2><p>接下来会有一个很有趣的设计模式；</p>
+<p>CompletableFuture API 的最佳场景是能够在一系列计算步骤中组合CompletableFuture实例。</p>
+<p>这种组合结果本身就是CompletableFuture，允许进一步再续组合。这种方法在函数式语言中无处不在，通常被称为<code>monadic设计模式</code>。</p>
+<p>简单说，Monad就是一种设计模式，表示将一个运算过程，通过函数拆解成互相连接的多个步骤。你只要提供下一步运算所需的函数，整个运算就会自动进行下去。</p>
+<p>在下面的示例中，我们使用thenCompose方法按顺序组合两个Futures。</p>
+<p>请注意，此方法采用返回CompletableFuture实例的函数。该函数的参数是先前计算步骤的结果。这允许我们在下一个CompletableFuture的lambda中使用这个值：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">CompletableFuture&lt;String&gt; completableFuture </span><br><span class="line">  = CompletableFuture.supplyAsync(() -&gt; &quot;Hello&quot;)</span><br><span class="line">    .thenCompose(s -&gt; CompletableFuture.supplyAsync(() -&gt; s + &quot; World&quot;));</span><br><span class="line"> </span><br><span class="line">assertEquals(&quot;Hello World&quot;, completableFuture.get());</span><br></pre></td></tr></table></figure>
+
+<p>该thenCompose方法连同thenApply一样实现了结果的合并计算。但是他们的内部形式是不一样的，它们与Java 8中可用的Stream和Optional类的map和flatMap方法是有着类似的设计思路在里面的。</p>
+<p>两个方法都接收一个CompletableFuture并将其应用于计算结果，但thenCompose（flatMap）方法接收一个函数，该函数返回相同类型的另一个CompletableFuture对象。此功能结构允许将这些类的实例继续进行组合计算。</p>
+<h2 id="thenCombine"><a href="#thenCombine" class="headerlink" title="thenCombine()"></a>thenCombine()</h2><p>取两个任务的结果</p>
+<p>如果要执行两个独立的任务，并对其结果执行某些操作，可以用Future的thenCombine方法：</p>
+<p>模板</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">CompletableFuture&lt;String&gt; cfA = CompletableFuture.supplyAsync(() -&gt; &quot;resultA&quot;);</span><br><span class="line">CompletableFuture&lt;String&gt; cfB = CompletableFuture.supplyAsync(() -&gt; &quot;resultB&quot;);</span><br><span class="line"></span><br><span class="line">cfA.thenAcceptBoth(cfB, (resultA, resultB) -&gt; &#123;&#125;);</span><br><span class="line"></span><br><span class="line">cfA.thenCombine(cfB, (resultA, resultB) -&gt; &quot;result A + B&quot;);</span><br></pre></td></tr></table></figure>
+
+<p>实战</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">CompletableFuture&lt;String&gt; completableFuture </span><br><span class="line">  = CompletableFuture.supplyAsync(() -&gt; &quot;Hello&quot;)</span><br><span class="line">    .thenCombine(CompletableFuture.supplyAsync(</span><br><span class="line">      () -&gt; &quot; World&quot;), (s1, s2) -&gt; s1 + s2));</span><br><span class="line"> </span><br><span class="line">assertEquals(&quot;Hello World&quot;, completableFuture.get());</span><br></pre></td></tr></table></figure>
+
+<p>更简单的情况是，当你想要使用两个Future结果时，但不需要将任何结果值进行返回时，可以用<code>thenAcceptBoth</code>，它表示后续的处理不需要返回值，而 thenCombine 表示需要返回值：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">CompletableFuture future = CompletableFuture.supplyAsync(() -&gt; &quot;Hello&quot;)</span><br><span class="line">  .thenAcceptBoth(CompletableFuture.supplyAsync(() -&gt; &quot; World&quot;),</span><br><span class="line">    (s1, s2) -&gt; System.out.println(s1 + s2));</span><br></pre></td></tr></table></figure>
+
+<h1 id="thenApply-和thenCompose-之间的区别"><a href="#thenApply-和thenCompose-之间的区别" class="headerlink" title="thenApply()和thenCompose()之间的区别"></a>thenApply()和thenCompose()之间的区别</h1><p>在前面的部分中，我们展示了关于thenApply()和thenCompose()的示例。这两个API都是使用的CompletableFuture调用，但这两个API的使用是不同的。</p>
+<h2 id="thenApply"><a href="#thenApply" class="headerlink" title="thenApply()"></a>thenApply()</h2><p>此方法用于处理先前调用的<strong>结果</strong>。但是，要记住的一个关键点是返回类型是转换泛型中的类型，是同一个CompletableFuture。</p>
+<p>因此，当我们想要转换CompletableFuture 调用的结果时，效果是这样的 ：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">CompletableFuture&lt;Integer&gt; finalResult = compute().thenApply(s-&gt; s + 1);</span><br></pre></td></tr></table></figure>
+
+<h2 id="thenCompose"><a href="#thenCompose" class="headerlink" title="thenCompose()"></a>thenCompose()</h2><p>该thenCompose()方法类似于thenApply()在都返回一个新的计算结果。但是，thenCompose()使用前一个Future作为参数。它会直接使结果变新的Future，而不是我们在thenApply()中到的嵌套Future，而是用来连接两个CompletableFuture，是生成一个新的CompletableFuture：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">CompletableFuture&lt;Integer&gt; computeAnother(Integer i)&#123;</span><br><span class="line">    return CompletableFuture.supplyAsync(() -&gt; 10 + i);</span><br><span class="line">&#125;</span><br><span class="line">CompletableFuture&lt;Integer&gt; finalResult = compute().thenCompose(this::computeAnother);</span><br></pre></td></tr></table></figure>
+
+<p>因此，如果想要继续嵌套链接<em>CompletableFuture</em> 方法，那么最好使用<em>thenCompose()</em>。</p>
+<h1 id="并行运行多个任务"><a href="#并行运行多个任务" class="headerlink" title="并行运行多个任务"></a>并行运行多个任务</h1><p>当我们需要并行执行多个任务时，我们通常希望等待所有它们执行，然后处理它们的组合结果。</p>
+<p>该<code>CompletableFuture.allOf</code>静态方法允许等待所有的完成任务：</p>
+<p>API</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">public static CompletableFuture&lt;Void&gt; allOf(CompletableFuture&lt;?&gt;... cfs)&#123;...&#125;</span><br></pre></td></tr></table></figure>
+
+<p>实战</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">CompletableFuture&lt;String&gt; future1  </span><br><span class="line">  = CompletableFuture.supplyAsync(() -&gt; &quot;Hello&quot;);</span><br><span class="line">CompletableFuture&lt;String&gt; future2  </span><br><span class="line">  = CompletableFuture.supplyAsync(() -&gt; &quot;Beautiful&quot;);</span><br><span class="line">CompletableFuture&lt;String&gt; future3  </span><br><span class="line">  = CompletableFuture.supplyAsync(() -&gt; &quot;World&quot;);</span><br><span class="line"> </span><br><span class="line">CompletableFuture&lt;Void&gt; combinedFuture </span><br><span class="line">  = CompletableFuture.allOf(future1, future2, future3);</span><br><span class="line"> </span><br><span class="line">// ...</span><br><span class="line"> </span><br><span class="line">combinedFuture.get();</span><br><span class="line"> </span><br><span class="line">assertTrue(future1.isDone());</span><br><span class="line">assertTrue(future2.isDone());</span><br><span class="line">assertTrue(future3.isDone());</span><br></pre></td></tr></table></figure>
+
+<p>请注意，CompletableFuture.allOf()的返回类型是CompletableFuture 。这种方法的局限性在于它不会返回所有任务的综合结果。相反，你必须手动从Futures获取结果。幸运的是，CompletableFuture.join()方法和Java 8 Streams API可以解决：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">String combined = Stream.of(future1, future2, future3)</span><br><span class="line">  .map(CompletableFuture::join)</span><br><span class="line">  .collect(Collectors.joining(&quot; &quot;));</span><br><span class="line"> </span><br><span class="line">assertEquals(&quot;Hello Beautiful World&quot;, combined);</span><br></pre></td></tr></table></figure>
+
+<p>CompletableFuture 提供了 join() 方法，它的功能和 get() 方法是一样的，都是阻塞获取值，它们的区别在于 join() 抛出的是 unchecked Exception。这使得它可以在Stream.map（）方法中用作方法引用。</p>
+<h1 id="异常处理"><a href="#异常处理" class="headerlink" title="异常处理"></a>异常处理</h1><p>说到这里，我们顺便来说下 CompletableFuture 的异常处理。这里我们要介绍两个方法：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">public CompletableFuture&lt;T&gt; exceptionally(Function&lt;Throwable, ? extends T&gt; fn);</span><br><span class="line">public &lt;U&gt; CompletionStage&lt;U&gt; handle(BiFunction&lt;? super T, Throwable, ? extends U&gt; fn);</span><br></pre></td></tr></table></figure>
+
+<p>看下代码</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">CompletableFuture.supplyAsync(() -&gt; &quot;resultA&quot;)</span><br><span class="line">    .thenApply(resultA -&gt; resultA + &quot; resultB&quot;)</span><br><span class="line">    .thenApply(resultB -&gt; resultB + &quot; resultC&quot;)</span><br><span class="line">    .thenApply(resultC -&gt; resultC + &quot; resultD&quot;);</span><br></pre></td></tr></table></figure>
+
+<p>上面的代码中，任务 A、B、C、D 依次执行，如果任务 A 抛出异常（当然上面的代码不会抛出异常），那么后面的任务都得不到执行。如果任务 C 抛出异常，那么任务 D 得不到执行。</p>
+<p>那么我们怎么处理异常呢？看下面的代码，我们在任务 A 中抛出异常，并对其进行处理：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">CompletableFuture&lt;String&gt; future = CompletableFuture.supplyAsync(() -&gt; &#123;</span><br><span class="line">    throw new RuntimeException();</span><br><span class="line">&#125;)</span><br><span class="line">        .exceptionally(ex -&gt; &quot;errorResultA&quot;)</span><br><span class="line">        .thenApply(resultA -&gt; resultA + &quot; resultB&quot;)</span><br><span class="line">        .thenApply(resultB -&gt; resultB + &quot; resultC&quot;)</span><br><span class="line">        .thenApply(resultC -&gt; resultC + &quot; resultD&quot;);</span><br><span class="line"></span><br><span class="line">System.out.println(future.join());</span><br></pre></td></tr></table></figure>
+
+<p>上面的代码中，任务 A 抛出异常，然后通过<code>.exceptionally()</code> 方法处理了异常，并返回新的结果，这个新的结果将传递给任务 B。所以最终的输出结果是：</p>
+<p>errorResultA resultB resultC resultD<br> <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">String name = null;</span><br><span class="line"> </span><br><span class="line">// ...</span><br><span class="line"> </span><br><span class="line">CompletableFuture&lt;String&gt; completableFuture  </span><br><span class="line">  =  CompletableFuture.supplyAsync(() -&gt; &#123;</span><br><span class="line">      if (name == null) &#123;</span><br><span class="line">          throw new RuntimeException(&quot;Computation error!&quot;);</span><br><span class="line">      &#125;</span><br><span class="line">      return &quot;Hello, &quot; + name;</span><br><span class="line">  &#125;)&#125;).handle((s, t) -&gt; s != null ? s : &quot;Hello, Stranger!&quot;);</span><br><span class="line"> </span><br><span class="line">assertEquals(&quot;Hello, Stranger!&quot;, completableFuture.get());</span><br></pre></td></tr></table></figure></p>
+<p>当然，它们也可以都为 null，因为如果它作用的那个 CompletableFuture 实例没有返回值的时候，s 就是 null。</p>
+<h1 id="Async后缀方法"><a href="#Async后缀方法" class="headerlink" title="Async后缀方法"></a>Async后缀方法</h1><p><em>CompletableFuture</em>类中的API的大多数方法都有两个带有<em>Async</em>后缀的附加修饰。这些方法表示用于异步线程。</p>
+<p>没有<em>Async</em>后缀的方法使用调用线程运行下一个执行线程阶段。不带<em>Async</em>方法使用<em>ForkJoinPool.commonPool()</em>线程池的<em>fork / join</em>实现运算任务。带有<em>Async</em>方法使用传递式的<em>Executor</em>任务去运行。</p>
+<p>下面附带一个案例，可以看到有<em>thenApplyAsync</em>方法。在程序内部，线程被包装到<em>ForkJoinTask</em>实例中。这样可以进一步并行化你的计算并更有效地使用系统资源。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">CompletableFuture&lt;String&gt; completableFuture  </span><br><span class="line">  = CompletableFuture.supplyAsync(() -&gt; &quot;Hello&quot;);</span><br><span class="line"> </span><br><span class="line">CompletableFuture&lt;String&gt; future = completableFuture</span><br><span class="line">  .thenApplyAsync(s -&gt; s + &quot; World&quot;);</span><br><span class="line"> </span><br><span class="line">assertEquals(&quot;Hello World&quot;, future.get());</span><br></pre></td></tr></table></figure>
+
+<h1 id="JDK-9-CompletableFuture-API"><a href="#JDK-9-CompletableFuture-API" class="headerlink" title="JDK 9 CompletableFuture API"></a>JDK 9 CompletableFuture API</h1><p>在Java 9中， CompletableFuture API通过以下更改得到了进一步增强：</p>
+<pre><code>* 新工厂方法增加了
+* 支持延迟和超时
+* 改进了对子类化的支持。</code></pre><p>引入了新的实例API：</p>
+<pre><code>* Executor defaultExecutor()
+* CompletableFuturenewIncompleteFuture()
+* CompletableFuture copy()
+* CompletionStage minimalCompletionStage()
+* CompletableFuture completeAsync(Supplier&lt;? extends T&gt; supplier, Executor executor)
+* CompletableFuture completeAsync(Supplier&lt;? extends T&gt; supplier)
+* CompletableFuture orTimeout(long timeout, TimeUnit unit)
+* CompletableFuture completeOnTimeout(T value, long timeout, TimeUnit unit)</code></pre><p>还有一些静态实用方法：</p>
+<pre><code>* Executor delayedExecutor(long delay, TimeUnit unit, Executor executor)
+* Executor delayedExecutor(long delay, TimeUnit unit)
+* CompletionStagecompletedStage(U value)    * CompletionStagefailedStage(Throwable ex)    * CompletableFuturefailedFuture(Throwable ex)</code></pre><p>最后，为了解决超时问题，Java 9又引入了两个新功能：</p>
+<pre><code>* orTimeout()
+* completeOnTimeout()</code></pre><h1 id="结论"><a href="#结论" class="headerlink" title="结论"></a>结论</h1><p>在本文中，我们描述了CompletableFuture类的方法和典型用例。</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://yoursite.com/2019/05/14/Java8的CompletableFuture进阶之道/" data-id="cjw9y6btd0004ja2a4sp8jrc9" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Java/">Java</a></li></ul>
+
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2019/05/14/Java8新的异步编程方式CompletableFuture(1)/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Newer</strong>
+      <div class="article-nav-title">
+        
+          Java8新的异步编程方式 CompletableFuture(一)
+        
+      </div>
+    </a>
+  
+  
+    <a href="/2019/05/13/杂谈什么是伪共享（falsesharing）？/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">杂谈 什么是伪共享（false sharing）？</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tags</h3>
+    <div class="widget">
+      <ul class="tag-list"><li class="tag-list-item"><a class="tag-list-link" href="/tags/HDFS/">HDFS</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Hadoop/">Hadoop</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Java/">Java</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/MySQL/">MySQL</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Reactor/">Reactor</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/RxJava/">RxJava</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Spring/">Spring</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/TCP-IP/">TCP/IP</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Vue-js/">Vue.js</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/java/">java</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/分布式/">分布式</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/后端/">后端</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/微服务/">微服务</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/数据库/">数据库</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/服务器/">服务器</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/架构/">架构</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/源码/">源码</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tag Cloud</h3>
+    <div class="widget tagcloud">
+      <a href="/tags/HDFS/" style="font-size: 10px;">HDFS</a> <a href="/tags/Hadoop/" style="font-size: 10px;">Hadoop</a> <a href="/tags/Java/" style="font-size: 20px;">Java</a> <a href="/tags/MySQL/" style="font-size: 10px;">MySQL</a> <a href="/tags/Reactor/" style="font-size: 10px;">Reactor</a> <a href="/tags/RxJava/" style="font-size: 10px;">RxJava</a> <a href="/tags/Spring/" style="font-size: 13.33px;">Spring</a> <a href="/tags/TCP-IP/" style="font-size: 10px;">TCP/IP</a> <a href="/tags/Vue-js/" style="font-size: 10px;">Vue.js</a> <a href="/tags/java/" style="font-size: 10px;">java</a> <a href="/tags/分布式/" style="font-size: 10px;">分布式</a> <a href="/tags/后端/" style="font-size: 10px;">后端</a> <a href="/tags/微服务/" style="font-size: 10px;">微服务</a> <a href="/tags/数据库/" style="font-size: 10px;">数据库</a> <a href="/tags/服务器/" style="font-size: 10px;">服务器</a> <a href="/tags/架构/" style="font-size: 16.67px;">架构</a> <a href="/tags/源码/" style="font-size: 10px;">源码</a>
+    </div>
+  </div>
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Archives</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/05/">May 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/04/">April 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/01/">January 2019</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Recent Posts</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2019/05/30/README/">(no title)</a>
+          </li>
+        
+          <li>
+            <a href="/2019/05/30/Effective Java/">(no title)</a>
+          </li>
+        
+          <li>
+            <a href="/2019/05/30/hello-world/">Hello World</a>
+          </li>
+        
+          <li>
+            <a href="/2019/05/28/熟练掌握各种MQ？那面试官很可能用这道题目先摸摸你的老底！/">熟练掌握各种MQ？那面试官很可能用这道题目先摸摸你的老底！</a>
+          </li>
+        
+          <li>
+            <a href="/2019/05/22/从模板方法模式到JDBCTemplate/">从模板方法模式到JDBCTemplate</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2019 John Doe<br>
+      Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  <link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+  <script src="/fancybox/jquery.fancybox.pack.js"></script>
+
+
+<script src="/js/script.js"></script>
+
+
+
+  </div>
+</body>
+</html>
