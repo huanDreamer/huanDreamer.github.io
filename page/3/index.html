@@ -62,6 +62,118 @@
       <div class="outer">
         <section id="main">
   
+    <article id="post-解读JUC——AQS独占模式" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2019/05/10/解读JUC——AQS独占模式/" class="article-date">
+  <time datetime="2019-05-10T07:21:06.000Z" itemprop="datePublished">2019-05-10</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2019/05/10/解读JUC——AQS独占模式/">解读 JUC —— AQS 独占模式</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <blockquote>
+<p>本文转载自 <a href="https://juejin.im/post/5cd1d1876fb9a031eb58ae4d" target="_blank" rel="noopener">https://juejin.im/post/5cd1d1876fb9a031eb58ae4d</a> </p>
+</blockquote>
+<h1 id="1-前言"><a href="#1-前言" class="headerlink" title="1. 前言"></a>1. 前言</h1><p>说起 JUC，我们常常会想起其中的线程池（ExecutorService）。然而，我们今天来看看另一个核心模块 AQS。</p>
+<p>AQS 是 AbstractQueuedSynchronizer 的简称，在 JUC 中作为各种同步器的基石。举个例子，常见的 ReentrantLock 就是由它实现的。</p>
+<h1 id="2-如何实现一个锁？"><a href="#2-如何实现一个锁？" class="headerlink" title="2. 如何实现一个锁？"></a>2. 如何实现一个锁？</h1><p>我们知道，java 有一个关键字 synchronized 来给一段代码加锁，可是这是 JVM 层面的事情。那么问题来了，如何在 java 代码层面来实现模拟一个锁？</p>
+<p>即实现这样一个接口：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">package java.util.concurrent.locks;</span><br><span class="line"></span><br><span class="line">public interface Lock &#123;</span><br><span class="line">    void lock();</span><br><span class="line"></span><br><span class="line">    void unlock();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="自旋锁"><a href="#自旋锁" class="headerlink" title="自旋锁"></a>自旋锁</h2><p>一个简单的想法是：让所有线程去竞争一个变量owner，确保只有一个线程成功，并设置自己为owner，其他线程陷入死循环等待。这便是所谓的<strong>自旋锁</strong>。</p>
+<p>一个简单的代码实现：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line">import java.util.concurrent.atomic.AtomicReference;</span><br><span class="line"></span><br><span class="line">public class SpinLock &#123;</span><br><span class="line">   private AtomicReference&lt;Thread&gt; owner = new AtomicReference&lt;Thread&gt;();</span><br><span class="line"></span><br><span class="line">   public void lock() &#123;</span><br><span class="line">       Thread currentThread = Thread.currentThread();</span><br><span class="line"></span><br><span class="line">       // 如果锁未被占用，则设置当前线程为锁的拥有者</span><br><span class="line">       while (!owner.compareAndSet(null, currentThread)) &#123;</span><br><span class="line">       &#125;</span><br><span class="line">   &#125;</span><br><span class="line"></span><br><span class="line">   public void unlock() &#123;</span><br><span class="line">       Thread currentThread = Thread.currentThread();</span><br><span class="line"></span><br><span class="line">       // 只有锁的拥有者才能释放锁</span><br><span class="line">       owner.compareAndSet(currentThread, null);</span><br><span class="line">   &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>扯这个自旋锁，主要是为了引出 AQS 背后的算法 <code>CLH锁</code>。</p>
+<p>关于<code>CLH锁</code>更多细节可以参考篇文章：</p>
+<p><a href="https://link.juejin.im?target=https%3A%2F%2Fcoderbee.net%2Findex.php%2Fconcurrent%2F20131115%2F577" target="_blank" rel="noopener">自旋锁、排队自旋锁、MCS锁、CLH锁</a></p>
+<h1 id="3-AQS-的实现"><a href="#3-AQS-的实现" class="headerlink" title="3. AQS 的实现"></a>3. AQS 的实现</h1><p>CLH锁的思想，简单的说就是：一群人去ATM取钱，头一个人拿到锁，在里面用银行卡取钱，其余的人在后面<strong>排队等待</strong>；前一个人取完钱出来，<strong>唤醒</strong>下一个人进去取钱。</p>
+<p>关键部分翻译成代码就是：</p>
+<ul>
+<li>排队 -&gt; 队列</li>
+<li>等待/唤醒 -&gt; wait()/notify() 或者别的什么 api </li>
+</ul>
+<h2 id="3-1-同步队列"><a href="#3-1-同步队列" class="headerlink" title="3.1 同步队列"></a>3.1 同步队列</h2><p>AQS 使用节点为 Node 的双向链表作为<strong>同步队列</strong>。拿到锁的线程可以继续执行代码，没拿到的线程就进入这个队列排队。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br></pre></td><td class="code"><pre><span class="line">public abstract class AbstractQueuedSynchronizer ... &#123;</span><br><span class="line">    // 队列头</span><br><span class="line">    private transient volatile Node head;</span><br><span class="line">    // 队列尾</span><br><span class="line">    private transient volatile Node tail;</span><br><span class="line"></span><br><span class="line">    static final class Node &#123;</span><br><span class="line">        /** 共享模式，可用于实现 CountDownLatch */</span><br><span class="line">        static final Node SHARED = new Node();</span><br><span class="line">        /** 独占模式，可用于实现 ReentrantLock */</span><br><span class="line">        static final Node EXCLUSIVE = null;</span><br><span class="line">	</span><br><span class="line">        /** 取消 */</span><br><span class="line">        static final int CANCELLED =  1;</span><br><span class="line">        /** 意味着它的后继节点的线程在排队，等待被唤醒 */</span><br><span class="line">        static final int SIGNAL    = -1;</span><br><span class="line">        /** 等待在条件上（与Condition相关，暂不解释） */</span><br><span class="line">        static final int CONDITION = -2;</span><br><span class="line">        /**</span><br><span class="line">         * 与共享模式相关，暂不解释</span><br><span class="line">         */</span><br><span class="line">        static final int PROPAGATE = -3;</span><br><span class="line">	</span><br><span class="line">        // 可取值：CANCELLED, 0, SIGNAL, CONDITION, PROPAGATE</span><br><span class="line">        volatile int waitStatus;</span><br><span class="line">	</span><br><span class="line">        volatile Node prev;</span><br><span class="line">	</span><br><span class="line">        volatile Node next;</span><br><span class="line">	</span><br><span class="line">        volatile Thread thread;</span><br><span class="line">	    </span><br><span class="line">        Node nextWaiter;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这个队列大体上长这样：<a href="https://link.juejin.im?target=https%3A%2F%2Fwww.jianshu.com%2Fp%2Fa8d27ba5db49" target="_blank" rel="noopener">图片来源</a></p>
+<p><img src="https://user-gold-cdn.xitu.io/2019/5/8/16a939a72c2cb3ce?imageView2/0/w/1280/h/960/ignore-error/1" alt="sync queue"></p>
+<p>条件队列是为了支持 Lock.newCondition() 这个功能，暂时不care，先跳过。</p>
+<h2 id="3-2-独占模式的-api"><a href="#3-2-独占模式的-api" class="headerlink" title="3.2 独占模式的 api"></a>3.2 独占模式的 api</h2><p>AQS 支持独占锁（Exclusive）和共享锁（Share）两种模式：</p>
+<ul>
+<li>独占锁：只能被一个线程获取到 (ReentrantLock)；</li>
+<li>共享锁：可以被多个线程同时获取 (CountDownLatch、ReadWriteLock 的读锁)。</li>
+</ul>
+<p>这边我们只看独占模式，它对外提供一套 api：</p>
+<ul>
+<li>acquire(int n)：获取n个资源（锁）</li>
+<li>release(int n)：释放n个资源（锁）</li>
+</ul>
+<p>简单看一眼怎么用的 (ReentrantLock 的例子):</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">public class ReentrantLock implements Lock, java.io.Serializable &#123;</span><br><span class="line">    private final Sync sync;</span><br><span class="line">    </span><br><span class="line">    abstract static class Sync extends AbstractQueuedSynchronizer &#123;...&#125;</span><br><span class="line"></span><br><span class="line">    public void lock() &#123;</span><br><span class="line">        sync.acquire(1);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    public void unlock() &#123;</span><br><span class="line">        sync.release(1);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>可以看到，AQS 封装了排队、阻塞、唤醒之类的操作，使得实现一个锁变的如此简洁。</p>
+<h2 id="3-2-1-acquire-int"><a href="#3-2-1-acquire-int" class="headerlink" title="3.2.1 acquire(int)"></a>3.2.1 acquire(int)</h2><p>获取资源</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">public final void acquire(int arg) &#123;</span><br><span class="line">    if (!tryAcquire(arg) &amp;amp;&amp;amp;</span><br><span class="line">        acquireQueued(addWaiter(Node.EXCLUSIVE), arg))</span><br><span class="line">        selfInterrupt();</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">protected boolean tryAcquire(int arg) &#123;</span><br><span class="line">    throw new UnsupportedOperationException();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这个函数很短，其中 tryAcquire(int) 为模板方法，留给子类实现。类似 Activity.onCreate()。</p>
+<p>根据 tryAcquire(arg) 的结果，分两种情况：</p>
+<pre><code>* 返回 true: 该线程拿到锁，由于短路，直接跳出 if，该线程可以往下执行自己的业务代码。
+* 返回 false: 该线程没有拿到锁，会继续走 acquireQueued()，执行排队等待逻辑。</code></pre><h3 id="3-2-1-1-addWaiter-Node"><a href="#3-2-1-1-addWaiter-Node" class="headerlink" title="3.2.1.1 addWaiter(Node)"></a>3.2.1.1 addWaiter(Node)</h3><p>这一步把当前线程（Thread.currentThread()）作为一个Node节点，加入同步队列的尾部，并标记为独占模式。</p>
+<p>当然，加入队列这个动作，要保证<strong>线程安全</strong>。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line">private Node addWaiter(Node mode) &#123;</span><br><span class="line">    Node node = new Node(Thread.currentThread(), mode);</span><br><span class="line">    // 1处尝试更快地 enq(), 成功的话直接 return。失败的话, 在2处退化为完整版的 enq()，相对更慢些</span><br><span class="line">    Node pred = tail;</span><br><span class="line">    if (pred != null) &#123;</span><br><span class="line">        node.prev = pred;</span><br><span class="line">        if (compareAndSetTail(pred, node)) &#123; // 1</span><br><span class="line">            pred.next = node;</span><br><span class="line">            return node;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    enq(node); // 2</span><br><span class="line">    return node;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">private Node enq(final Node node) &#123;</span><br><span class="line">    // 神奇的死循环 + CAS</span><br><span class="line">    for (;;) &#123;</span><br><span class="line">        Node t = tail;</span><br><span class="line">        if (t == null) &#123; // Must initialize</span><br><span class="line">            if (compareAndSetHead(new Node()))</span><br><span class="line">                tail = head;</span><br><span class="line">        &#125; else &#123;</span><br><span class="line">            node.prev = t;</span><br><span class="line">            if (compareAndSetTail(t, node)) &#123;</span><br><span class="line">                t.next = node;</span><br><span class="line">                return t;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>可以看到，这边有一个<strong>死循环 + CAS</strong>的神奇操作，这是非阻塞算法的经典操作，可自行查阅相关资料。简单的说，非阻塞算法就是在多线程的情况下，不加锁同时保证某个变量（本例中为双向链表）的线程安全，而且通常比 synchronized 的效率要高。</p>
+<h3 id="3-2-1-2-acquireQueued-Node，int"><a href="#3-2-1-2-acquireQueued-Node，int" class="headerlink" title="3.2.1.2 acquireQueued(Node，int)"></a>3.2.1.2 acquireQueued(Node，int)</h3><p>这个函数主要做两件事：</p>
+<pre><code>* 查看prev的waitStatus，看是不是需要阻塞，需要的话阻塞该线程
+* 排在队首的家伙调用了release()，会唤醒老二。老二尝试去获得锁，成功的话自己变成队首，跳出循环。</code></pre><p>结合这张图来看，每次出队完需要确保 head 始终指向占用资源的线程：</p>
+<p><img src="https://user-gold-cdn.xitu.io/2019/5/8/16a939a72c3d316d?imageView2/0/w/1280/h/960/ignore-error/1" alt="sync queue"></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line">final boolean acquireQueued(final Node node, int arg) &#123;</span><br><span class="line">    boolean failed = true;</span><br><span class="line">    try &#123;</span><br><span class="line">        boolean interrupted = false;</span><br><span class="line">        // 这又是一个死循环 + CAS，这次CAS比较隐蔽，在 shouldParkAfterFailedAcquire()里边</span><br><span class="line">        for (;;) &#123;</span><br><span class="line">            final Node p = node.predecessor();</span><br><span class="line">            if (p == head &amp;amp;&amp;amp; tryAcquire(arg)) &#123; // 排在队首的后面，看看能不能获得锁，成功的话自己变成队首</span><br><span class="line">                setHead(node);</span><br><span class="line">                p.next = null; // help GC</span><br><span class="line">                failed = false;</span><br><span class="line">                return interrupted;</span><br><span class="line">            &#125;</span><br><span class="line">            if (shouldParkAfterFailedAcquire(p, node) &amp;amp;&amp;amp;</span><br><span class="line">                parkAndCheckInterrupt())</span><br><span class="line">                interrupted = true;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125; finally &#123;</span><br><span class="line">        // 这里失败会做一些回滚操作，不分析</span><br><span class="line">        if (failed)</span><br><span class="line">            cancelAcquire(node);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这边的 interrupted 主要是保证这样一个功能。线程在排队的时候不响应中断，直到出来以后，如果等待的过程中被中断过，作为弥补，立即相应中断（即调用selfInterrupt()）。</p>
+<h3 id="shouldParkAfterFailedAcquire"><a href="#shouldParkAfterFailedAcquire" class="headerlink" title="shouldParkAfterFailedAcquire()"></a>shouldParkAfterFailedAcquire()</h3><p>查看prev的waitStatus，看是不是需要阻塞。可以预见的是，经过几次死循环，全部都会变成SIGNAL状态。之后全部陷入阻塞。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line">private static boolean shouldParkAfterFailedAcquire(Node pred, Node node) &#123;</span><br><span class="line">    int ws = pred.waitStatus; // 查看前驱节点的状态</span><br><span class="line">    if (ws == Node.SIGNAL) // SIGNAL: 可以安全的阻塞</span><br><span class="line">        return true;</span><br><span class="line">    if (ws &gt; 0) &#123; // CANCEL: 取消排队的节点，直接从队列中清除。</span><br><span class="line">        do &#123;</span><br><span class="line">            node.prev = pred = pred.prev;</span><br><span class="line">        &#125; while (pred.waitStatus &gt; 0);</span><br><span class="line">        pred.next = node;</span><br><span class="line">    &#125; else &#123; // 0 or PROPAGATE: 需要变成 SIGNAL，但不能立即阻塞，需要重走外层的死循环二次确认。</span><br><span class="line">        compareAndSetWaitStatus(pred, ws, Node.SIGNAL);</span><br><span class="line">    &#125;</span><br><span class="line">    return false;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">private final boolean parkAndCheckInterrupt() &#123;</span><br><span class="line">    LockSupport.park(this);</span><br><span class="line">    return Thread.interrupted();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>值得一提的是，阻塞和唤醒没有使用常说的 wait()/notify()，而是使用了 LockSupport.park()/unpark()。只有使用 synchronized 获取锁的对象才能使用 wait，ReentrantLock.newCondition 提供的 await/signal 也是 LockSupport.park()/unpark() 实现的。<br>参考 <a href="https://pqpo.me/2019/01/30/learn-java-lock-block/" target="_blank" rel="noopener">https://pqpo.me/2019/01/30/learn-java-lock-block/</a></p>
+<h2 id="3-2-2-release-int"><a href="#3-2-2-release-int" class="headerlink" title="3.2.2 release(int)"></a>3.2.2 release(int)</h2><p>释放资源</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line">public final boolean release(int arg) &#123;</span><br><span class="line">    if (tryRelease(arg)) &#123;</span><br><span class="line">        Node h = head;</span><br><span class="line">        if (h != null &amp;amp;&amp;amp; h.waitStatus != 0)</span><br><span class="line">            unparkSuccessor(h);</span><br><span class="line">        return true;</span><br><span class="line">    &#125;</span><br><span class="line">    return false;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">private void unparkSuccessor(Node node) &#123;</span><br><span class="line">    int ws = node.waitStatus;</span><br><span class="line">    if (ws &lt; 0)</span><br><span class="line">        compareAndSetWaitStatus(node, ws, 0);</span><br><span class="line"></span><br><span class="line">    /*</span><br><span class="line">     * 唤醒next节点对应的线程，通常就是老二（直接后继）。</span><br><span class="line">     * 如果是null，或者是cancel状态（出现异常如线程遇到空指针挂掉了），</span><br><span class="line">     * 那么跳过cancel节点，找到后继节点。</span><br><span class="line">     */</span><br><span class="line">    Node s = node.next;</span><br><span class="line">    if (s == null || s.waitStatus &gt; 0) &#123;</span><br><span class="line">        s = null;</span><br><span class="line">        for (Node t = tail; t != null &amp;amp;&amp;amp; t != node; t = t.prev)</span><br><span class="line">            if (t.waitStatus &lt;= 0)</span><br><span class="line">                s = t;</span><br><span class="line">    &#125;</span><br><span class="line">    // 唤醒 node.next</span><br><span class="line">    if (s != null)</span><br><span class="line">        LockSupport.unpark(s.thread);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>释放的逻辑比较简单。注意一点，对于 next 节点 unpark()，相当于在把 next 节点从 acquireQueued() 中的死循环中解放出来。</p>
+<p>回到 ATM 的例子，相当于，他取完钱，轮到后一个人取钱了。这样逻辑全部都串起来了。</p>
+<h1 id="4-总结"><a href="#4-总结" class="headerlink" title="4. 总结"></a>4. 总结</h1><p>这样，顺着独占锁这条线，AQS 的独占模式就分析完了。其他还有用于实现闭锁的共享模式，用于实现 Condition 的条件队列就不展开了。</p>
+<h1 id="5-参考"><a href="#5-参考" class="headerlink" title="5. 参考"></a>5. 参考</h1><p><a href="https://link.juejin.im?target=https%3A%2F%2Fmy.oschina.net%2FUBW%2Fblog%2F2995774" target="_blank" rel="noopener">Java并发编程实战（chapter_4）（AQS源码分析）</a></p>
+<p><a href="https://link.juejin.im?target=https%3A%2F%2Fwww.jianshu.com%2Fp%2Fa8d27ba5db49" target="_blank" rel="noopener">JUC源码分析—AQS</a></p>
+<p><a href="https://link.juejin.im?target=https%3A%2F%2Fcoderbee.net%2Findex.php%2Fconcurrent%2F20131115%2F577" target="_blank" rel="noopener">自旋锁、排队自旋锁、MCS锁、CLH锁</a></p>
+<p>《JAVA并发编程实践》</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://sillyfan.top/2019/05/10/解读JUC——AQS独占模式/" data-id="cjwdp2re5001ocm2axs23lhly" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Java/">Java</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/源码/">源码</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
     <article id="post-面试官：说说你对ThreadLocal的了解" class="article article-type-post" itemscope itemprop="blogPost">
   <div class="article-meta">
     <a href="/2019/05/10/面试官：说说你对ThreadLocal的了解/" class="article-date">
@@ -119,7 +231,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://sillyfan.top/2019/05/10/面试官：说说你对ThreadLocal的了解/" data-id="cjwbudy7e001oys2anhdd2er4" class="article-share-link">Share</a>
+      <a data-url="http://sillyfan.top/2019/05/10/面试官：说说你对ThreadLocal的了解/" data-id="cjwdp2rea001vcm2a45vs0dfa" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Java/">Java</a></li></ul>
@@ -278,7 +390,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://sillyfan.top/2019/05/08/Java开发必须要掌握的20个核心技术/" data-id="cjwbudy6i0006ys2ao73zu0ko" class="article-share-link">Share</a>
+      <a data-url="http://sillyfan.top/2019/05/08/Java开发必须要掌握的20个核心技术/" data-id="cjwdp2rd90006cm2a84qydfnx" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/后端/">后端</a></li></ul>
@@ -381,7 +493,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://sillyfan.top/2019/05/07/PK光明顶？江湖上流传的几大【消息队列】门派，到底有什么本质的区别？/" data-id="cjwbudy6k0009ys2ay8b8ygmx" class="article-share-link">Share</a>
+      <a data-url="http://sillyfan.top/2019/05/07/PK光明顶？江湖上流传的几大【消息队列】门派，到底有什么本质的区别？/" data-id="cjwdp2rdc0009cm2akfjedzov" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Java/">Java</a></li></ul>
@@ -546,7 +658,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://sillyfan.top/2019/05/07/高并发架构的TCP知识介绍/" data-id="cjwbudy7t002bys2aqq0bawdd" class="article-share-link">Share</a>
+      <a data-url="http://sillyfan.top/2019/05/07/高并发架构的TCP知识介绍/" data-id="cjwdp2rev002jcm2a4ikf6van" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/TCP-IP/">TCP/IP</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/架构/">架构</a></li></ul>
@@ -646,7 +758,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://sillyfan.top/2019/05/07/【干货走一波】千万级用户的大型网站，应该如何设计其高并发架构？/" data-id="cjwbudy6w000mys2aki23k5he" class="article-share-link">Share</a>
+      <a data-url="http://sillyfan.top/2019/05/07/【干货走一波】千万级用户的大型网站，应该如何设计其高并发架构？/" data-id="cjwdp2rdn000scm2akmf22x1i" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Java/">Java</a></li></ul>
@@ -689,7 +801,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://sillyfan.top/2019/05/05/使用Reactor进行反应式编程-IBMDeveloper中国(原developerWorks)/" data-id="cjwbudy7u002dys2a60br4an2" class="article-share-link">Share</a>
+      <a data-url="http://sillyfan.top/2019/05/05/使用Reactor进行反应式编程-IBMDeveloper中国(原developerWorks)/" data-id="cjwdp2rdw001ccm2aa3teh4og" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Reactor/">Reactor</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/java/">java</a></li></ul>
@@ -1223,7 +1335,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://sillyfan.top/2019/05/05/MySQL索引与查询优化/" data-id="cjwbudy71000yys2ajwguaqbt" class="article-share-link">Share</a>
+      <a data-url="http://sillyfan.top/2019/05/05/MySQL索引与查询优化/" data-id="cjwdp2rdp000xcm2a1af6o1v9" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/数据库/">数据库</a></li></ul>
@@ -1322,7 +1434,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://sillyfan.top/2019/05/03/SpringBoot+Vue前后端分离，两种文件上传方式总结/" data-id="cjwbudy6n000dys2a1icvnue5" class="article-share-link">Share</a>
+      <a data-url="http://sillyfan.top/2019/05/03/SpringBoot+Vue前后端分离，两种文件上传方式总结/" data-id="cjwdp2rde000ecm2afoi4fm5l" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Vue-js/">Vue.js</a></li></ul>
@@ -1365,176 +1477,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://sillyfan.top/2019/05/01/如何优化代码中大量的if-else,switch-case/" data-id="cjwbudy730013ys2auekq0dzs" class="article-share-link">Share</a>
-      
-      
-  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Java/">Java</a></li></ul>
-
-    </footer>
-  </div>
-  
-</article>
-
-
-  
-    <article id="post-【面试】吃透了这些Redis知识点，面试官一定觉得你很NB" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2019/04/30/【面试】吃透了这些Redis知识点，面试官一定觉得你很NB/" class="article-date">
-  <time datetime="2019-04-29T16:00:00.000Z" itemprop="datePublished">2019-04-30</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2019/04/30/【面试】吃透了这些Redis知识点，面试官一定觉得你很NB/">【面试】吃透了这些Redis知识点，面试官一定觉得你很NB</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <blockquote>
-<p>本文来自于 <a href="https://juejin.im/post/5cc6bb975188252e8925f0c8" target="_blank" rel="noopener">https://juejin.im/post/5cc6bb975188252e8925f0c8</a> </p>
-</blockquote>
-<h1 id="是数据结构而非类型"><a href="#是数据结构而非类型" class="headerlink" title="是数据结构而非类型"></a>是数据结构而非类型</h1><p>很多文章都会说，redis支持5种常用的数据类型，这其实是存在很大的歧义。redis里存的都是二进制数据，其实就是字节数组（byte[]），这些字节数据是没有数据类型的，只有把它们按照合理的格式解码后，可以变成一个字符串，整数或对象，此时才具有数据类型。</p>
-<ul>
-<li>这一点必须要记住。所以任何东西只要能转化成字节数组（byte[]）的，都可以存到redis里。管你是字符串、数字、对象、图片、声音、视频、还是文件，只要变成byte数组。</li>
-<li>因此redis里的String指的并不是字符串，它其实表示的是一种最简单的数据结构，即一个key只能对应一个value。这里的key和value都是byte数组，只不过key一般是由一个字符串转换成的byte数组，value则根据实际需要而定。</li>
-<li>在特定情况下，对value也会有一些要求，比如要进行自增或自减操作，那value对应的byte数组必须要能被解码成一个数字才行，否则会报错。</li>
-<li>那么List这种数据结构，其实表示一个key可以对应多个value，且value之间是有先后顺序的，value值可以重复。</li>
-<li>Set这种数据结构，表示一个key可以对应多个value，且value之间是没有先后顺序的，value值也不可以重复。</li>
-<li>Hash这种数据结构，表示一个key可以对应多个key-value对，此时这些key-value对之间的先后顺序一般意义不大，这是一个按照名称语义来访问的数据结构，而非位置语义。</li>
-<li>Sorted Set这种数据结构，表示一个key可以对应多个value，value之间是有大小排序的，value值不可以重复。每个value都和一个浮点数相关联，该浮点数叫score。元素排序规则是：先按score排序，再按value排序。</li>
-<li>相信现在你对这5种数据结构有了更清晰的认识，那它们的对应命令对你来说就是小case了。</li>
-</ul>
-<h1 id="集群带来的问题与解决思路"><a href="#集群带来的问题与解决思路" class="headerlink" title="集群带来的问题与解决思路"></a>集群带来的问题与解决思路</h1><ul>
-<li>集群带来的好处是显而易见的，比如容量增加、处理能力增强，还可以按需要进行动态的扩容、缩容。但同时也会引入一些新的问题，至少会有下面这两个。</li>
-<li><strong>一是数据分配</strong>：存数据时应该放到哪个节点上，取数据时应该去哪个节点上找。 <strong>二是数据移动</strong>：集群扩容，新增加节点时，该节点上的数据从何处来；集群缩容，要剔除节点时，该节点上的数据往何处去。</li>
-<li>上面这两个问题有一个<strong>共同点</strong>就是，<strong>如何去描述和存储数据与节点的映射关系</strong>。又因为数据的位置是由key决定的，所以问题就演变为如何建立起各个key和集群所有节点的关联关系。</li>
-<li>集群的节点是相对固定和少数的，虽然有增加节点和剔除节点。但集群里存储的key，则是完全随机、没有规律、不可预测、数量庞多，还非常琐碎。</li>
-<li>这就好比一所大学和它的所有学生之间的关系。如果大学和学生直接挂钩的话，一定会比较混乱。现实是它们之间又加入了好几层，首先有院系，其次有专业，再者有年级，最后还有班级。经过这四层映射之后，关系就清爽很多了。</li>
-<li>这其实是一个非常重要的结论，这个世界上没有什么问题是不能通过加入一层来解决的。如果有，那就再加入一层。计算机里也是这样的。</li>
-<li>redis在数据和节点之间又加入了一层，把这层称为槽（slot），因该槽主要和哈希有关，又叫哈希槽。</li>
-<li>最后变成了，节点上放的是槽，槽里放的是数据。槽解决的是粒度问题，相当于把粒度变大了，这样便于数据移动。哈希解决的是映射问题，使用key的哈希值来计算所在的槽，便于数据分配。</li>
-<li>可以这样来理解，你的学习桌子上堆满了书，乱的很，想找到某本书非常困难。于是你买了几个大的收纳箱，把这些书按照书名的长度放入不同的收纳箱，然后把这些收纳箱放到桌子上。</li>
-<li>这样就变成了，桌子上是收纳箱，收纳箱里是书籍。这样书籍移动很方便，搬起一个箱子就走了。寻找书籍也很方便，只要数一数书名的长度，去对应的箱子里找就行了。</li>
-<li>其实我们也没做什么，只是买了几个箱子，按照某种规则把书装入箱子。就这么简单的举动，就彻底改变了原来一盘散沙的状况。是不是有点小小的神奇呢。</li>
-<li>一个集群只能有16384个槽，编号0-16383。这些槽会分配给集群中的所有主节点，分配策略没有要求。可以指定哪些编号的槽分配给哪个主节点。集群会记录节点和槽的对应关系。</li>
-<li>接下来就需要对key求哈希值，然后对16384取余，余数是几key就落入对应的槽里。slot = CRC16(key) % 16384。</li>
-<li>以槽为单位移动数据，因为槽的数目是固定的，处理起来比较容易，这样数据移动问题就解决了。</li>
-<li>使用哈希函数计算出key的哈希值，这样就可以算出它对应的槽，然后利用集群存储的槽和节点的映射关系查询出槽所在的节点，于是数据和节点就映射起来了，这样数据分配问题就解决了。</li>
-<li>我想说的是，一般的人只会去学习各种技术，高手更在乎如何跳出技术，寻求一种解决方案或思路方向，顺着这个方向走下去，八九不离十能找到你想要的答案。</li>
-</ul>
-<h1 id="集群对命令操作的取舍"><a href="#集群对命令操作的取舍" class="headerlink" title="集群对命令操作的取舍"></a>集群对命令操作的取舍</h1><ul>
-<li><p>客户端只要和集群中的一个节点建立链接后，就可以获取到整个集群的所有节点信息。此外还会获取所有哈希槽和节点的对应关系信息，这些信息数据都会在客户端缓存起来，因为这些信息相当有用。</p>
-</li>
-<li><p>客户端可以向任何节点发送请求，那么拿到一个key后到底该向哪个节点发请求呢？其实就是把集群里的那套key和节点的映射关系理论搬到客户端来就行了。</p>
-</li>
-<li><p>所以客户端需要实现一个和集群端一样的哈希函数，先计算出key的哈希值，然后再对16384取余，这样就找到了该key对应的哈希槽，利用客户端缓存的槽和节点的对应关系信息，就可以找到该key对应的节点了。</p>
-</li>
-<li><p>接下来发送请求就可以了。还可以把key和节点的映射关系缓存起来，下次再请求该key时，直接就拿到了它对应的节点，不用再计算一遍了。</p>
-</li>
-<li><p>理论和现实总是有差距的，集群已经发生了变化，客户端的缓存还没来得及更新。肯定会出现拿到一个key向对应的节点发请求，其实这个key已经不在那个节点上了。此时这个节点应该怎么办？</p>
-</li>
-<li><p>这个节点可以去key实际所在的节点上拿到数据再返回给客户端，也可以直接告诉客户端key已经不在我这里了，同时附上key现在所在的节点信息，让客户端再去请求一次，类似于HTTP的302重定向。</p>
-</li>
-<li><p>这其实是个选择问题，也是个哲学问题。结果就是redis集群选择了后者。因此，节点只处理自己拥有的key，对于不拥有的key将返回重定向错误，即-MOVED key 127.0.0.1:6381，客户端重新向这个新节点发送请求。</p>
-</li>
-<li><p>所以说选择是一种哲学，也是个智慧。稍后再谈这个问题。先来看看另一个情况，和这个问题有些相同点。</p>
-</li>
-<li><p>redis有一种命令可以一次带多个key，如MGET，我把这些称为多key命令。这个多key命令的请求被发送到一个节点上，这里有一个潜在的问题，不知道大家有没有想到，就是这个命令里的多个key一定都位于那同一个节点上吗？</p>
-</li>
-<li><p>就分为两种情况了，如果多个key不在同一个节点上，此时节点只能返回重定向错误了，但是多个key完全可能位于多个不同的节点上，此时返回的重定向错误就会非常乱，所以redis集群选择不支持此种情况。</p>
-</li>
-<li><p>如果多个key位于同一个节点上呢，理论上是没有问题的，redis集群是否支持就和redis的版本有关系了，具体使用时自己测试一下就行了。</p>
-</li>
-<li><p>在这个过程中我们发现了一件颇有意义的事情，就是让一组相关的key映射到同一个节点上是非常有必要的，这样可以提高效率，通过多key命令一次获取多个值。</p>
-</li>
-<li><p>那么问题来了，如何给这些key起名字才能让他们落到同一个节点上，难不成都要先计算个哈希值，再取个余数，太麻烦了吧。当然不是这样了，redis已经帮我们想好了。</p>
-</li>
-<li><p>可以来简单推理下，要想让两个key位于同一个节点上，它们的哈希值必须要一样。要想哈希值一样，传入哈希函数的字符串必须一样。那我们只能传进去两个一模一样的字符串了，那不就变成同一个key了，后面的会覆盖前面的数据。</p>
-</li>
-<li><p>这里的问题是我们都是拿整个key去计算哈希值，这就导致key和参与计算哈希值的字符串耦合了，需要将它们解耦才行，就是key和参与计算哈希值的字符串有关但是又不一样。</p>
-</li>
-<li><p>redis基于这个原理为我们提供了方案，叫做key哈希标签。先看例子，{user1000}.following，{user1000}.followers，相信你已经看出了门道，就是仅使用Key中的位于{和}间的字符串参与计算哈希值。</p>
-</li>
-<li><p>这样可以保证哈希值相同，落到相同的节点上。但是key又是不同的，不会互相覆盖。使用哈希标签把一组相关的key关联了起来，问题就这样被轻松愉快地解决了。</p>
-</li>
-<li><p>相信你已经发现了，要解决问题靠的是巧妙的奇思妙想，而不是非要用牛逼的技术牛逼的算法。这就是小强，小而强大。</p>
-</li>
-<li><p>最后再来谈选择的哲学。redis的核心就是以最快的速度进行常用数据结构的key/value存取，以及围绕这些数据结构的运算。对于与核心无关的或会拖累核心的都选择弱化处理或不处理，这样做是为了保证核心的简单、快速和稳定。</p>
-</li>
-<li><p>其实就是在广度和深度面前，redis选择了深度。所以节点不去处理自己不拥有的key，集群不去支持多key命令。这样一方面可以快速地响应客户端，另一方面可以避免在集群内部有大量的数据传输与合并。</p>
-</li>
-</ul>
-<h1 id="单线程模型"><a href="#单线程模型" class="headerlink" title="单线程模型"></a>单线程模型</h1><ul>
-<li>redis集群的每个节点里只有一个线程负责接受和执行所有客户端发送的请求。技术上使用多路复用I/O，使用Linux的epoll函数，这样一个线程就可以管理很多socket连接。</li>
-</ul>
-<p>除此之外，选择单线程还有以下这些原因：</p>
-<p>1、redis都是对内存的操作，速度极快（10W+QPS）</p>
-<p>2、整体的时间主要都是消耗在了网络的传输上</p>
-<p>3、如果使用了多线程，则需要多线程同步，这样实现起来会变的复杂</p>
-<p>4、线程的加锁时间甚至都超过了对内存操作的时间</p>
-<p>5、多线程上下文频繁的切换需要消耗更多的CPU时间</p>
-<p>6、还有就是单线程天然支持原子操作，而且单线程的代码写起来更简单</p>
-<h1 id="事务"><a href="#事务" class="headerlink" title="事务"></a>事务</h1><p>事务大家都知道，就是把多个操作捆绑在一起，要么都执行（成功了），要么一个也不执行（回滚了）。redis也是支持事务的，但可能和你想要的不太一样，一起来看看吧。</p>
-<ul>
-<li>redis的事务可以分为两步，<strong>定义事务和执行事务</strong>。使用multi命令开启一个事务，然后把要执行的所有命令都依次排上去。这就定义好了一个事务。此时使用exec命令来执行这个事务，或使用discard命令来放弃这个事务。</li>
-<li>你可能希望在你的事务开始前，你关心的key不想被别人操作，那么可以使用watch命令来监视这些key，如果开始执行前这些key被其它命令操作了则会取消事务的。也可以使用unwatch命令来取消对这些key的监视。</li>
-</ul>
-<p>redis事务具有以下特点：</p>
-<p>1、如果开始执行事务前出错，则所有命令都不执行</p>
-<p>2、一旦开始，则保证所有命令一次性按顺序执行完而不被打断</p>
-<p>3、如果执行过程中遇到错误，会继续执行下去，不会停止的</p>
-<p>4、对于执行过程中遇到错误，是不会进行回滚的</p>
-<p><strong>看完这些，真想问一句话，你这能叫事务吗？很显然，这并不是我们通常认为的事务，因为它连原子性都保证不了。保证不了原子性是因为redis不支持回滚，不过它也给出了不支持的理由。</strong></p>
-<p>不支持回滚的理由：</p>
-<p>1、redis认为，失败都是由命令使用不当造成</p>
-<p>2、redis这样做，是为了保持内部实现简单快速</p>
-<p>3、redis还认为，回滚并不能解决所有问题</p>
-<p>哈哈，这就是霸王条款，因此，好像使用redis事务的不太多</p>
-<h1 id="管道"><a href="#管道" class="headerlink" title="管道"></a>管道</h1><ul>
-<li>客户端和集群的交互过程是串行化阻塞式的，即客户端发送了一个命令后必须等到响应回来后才能发第二个命令，这一来一回就是一个往返时间。如果你有很多的命令，都这样一个一个的来进行，会变得很慢。</li>
-<li>redis提供了一种管道技术，可以让客户端一次发送多个命令，期间不需要等待服务器端的响应，等所有的命令都发完了，再依次接收这些命令的全部响应。这就极大地节省了许多时间，提升了效率。</li>
-<li>聪明的你是不是意识到了另外一个问题，多个命令就是多个key啊，这不就是上面提到的多key操作嘛，那么问题来了，你如何保证这多个key都是同一个节点上的啊，哈哈，redis集群又放弃了对管道的支持。</li>
-<li>不过可以在客户端模拟实现，就是使用多个连接往多个节点同时发送命令，然后等待所有的节点都返回了响应，再把它们按照发送命令的顺序整理好，返回给用户代码。哎呀，好麻烦呀。</li>
-</ul>
-<h1 id="协议"><a href="#协议" class="headerlink" title="协议"></a>协议</h1><p>简单了解下redis的协议，知道redis的数据传输格式。</p>
-<p>发送请求的协议：</p>
-<ul>
-<li>参数个数CRLF<img src="https://juejin.im/equation?tex=%E5%8F%82%E6%95%B01%E7%9A%84%E5%AD%97%E8%8A%82%E6%95%B0CRLF%E5%8F%82%E6%95%B01%E7%9A%84%E6%95%B0%E6%8D%AECRLF..." alt="参数1的字节数CRLF参数1的数据CRLF...">参数N的字节数CRLF参数N的数据CRLF</li>
-</ul>
-<p>例如，SET name lixinjie，实际发送的数据是：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">*3\r\n$3\r\nSET\r\n$4\r\nname\r\n$8\r\nlixinjie\r\n</span><br></pre></td></tr></table></figure>
-
-<p><strong>接受响应的协议</strong>：</p>
-<ul>
-<li>单行回复，第一个字节是+</li>
-<li>错误消息，第一个字节是-</li>
-<li>整型数字，第一个字节是:</li>
-<li>批量回复，第一个字节是$</li>
-<li>多个批量回复，第一个字节是/*</li>
-</ul>
-<p>例如，</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">+OK\r\n</span><br><span class="line"></span><br><span class="line">-ERR Operation against\r\n</span><br><span class="line"></span><br><span class="line">:1000\r\n</span><br><span class="line"></span><br><span class="line">$6\r\nfoobar\r\n</span><br><span class="line"></span><br><span class="line">*2\r\n$3\r\nfoo\r\n$3\r\nbar\r\n</span><br></pre></td></tr></table></figure>
-
-<p>可见redis的协议设计的非常简单。</p>
-<hr>
-<p><strong>本文的重点是你有没有收获与成长，其余的都不重要，希望读者们能谨记这一点。同时我经过多年的收藏目前也算收集到了一套完整的学习资料，包括但不限于：分布式架构、高可扩展、高性能、高并发、Jvm性能调优、Spring，MyBatis，Nginx源码分析，Redis，ActiveMQ、、Mycat、Netty、Kafka、Mysql、Zookeeper、Tomcat、Docker、Dubbo、Nginx等多个知识点高级进阶干货，希望对想成为架构师的朋友有一定的参考和帮助</strong></p>
-<p><strong>需要更详细思维导图和以下资料的可以加一下技术交流分享群：“708 701 457”免费获取</strong></p>
-<p><img src="https://user-gold-cdn.xitu.io/2019/4/30/16a6a90239d4db4a?imageView2/0/w/1280/h/960/ignore-error/1" alt></p>
-<p><img src="https://user-gold-cdn.xitu.io/2019/4/30/16a6a905f7393bc9?imageView2/0/w/1280/h/960/ignore-error/1" alt></p>
-
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://sillyfan.top/2019/04/30/【面试】吃透了这些Redis知识点，面试官一定觉得你很NB/" data-id="cjwbudy6y000rys2a5rechu87" class="article-share-link">Share</a>
+      <a data-url="http://sillyfan.top/2019/05/01/如何优化代码中大量的if-else,switch-case/" data-id="cjwdp2rdu0018cm2a2e4g029r" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Java/">Java</a></li></ul>
@@ -1583,7 +1526,7 @@
   <div class="widget-wrap">
     <h3 class="widget-title">Archives</h3>
     <div class="widget">
-      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/05/">May 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/04/">April 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/01/">January 2019</a></li></ul>
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/06/">June 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/05/">May 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/04/">April 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/01/">January 2019</a></li></ul>
     </div>
   </div>
 
@@ -1594,6 +1537,10 @@
     <h3 class="widget-title">Recent Posts</h3>
     <div class="widget">
       <ul>
+        
+          <li>
+            <a href="/2019/06/01/SpringBoot实现动态控制定时任务-支持多参数/">SpringBoot实现动态控制定时任务-支持多参数</a>
+          </li>
         
           <li>
             <a href="/2019/05/31/感受lambda之美，推荐收藏，需要时查阅/">感受lambda之美，推荐收藏，需要时查阅</a>
@@ -1609,10 +1556,6 @@
         
           <li>
             <a href="/2019/05/30/hello-world/">Hello World</a>
-          </li>
-        
-          <li>
-            <a href="/2019/05/28/熟练掌握各种MQ？那面试官很可能用这道题目先摸摸你的老底！/">熟练掌握各种MQ？那面试官很可能用这道题目先摸摸你的老底！</a>
           </li>
         
       </ul>
