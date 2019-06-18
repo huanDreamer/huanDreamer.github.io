@@ -62,6 +62,149 @@
       <div class="outer">
         <section id="main">
   
+    <article id="post-用大白话告诉你小白都能看懂的Hadoop架构原理" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2019/05/21/用大白话告诉你小白都能看懂的Hadoop架构原理/" class="article-date">
+  <time datetime="2019-05-21T01:57:19.019Z" itemprop="datePublished">2019-05-21</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2019/05/21/用大白话告诉你小白都能看懂的Hadoop架构原理/">用大白话告诉你小白都能看懂的Hadoop架构原理</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <blockquote>
+<p>本文转载自 <a href="https://juejin.im/post/5beaf02ce51d457e90196069" target="_blank" rel="noopener">https://juejin.im/post/5beaf02ce51d457e90196069</a> </p>
+</blockquote>
+<p><strong>欢迎关注个人微信号：石杉的架构笔记（id：shishan100）</strong></p>
+<p><strong>周一至周五早8点半！精品技术文章准时送上！</strong></p>
+<hr>
+<p><strong>往期文章</strong></p>
+<p>1、<a href="https://juejin.im/post/5be13b83f265da6116393fc7" target="_blank" rel="noopener">拜托！面试请不要再问我Spring Cloud底层原理</a></p>
+<p>2、<a href="https://juejin.im/post/5be3f8dcf265da613a5382ca" target="_blank" rel="noopener">【双11狂欢的背后】微服务注册中心如何承载大型系统的千万级访问？</a></p>
+<p>3、<a href="https://juejin.im/post/5be83e166fb9a049a7115580" target="_blank" rel="noopener">【性能优化之道】每秒上万并发下的Spring Cloud参数优化实战</a></p>
+<p>4、<a href="https://juejin.im/post/5be99a68e51d4511a8090440" target="_blank" rel="noopener">微服务架构如何保障双11狂欢下的99.99%高可用</a></p>
+<hr>
+<h3 id="目录"><a href="#目录" class="headerlink" title="目录"></a>目录</h3><p>一、前奏</p>
+<p>二、HDFS的NameNode架构原理</p>
+<h1 id="一、前奏"><a href="#一、前奏" class="headerlink" title="一、前奏"></a>一、前奏</h1><p>Hadoop是目前大数据领域最主流的一套技术体系，包含了多种技术。</p>
+<p>包括HDFS（分布式文件系统），YARN（分布式资源调度系统），MapReduce（分布式计算系统），等等。</p>
+<p>有些朋友可能听说过Hadoop，但是却不太清楚他到底是个什么东西，这篇文章就用大白话给各位阐述一下。</p>
+<p>假如你现在公司里的数据都是放在MySQL里的，那么就全部放在一台数据库服务器上，我们就假设这台服务器的磁盘空间有2T吧，<strong>大家先看下面这张图。</strong></p>
+<p><img src="https://user-gold-cdn.xitu.io/2018/11/13/1670dbfd11e62805?imageView2/0/w/1280/h/960/ignore-error/1" alt><br><a href></a></p>
+<p><a href></a></p>
+<p>现在问题来了，你不停的往这台服务器的MySQL里放数据，结果数据量越来越大了，超过了2T的大小了，现在咋办？</p>
+<p>你说，我可以搞多台MySQL数据库服务器，分库分表啊！每台服务器放一部分数据不就得了。<strong>如上图所示！</strong></p>
+<p>好，没问题，那咱们搞3台数据库服务器，3个MySQL实例，然后每台服务器都可以2T的数据。</p>
+<p>现在我问你一个问题，<strong>所谓的大数据是在干什么？</strong></p>
+<p>我们来说一下大数据最初级的一个使用场景。假设你有一个电商网站，现在要把这个电商网站里所有的用户在页面和APP上的点击、购买、浏览的行为日志都存放起来分析。</p>
+<p>你现在把这些数据全都放在了3台MySQL服务器，数据量很大，但还是勉强可以放的下。</p>
+<p>某天早上，你的boss来了。要看一张报表，比如要看每天网站的X指标、Y指标、Z指标，等等，二三十个数据指标。</p>
+<p>好了，兄弟，现在你尝试去从那些点击、购买、浏览的日志里，通过写一个SQL来分析出那二三十个指标试试看？</p>
+<p>我跟你打赌，你绝对会写出来一个几百行起步，甚至上千行的超级复杂大SQL。这个SQL，你觉得他能运行在分库分表后的3台MySQL服务器上么？</p>
+<p>如果你觉得可以的话，那你一定是不太了解MySQL分库分表后有多坑，几百行的大SQL跨库join，各种复杂的计算，根本不现实。</p>
+<p>所以说，大数据的存储和计算压根儿不是靠MySQL来搞的，因此，Hadoop、Spark等大数据技术体系才应运而生。</p>
+<p>本质上，Hadoop、Spark等大数据技术，其实就是一系列的分布式系统。</p>
+<p>比如hadoop中的HDFS，就是大数据技术体系中的核心基石，<strong>负责分布式存储数据，这是啥意思？别急，继续往下看。</strong></p>
+<p>HDFS全称是Hadoop Distributed File System，是Hadoop的分布式文件系统。</p>
+<p>它由很多机器组成，每台机器上运行一个DataNode进程，负责管理一部分数据。</p>
+<p>然后有一台机器上运行了NameNode进程，NameNode大致可以认为是负责管理整个HDFS集群的这么一个进程，他里面存储了HDFS集群的所有元数据。</p>
+<p>然后有很多台机器，每台机器存储一部分数据！好，HDFS现在可以很好的存储和管理大量的数据了。</p>
+<p>这时候你肯定会有疑问：MySQL服务器也不是这样的吗？你要是这样想，那就大错特错了。</p>
+<p>这个事情不是你想的那么简单的，HDFS天然就是分布式的技术，所以你上传大量数据，存储数据，管理数据，天然就可以用HDFS来做。</p>
+<p>如果你硬要基于MySQL分库分表这个事儿，会痛苦很多倍，因为MySQL并不是设计为分布式系统架构的，他在分布式数据存储这块缺乏很多数据保障的机制。</p>
+<p>好，你现在用HDFS分布式存储了数据，接着不就是要分布式来计算这些数据了吗？</p>
+<p>对于分布式计算：</p>
+<pre><code>* 很多公司用Hive写几百行的大SQL（底层基于MapReduce）
+* 也有很多公司开始慢慢的用Spark写几百行的大SQL（底层是Spark Core引擎）。</code></pre><p>总之就是写一个大SQL，人家会拆分为很多的计算任务，放到各个机器上去，每个计算任务就负责计算一小部分数据，这就是所谓的分布式计算。</p>
+<p>这个，绝对比你针对分库分表的MySQL来跑几百行大SQL要靠谱的多。</p>
+<p>对于上述所说，老规矩，同样给大家来一张图，大伙儿跟着图来仔细捋一下整个过程。</p>
+<p><img src="https://user-gold-cdn.xitu.io/2018/11/13/1670dc005dc982dc?imageView2/0/w/1280/h/960/ignore-error/1" alt><br><a href></a></p>
+<p><a href></a></p>
+<h1 id="二、HDFS的NameNode架构原理"><a href="#二、HDFS的NameNode架构原理" class="headerlink" title="二、HDFS的NameNode架构原理"></a>二、HDFS的NameNode架构原理</h1><p>好了，前奏铺垫完之后，进入正题。本文其实主要就是讨论一下HDFS集群中的NameNode的核心架构原理。</p>
+<p>NameNode有一个很核心的功能：<strong>管理整个HDFS集群的元数据</strong>，比如说文件目录树、权限的设置、副本数的设置，等等。</p>
+<p>下面就用最典型的文件目录树的维护，来给大家举例说明，<strong>我们看看下面的图。</strong>现在有一个客户端系统要上传一个1TB的大文件到HDFS集群里。</p>
+<p><img src="https://user-gold-cdn.xitu.io/2018/11/13/1670dc022eeddf7f?imageView2/0/w/1280/h/960/ignore-error/1" alt><br><a href></a></p>
+<p><a href></a></p>
+<p>此时他会先跟NameNode通信，说：大哥，我想创建一个新的文件，他的名字叫“/usr/hive/warehouse/access_20180101.log”，大小是1TB，你看行不？</p>
+<p>然后NameNode就会在自己内存的文件目录树里，在指定的目录下搞一个新的文件对象，名字就是“access_20180101.log”。</p>
+<p>这个文件目录树不就是HDFS非常核心的一块元数据，维护了HDFS这个分布式文件系统中，有哪些目录，有哪些文件，对不对？</p>
+<p>但是有个问题，这个文件目录树是在NameNode的内存里的啊！</p>
+<p>这可坑爹了，你把重要的元数据都放在内存里，<strong>万一NameNode不小心宕机了可咋整？元数据不就全部丢失了？</strong></p>
+<p>可你要是每次都频繁的修改磁盘文件里的元数据，性能肯定是极低的啊！毕竟这是大量的磁盘随机读写！</p>
+<p>没关系，<strong>我们来看看HDFS优雅的解决方案。</strong></p>
+<p>每次内存里改完了，写一条edits log，元数据修改的操作日志到磁盘文件里，不修改磁盘文件内容，就是顺序追加，这个性能就高多了。</p>
+<p>每次NameNode重启的时候，把edits log里的操作日志读到内存里回放一下，不就可以恢复元数据了？</p>
+<p><strong>大家顺着上面的文字，把整个过程，用下面这张图跟着走一遍。</strong></p>
+<hr>
+<p><img src="https://user-gold-cdn.xitu.io/2018/11/13/1670dc03f2942281?imageView2/0/w/1280/h/960/ignore-error/1" alt><br><a href></a></p>
+<p><a href></a></p>
+<p>但是问题又来了，那edits log如果越来越大的话，岂不是每次重启都会很慢？因为要读取大量的edits log回放恢复元数据！</p>
+<p>所以HDFS说，我可以这样子啊，我引入一个新的磁盘文件叫做<strong>fsimage</strong>，然后呢，再引入一个<strong>JournalNodes</strong>集群，以及一个<strong>Standby NameNode</strong>（备节点）。</p>
+<p>每次Active NameNode（主节点）修改一次元数据都会生成一条edits log，<strong>除了写入本地磁盘文件，还会写入JournalNodes集群。</strong></p>
+<p>然后Standby NameNode就可以从JournalNodes集群拉取edits log，应用到自己内存的文件目录树里，跟Active NameNode保持一致。</p>
+<p>然后每隔一段时间，Standby NameNode都把自己内存里的文件目录树写一份到磁盘上的fsimage，这可不是日志，这是完整的一份元数据。<strong>这个操作就是所谓的checkpoint检查点操作。</strong></p>
+<p>然后把这个fsimage上传到到Active NameNode，接着清空掉Active NameNode的旧的edits log文件，这里可能都有100万行修改日志了！</p>
+<p>然后Active NameNode继续接收修改元数据的请求，再写入edits log，写了一小会儿，这里可能就几十行修改日志而已！</p>
+<p>如果说此时，Active NameNode重启了，bingo！没关系，只要把Standby NameNode传过来的fsimage直接读到内存里，<strong>这个fsimage直接就是元数据</strong>，不需要做任何额外操作，纯读取，效率很高！</p>
+<p>然后把新的edits log里少量的几十行的修改日志回放到内存里就ok了！</p>
+<p>这个过程的启动速度就快的多了！因为不需要回放大量上百万行的edits log来恢复元数据了！如下图所示。</p>
+<p><img src="https://user-gold-cdn.xitu.io/2018/11/13/1670dc062e2fa9e8?imageView2/0/w/1280/h/960/ignore-error/1" alt><br><a href></a></p>
+<p><a href></a></p>
+<p>此外，<strong>大家看看上面这张图</strong>，现在咱们有俩NameNode。</p>
+<pre><code>* 一个是主节点对外提供服务接收请求
+* 另外一个纯就是接收和同步主节点的edits log以及执行定期checkpoint的备节点。</code></pre><p>大家有没有发现！他们俩内存里的元数据几乎是一模一样的啊！</p>
+<p>所以呢，如果Active NameNode挂了，是不是可以立马切换成Standby NameNode对外提供服务？</p>
+<p><strong>这不就是所谓的NameNode主备高可用故障转移机制么！</strong></p>
+<p>接下来大家再想想，HDFS客户端在NameNode内存里的文件目录树，新加了一个文件。</p>
+<p>但是这个时候，人家要把数据上传到多台DataNode机器上去啊，<strong>这可是一个1TB的大文件！咋传呢？</strong></p>
+<p>很简单，<strong>把1TB的大文件拆成N个block</strong>，每个block是128MB。1TB = 1024GB = 1048576MB，一个block是128MB，那么就是对应着8192个block。</p>
+<p>这些block会分布在不同的机器上管理着，比如说一共有100台机器组成的集群，那么每台机器上放80个左右的block就ok了。</p>
+<p>但是问题又来了，那如果这个时候1台机器宕机了，不就导致80个block丢失了？</p>
+<p>也就是说上传上去的1TB的大文件，会丢失一小部分数据啊。没关系！HDFS都考虑好了！</p>
+<p>它会<strong>默认给每个block搞3个副本</strong>，一模一样的副本，分放在不同的机器上，如果一台机器宕机了，同一个block还有另外两个副本在其他机器上呢！</p>
+<p><strong>大伙儿看看下面这张图</strong>。每个block都在不同的机器上有3个副本，任何一台机器宕机都没事！还可以从其他的机器上拿到那个block。</p>
+<p>这下子，你往HDFS上传一个1TB的大文件，可以高枕无忧了吧！</p>
+<p><img src="https://user-gold-cdn.xitu.io/2018/11/13/1670dc07b1a880a6?imageView2/0/w/1280/h/960/ignore-error/1" alt><br><a href></a></p>
+<p><a href></a></p>
+<p>OK，上面就是大白话加上一系列手绘图，给大家先聊聊小白都能听懂的Hadoop的基本架构原理</p>
+<p>接下来会给大家聊聊HDFS，这个作为世界上最优秀的分布式存储系统，承载高并发请求、高性能文件上传的一些核心机制以及原理。</p>
+<p><strong>《大规模集群下Hadoop如何承载每秒上千次的高并发访问》，</strong>敬请期待</p>
+<p><strong>《【冰山下的秘密】Hadoop如何将TB级大文件的上传性能提升上百倍？》</strong>，敬请期待</p>
+<p><strong>如有收获，请帮忙转发，您的鼓励是作者最大的动力，谢谢！</strong></p>
+<p><strong>一大波微服务、分布式、高并发、高可用的**</strong>原创系列<strong>**文章正在路上,</strong></p>
+<hr>
+<p><strong>**欢迎扫描下方二维码</strong>，持续关注：**
+<img src="https://user-gold-cdn.xitu.io/2018/11/12/167088310d1d57b1?imageView2/0/w/1280/h/960/ignore-error/1" alt></p>
+<p><strong>石杉的架构笔记（id:shishan100）</strong></p>
+<p><strong>十余年BAT架构经验倾囊相授</strong></p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://sillyfan.top/2019/05/21/用大白话告诉你小白都能看懂的Hadoop架构原理/" data-id="cjx1h8cz0001y662ad05pyt2x" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/HDFS/">HDFS</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Hadoop/">Hadoop</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/MySQL/">MySQL</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/架构/">架构</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
     <article id="post-Token认证，如何快速方便获取用户信息" class="article article-type-post" itemscope itemprop="blogPost">
   <div class="article-meta">
     <a href="/2019/05/20/Token认证，如何快速方便获取用户信息/" class="article-date">
@@ -131,7 +274,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://sillyfan.top/2019/05/20/Token认证，如何快速方便获取用户信息/" data-id="cjwkcoov4000jn02a797fe9ki" class="article-share-link">Share</a>
+      <a data-url="http://sillyfan.top/2019/05/20/Token认证，如何快速方便获取用户信息/" data-id="cjx1h8cxr000f662a06xazqr4" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Java/">Java</a></li></ul>
@@ -236,7 +379,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://sillyfan.top/2019/05/17/【Spring】Autowired原理及与Resource注解区别/" data-id="cjwkcoov7000qn02ai15rj3ae" class="article-share-link">Share</a>
+      <a data-url="http://sillyfan.top/2019/05/17/【Spring】Autowired原理及与Resource注解区别/" data-id="cjx1h8cya0016662aabjbvw2n" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Java/">Java</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Spring/">Spring</a></li></ul>
@@ -694,7 +837,7 @@ c == d is true</code></p>
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://sillyfan.top/2019/05/16/Java的12个语法糖/" data-id="cjwkcoouy000bn02atnbcfesh" class="article-share-link">Share</a>
+      <a data-url="http://sillyfan.top/2019/05/16/Java的12个语法糖/" data-id="cjx1h8cxq000d662akzlj5byn" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Java/">Java</a></li></ul>
@@ -1138,7 +1281,7 @@ CompletableFuture.allOf(future1, future2, future3)
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://sillyfan.top/2019/05/14/Java8新的异步编程方式CompletableFuture(3)/" data-id="cjwkcoow9002ln02aczvqhite" class="article-share-link">Share</a>
+      <a data-url="http://sillyfan.top/2019/05/14/Java8新的异步编程方式CompletableFuture(3)/" data-id="cjx1h8cxk0004662ajvhwrfv9" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Java/">Java</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/RxJava/">RxJava</a></li></ul>
@@ -1494,7 +1637,7 @@ CompletableFuture.allOf(future1, future2, future3)
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://sillyfan.top/2019/05/14/Java8新的异步编程方式CompletableFuture(2)/" data-id="cjwkcoouq0002n02aw6ekcxvg" class="article-share-link">Share</a>
+      <a data-url="http://sillyfan.top/2019/05/14/Java8新的异步编程方式CompletableFuture(2)/" data-id="cjx1h8cxj0003662axfc5tk98" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Java/">Java</a></li></ul>
@@ -1680,7 +1823,7 @@ future.complete();
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://sillyfan.top/2019/05/14/Java8新的异步编程方式CompletableFuture(1)/" data-id="cjwkcooun0001n02arash49kc" class="article-share-link">Share</a>
+      <a data-url="http://sillyfan.top/2019/05/14/Java8新的异步编程方式CompletableFuture(1)/" data-id="cjx1h8cxa0000662an8u7epl5" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Java/">Java</a></li></ul>
@@ -1862,7 +2005,7 @@ future.complete();
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://sillyfan.top/2019/05/14/Java8的CompletableFuture进阶之道/" data-id="cjwkcoouu0005n02ayjbljvyr" class="article-share-link">Share</a>
+      <a data-url="http://sillyfan.top/2019/05/14/Java8的CompletableFuture进阶之道/" data-id="cjx1h8cxo000a662a029s2bem" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Java/">Java</a></li></ul>
@@ -1973,7 +2116,7 @@ future.complete();
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://sillyfan.top/2019/05/13/杂谈什么是伪共享（falsesharing）？/" data-id="cjwkcoovf001an02azgca2d2v" class="article-share-link">Share</a>
+      <a data-url="http://sillyfan.top/2019/05/13/杂谈什么是伪共享（falsesharing）？/" data-id="cjx1h8cyz001x662auukyx3z3" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Java/">Java</a></li></ul>
@@ -2072,179 +2215,7 @@ future.complete();
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://sillyfan.top/2019/05/13/死磕java并发包之LongAdder源码分析/" data-id="cjwkcoovj001kn02a210aknyt" class="article-share-link">Share</a>
-      
-      
-  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Java/">Java</a></li></ul>
-
-    </footer>
-  </div>
-  
-</article>
-
-
-  
-    <article id="post-深入了解Synchronized原理" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2019/05/12/深入了解Synchronized原理/" class="article-date">
-  <time datetime="2019-05-12T14:57:08.008Z" itemprop="datePublished">2019-05-12</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2019/05/12/深入了解Synchronized原理/">深入了解Synchronized原理</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <blockquote>
-<p>本文转载自 <a href="https://juejin.im/post/5ccd84dee51d456e3428c1af" target="_blank" rel="noopener">https://juejin.im/post/5ccd84dee51d456e3428c1af</a> </p>
-</blockquote>
-<h3 id="Synchronized"><a href="#Synchronized" class="headerlink" title="Synchronized"></a>Synchronized</h3><h3 id="互斥性"><a href="#互斥性" class="headerlink" title="互斥性"></a>互斥性</h3><p>同一个时间只允许一个线程拥有一个对象锁，这样在同一时间只有一个线程对需要同步的代码块进行访问</p>
-<h3 id="可见性"><a href="#可见性" class="headerlink" title="可见性"></a>可见性</h3><p>必须确保在某个线程的某个对象锁在释放之前，对某个共享变量所做的改变，对于下一个拥有在这个对象锁的线程是可见的，否则另外线程读取的是本地的副本从而进行操作，导致结果不一致。</p>
-<h3 id="重入性"><a href="#重入性" class="headerlink" title="重入性"></a>重入性</h3><p>从互斥锁的设计上来说，一个线程试图操作一个由其他线程持有的临界资源的时候，这个线程会处于堵塞状态。</p>
-<p>如果一个线程再次请求自己持有对象锁的临界资源的时候，这就属于重入锁。</p>
-<p>因此在一个线程调用synchronized方法的同时在其方法体内部调用该对象另一个synchronized方法，也就是说一个线程得到一个对象锁后再次请求该对象锁，是允许的，这就是synchronized的可重入性。</p>
-<h3 id="获取对象锁的方式"><a href="#获取对象锁的方式" class="headerlink" title="获取对象锁的方式"></a>获取对象锁的方式</h3><h3 id="获取对象锁的方式-1"><a href="#获取对象锁的方式-1" class="headerlink" title="获取对象锁的方式"></a>获取对象锁的方式</h3><pre><code>1. 修饰实例方法，作用于当前实例加锁，进行同步代码块之前需要获得当前实例的锁（Synchronized method）
-1. 修饰代码块，指定加锁对象，作用于给定对象加锁，进入同步代码快之前要获得给定对象的锁（Synchronized instance）
-1. 修饰静态方法，作用于当前类对象加锁，进入同步代码块之前要获得当前类对象的锁（Synchronized static method）
-1. 修饰类对象，作用于类对象加锁，进入同步代码块之前要获得指定类对象的锁（Synchronized /*/*.class）</code></pre><h3 id="对象锁和类锁的区别"><a href="#对象锁和类锁的区别" class="headerlink" title="对象锁和类锁的区别"></a>对象锁和类锁的区别</h3><pre><code>1. 一个线程可以访问对象的同步代码块时，另外一个线程也可以访问同一个对象的非同步代码块
-1. 若锁住的是同一个对象，其他线程访问对象的同步代码块或者同步方法的时候会被阻塞
-1. 同一个类的不同对象的对象锁互不干扰
-1. 类锁是一种特殊的锁，因为类就是Class的实例，所以只要不同对象都是属于同一个类，那么他们的类锁都是一样的
-1. 类锁和对象锁互不干扰</code></pre><h3 id="底层原理"><a href="#底层原理" class="headerlink" title="底层原理"></a>底层原理</h3><p><img src="https://user-gold-cdn.xitu.io/2019/5/4/16a82cef40900b6b?imageView2/0/w/1280/h/960/ignore-error/1" alt></p>
-<p><strong>锁对象</strong>存储在Java对象头里面</p>
-<table>
-<thead>
-<tr>
-<th align="center">位数</th>
-<th align="center">头对象结构</th>
-<th align="center"></th>
-</tr>
-</thead>
-<tbody><tr>
-<td align="center">32</td>
-<td align="center">Mark word</td>
-<td align="center">存储对象的HashCode,GC分代年龄，锁类型，锁标记</td>
-</tr>
-<tr>
-<td align="center">32</td>
-<td align="center">Class MeteDataAddress</td>
-<td align="center">类型指针：指向实例对象所属的类</td>
-</tr>
-</tbody></table>
-<p>MarkWord被设定为一个非固定的数据结构，用来存储更多的数据，结构如下（这里不是很懂）</p>
-<p><img src="https://user-gold-cdn.xitu.io/2019/5/4/16a82cef40c43f45?imageView2/0/w/1280/h/960/ignore-error/1" alt></p>
-<p>Monitor（内部锁，Monitor锁，管程，监视器锁，也就是和对象锁对应的对象）</p>
-<p>每个对象都存在这一个Monitor与之关联</p>
-<p>每个Java对象天生带有这把看不见的锁，在MarkWord的结构中，重量级锁的标记为是10，也就是指针就是指向Monitor对象的起始地址，在这里也就说明了Synchronized的默认锁是重量级锁。monitor可以与对象一起创建销毁或当线程试图获取对象锁时自动生成，但当<strong>一个 monitor 被某个线程持有后，它便处于锁定状态</strong>。</p>
-<p>在Java虚拟机中，Monitor是有MonitorObject所实现的，部分结构如下</p>
-<p><img src="https://user-gold-cdn.xitu.io/2019/5/4/16a82cef411d31aa?imageView2/0/w/1280/h/960/ignore-error/1" alt></p>
-<p>_owner：指向持有ObjectMonitor对象的线程</p>
-<p>_WaitSet：存放处于wait状态的线程队列</p>
-<p>_EntryList：存放处于等待锁block状态的线程队列</p>
-<p>_count：用来记录该线程获取锁的次数</p>
-<p>ObjectMonitor中有两个队列，_WaitSet 和 _EntryList，用来保存ObjectWaiter对象列表( 每个等待锁的线程都会被封装成ObjectWaiter对象)，_owner指向<strong>持有</strong>ObjectMonitor对象的线程，当有多个线程访问同一块同步代码块的时候，线程会线程会进入_EntryList，当线程获取到对象的monitor 后进入 _Owner 区域并把monitor中的owner变量设置为当前线程，同时monitor中的计数器count加1，若线程调用 wait() 方法，<strong>将释放当前持有的monitor，owner变量恢复为null</strong>，count自减1，同时该线程进入 WaitSet集合中等待被唤醒。若当前线程执行完毕也将释放monitor(锁)并复位变量的值，以便其他线程进入获取monitor(锁)。</p>
-<p><strong>Monitorenter和Monitorexit</strong></p>
-<p><strong>Synchronized代码块执行原理</strong></p>
-<p>字节码中可知同步语句块的实现使用的是<strong>monitorenter</strong> 和 <strong>monitorexit</strong> 指令，其中monitorenter指令指向同步代码块的开始位置，monitorexit指令则指明同步代码块的结束位置 。当执行monitorenter指令时，如果当前线程获取<strong>对象锁所对应的monitor的特权</strong>的时候</p>
-<p>1 会去检查monitor的对象的count是否为0</p>
-<p>2 如果为0的话就获取成功，并且将count置为1</p>
-<p>3 倘若其他线程已经拥有 objectref 的 monitor 的所有权，那当前线程将被阻塞，直到正在执行线程执行完毕，即monitorexit指令被执行，执行线程将释放 monitor(锁)并设置计数器值为0 ，其他线程将有机会持有 monitor 。</p>
-<p>编译器将会确保无论方法通过何种方式完成，方法中调用过的每条 monitorenter 指令都有执行其对应 monitorexit 指令，而无论这个方法是正常结束还是异常结束。为了保证在方法异常完成时 monitorenter 和 monitorexit 指令依然可以正确配对执行，编译器会自动产生一个异常处理器，这个异常处理器声明可处理所有的异常，它的目的就是用来执行 monitorexit 指令。一般字节码文件中都会多出一条monitorexit指令。</p>
-<p><strong>Synchronized方法执行原理</strong></p>
-<p>方法级的同步是隐式，即无需通过字节码指令来控制的，它实现在方法调用和返回操作之中。JVM可以从<strong>ACC_SYNCHRONIZED</strong> 访问标志区分一个方法是否同步方法。当方法调用时，调用指令将会检查方法的 <strong>ACC_SYNCHRONIZED</strong> 访问标志是否被设置，如果设置了，执行线程将先持有monitor，然后再执行方法，最后再方法完成(无论是正常完成还是非正常完成)时释放monitor。</p>
-<p>如果一个同步方法执行期间抛出了异常，并且在方法内部无法处理此异常，那这个同步方法所持有的monitor将在异常抛到同步方法之外时自动释放</p>
-<h3 id="锁的类型"><a href="#锁的类型" class="headerlink" title="锁的类型"></a>锁的类型</h3><p><strong>自旋锁</strong></p>
-<p>synchronized在jdk1.6之前的锁是重量级锁，对于互斥同步的性能来说，阻塞挂起的是影响最大的。因为挂起线程和恢复线程都是要让操作系统从<strong>用户态</strong>转化到<strong>内核态</strong>中完成，而这两个状态的转换是比较影响性能的。</p>
-<p>大多数情况下，线程拥有锁的时间不会太长，如果直接挂起的话，会影响系统的性能。因为前面说过，线程切换是需要在操作系统的用户态和内核态之间转换的。所以为了解决这个问题，引进了自旋锁。</p>
-<p>自旋锁假设在不久，当前线程可以获得这个锁，因此JVM就让这个想要获得锁的线程，先做几个空循环先，让这个线程先不要放弃占有CPU资源的机会，经过若干次空循环之后，如果获得锁，那么就顺利的进入临界区。否则，你也不能让这个线程一直占有CPU资源呀，所以经过大概10次空循环之后，就只能老老实实地挂起了。</p>
-<p><strong>自旋适应锁</strong></p>
-<p>自旋适应锁就是从自旋锁改进而来的。在自旋锁的基础上，假如A线程通过自旋一定的时间之后获得了锁，然后释放锁。这时B线程也获得了这个锁，如果此时A线程再次想得到这个锁，那么JVM就会根据之前A线程曾经获得过这个锁，那么我就给你适当地增加一点空循环的次数，比如说从10次空循环到100次。假如有个C线程，他也想获得这个锁，也得自旋等待，可是很少轮到他或者没得到过这个锁（可能是被A抢了机会或者其他的），那么JVM就会认为C线程以后可能没什么机会获得了，就适当地减少C线程的空循坏次数甚至不让他做空循环。</p>
-<p><strong>偏向锁</strong></p>
-<p>如果A线程第一次获得锁，那么锁就进入偏向模式（虚拟机把对象头中的标志位设为“01”），MarkWord的结构也变成偏向锁结构，如果没有其他线程和A线程竞争，A线程再次请求该锁时，无需任何同步操作</p>
-<p><strong>只需要检查MarkWord的锁标记位是否为偏向锁和当前线程的Id是否为ThreadId即可。</strong></p>
-<p>也就是说当一个线程访问同步块并且获取锁的时候，会通过<strong>CAS操作</strong>在对象头的偏向锁结构里记录线程的ID，如果记录成功，线程在进入和退出同步块时，<strong>不需要进行CAS操作来加锁和解锁</strong>，从而提高程序的性能。</p>
-<p>TIPS:偏向锁只能被第一个获取它的线程进行 CAS 操作，一旦出现线程竞争锁对象，其它线程无论何时进行 CAS 操作都会失败。</p>
-<p>加锁具体步骤如下</p>
-<pre><code>1. </code></pre><p>先检查Mark Word是否为可偏向状态，也就是说是否 是偏向锁1，锁标识位为01<br>    1.<br>如果是<strong>可偏向状态</strong>，那么就测试Mark Word结构的线程ID是不是和当前线程的ID一致，</p>
-<p>如果是就直接执行同步代码块。</p>
-<p>如果不是就通过CAS操作竞争锁，</p>
-<p>如果操作成功，就把Mark Word的线程ID设置为线程的ID</p>
-<p>如果操作失败，那么就说明此时有<strong>多线程竞争</strong>的状态，等到安全点，获得偏向锁的线程就挂起，进行解锁操作。偏向锁升级为轻量锁，被阻塞在安全点的线程继续往下执行同步代码块。</p>
-<p>解锁</p>
-<p>当获得偏向锁的<strong>线程挂起</strong>之后，就会进行解锁操作。</p>
-<p>在解锁成功之后，JVM判断此时线程的状态，</p>
-<p>如果还没有执行完同步代码，则直接将偏向锁升级为轻量级锁，然后继续执行剩下的代码块。</p>
-<p>如果此时已经执行完同步代码，则撤销锁为<strong>无锁状态</strong>，以后执行同步代码的时候JVM则会直接升级为轻量锁。</p>
-<p><img src="https://user-gold-cdn.xitu.io/2019/5/4/16a82cef41476b9a?imageView2/0/w/1280/h/960/ignore-error/1" alt></p>
-<p><strong>轻量锁</strong>（加锁解锁操作是需要依赖多次CAS原子指令的）</p>
-<p>偏向锁一旦受到多线程竞争，就会膨胀为轻量锁</p>
-<p>获取锁</p>
-<pre><code>1. 先判断当前对象是否处于无锁状态，如果是，JVM就首先在想要获取这个锁的线程的栈帧中建立一个锁记录（Lock Record）的空间，其中header部分用来存储Mark Word的备份，否则执行3。
-1. JVM利用CAS操作尝试将对象的Mark Word更新为指向锁记录的指针，如果成功，那么就获得轻量锁，就将标志位设置为00，执行同步代码块，否则执行3。
-1. 判断当前对象的Mark Word是否指向当前想要竞争的线程的锁记录，如果是表示则该线程拥有这个轻量锁，继续执行同步代码块，也就是重入。否则，说明这个轻量锁已经被其他线程拥有，那么这个先进行**自旋**获取锁，如果一直没有得到锁，那么轻量锁则要膨胀为重量锁（也就是将标记为设置为10），锁标记设置为10，后面等待的线程则会进入阻塞状态，如果通过自旋成功获取了锁，那么轻量锁不会膨胀为重量锁。</code></pre><p>释放锁</p>
-<pre><code>1. 取出线程锁记录之前保存的轻量锁的Mark Word记录，通过CAS操作将取出的记录替换当前对象的Mark Word中
-1. 判断当前对象的Mark Word是否指向当前线程的锁记录
-1. 如果1,2都成功，那么就成功释放锁
-1. 如果1失败，那么就是之前有过线程对当前对象的锁竞争过，但是失败了，由轻量级锁变为重量级锁，导致Mark Word的结够发生了改变。那么后面就释放锁，唤醒等待的线程，进行新一轮的竞争。</code></pre><p><img src="https://user-gold-cdn.xitu.io/2019/5/4/16a82cef42898e7d?imageView2/0/w/1280/h/960/ignore-error/1" alt></p>
-<p><strong>重量级锁</strong></p>
-<p>重量级锁通过对象内部的监视器（monitor）实现</p>
-<p>其中monitor的本质是依赖于底层操作系统的Mutex Lock实现</p>
-<p>操作系统实现线程之间的切换需要从用户态到内核态的切换，切换成本非常高。</p>
-<h3 id="锁的升级"><a href="#锁的升级" class="headerlink" title="锁的升级"></a>锁的升级</h3><p>锁主要存在四种状态，无状态锁，偏向锁，轻量锁，重量锁，会随着线程竞争的程度逐渐增大。锁只可以单向升级，不可以降级。</p>
-<p>主要是为了提高获得锁和解锁的效率。</p>
-<h3 id="各个状态锁的优缺点对比"><a href="#各个状态锁的优缺点对比" class="headerlink" title="各个状态锁的优缺点对比"></a>各个状态锁的优缺点对比</h3><table>
-<thead>
-<tr>
-<th align="center">锁类型</th>
-<th align="center">特征</th>
-<th align="center">优点</th>
-<th align="center">缺点</th>
-<th align="center">使用场景</th>
-</tr>
-</thead>
-<tbody><tr>
-<td align="center">偏向锁</td>
-<td align="center">只需要比较ThreadId</td>
-<td align="center">加锁和解锁不需要额外的消耗，和执行非同步代码块时间相差无几</td>
-<td align="center">如果线程之间有竞争，会增加锁撤销的消耗</td>
-<td align="center">当程序大部分只有一个线程操作的时候</td>
-</tr>
-<tr>
-<td align="center">轻量锁</td>
-<td align="center">自旋</td>
-<td align="center">竞争线程不会阻塞，提高了程序的响应速度</td>
-<td align="center">始终得不到锁的线程使用自旋会消耗CPU</td>
-<td align="center">追求响应时间，同步执行代码比较快的时候</td>
-</tr>
-<tr>
-<td align="center">重量锁</td>
-<td align="center">依赖Mutex（操作系统的互斥）</td>
-<td align="center">线程竞争不使用自旋，不怎么会消耗CPU</td>
-<td align="center">线程阻塞，响应缓慢</td>
-<td align="center">同步代码执行比较慢的情况</td>
-</tr>
-</tbody></table>
-<h3 id="最后"><a href="#最后" class="headerlink" title="最后"></a>最后</h3><p>这里有一张原理图（盗用别人的图），把上述的文字都进行了一个总结</p>
-<p><img src="https://user-gold-cdn.xitu.io/2019/5/4/16a82cef42a0936d?imageView2/0/w/1280/h/960/ignore-error/1" alt></p>
-<h3 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h3><p><a href="https://juejin.im/entry/589981fc1b69e60059a2156a" target="_blank" rel="noopener">juejin.im/entry/58998…</a></p>
-<p><a href="https://link.juejin.im?target=https%3A%2F%2Fblog.csdn.net%2Fchampionhengyi%2Farticle%2Fdetails%2F80105718" target="_blank" rel="noopener">blog.csdn.net/championhen…</a></p>
-<p><a href="https://link.juejin.im?target=https%3A%2F%2Fblog.csdn.net%2Fjavazejian%2Farticle%2Fdetails%2F72828483" target="_blank" rel="noopener">blog.csdn.net/javazejian/…</a></p>
-
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://sillyfan.top/2019/05/12/深入了解Synchronized原理/" data-id="cjwkcoovk001mn02azgkgwmw4" class="article-share-link">Share</a>
+      <a data-url="http://sillyfan.top/2019/05/13/死磕java并发包之LongAdder源码分析/" data-id="cjx1h8cyh001d662av591ixqd" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Java/">Java</a></li></ul>
@@ -2306,6 +2277,10 @@ future.complete();
       <ul>
         
           <li>
+            <a href="/2019/06/18/死磕Java内部类（一篇就够）/">死磕Java内部类（一篇就够）</a>
+          </li>
+        
+          <li>
             <a href="/2019/06/06/面试那点小事，你从未见过的springboot面试集锦（附详细答案）/">面试那点小事，你从未见过的spring boot面试集锦（附详细答案）</a>
           </li>
         
@@ -2319,10 +2294,6 @@ future.complete();
         
           <li>
             <a href="/2019/05/30/README/">(no title)</a>
-          </li>
-        
-          <li>
-            <a href="/2019/05/30/Effective Java/">(no title)</a>
           </li>
         
       </ul>

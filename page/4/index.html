@@ -62,6 +62,105 @@
       <div class="outer">
         <section id="main">
   
+    <article id="post-SpringBoot+Vue前后端分离，两种文件上传方式总结" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2019/05/03/SpringBoot+Vue前后端分离，两种文件上传方式总结/" class="article-date">
+  <time datetime="2019-05-02T16:00:00.000Z" itemprop="datePublished">2019-05-03</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2019/05/03/SpringBoot+Vue前后端分离，两种文件上传方式总结/">Spring Boot + Vue 前后端分离，两种文件上传方式总结</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <blockquote>
+<p>本文来自于 <a href="https://juejin.im/post/5cc518186fb9a03234165172" target="_blank" rel="noopener">https://juejin.im/post/5cc518186fb9a03234165172</a> </p>
+</blockquote>
+<p>在Vue.js 中，如果网络请求使用 axios ，并且使用了 ElementUI 库，那么一般来说，文件上传有两种不同的实现方案：</p>
+<ol>
+<li>通过 Ajax 实现文件上传</li>
+<li>通过 ElementUI 里边的 Upload 组件实现文件上传</li>
+</ol>
+<p>两种方案，各有优缺点，我们分别来看。</p>
+<h1 id="准备工作"><a href="#准备工作" class="headerlink" title="准备工作"></a>准备工作</h1><p>首先我们需要一点点准备工作，就是在后端提供一个文件上传接口，这是一个普通的 Spring Boot 项目，如下：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">SimpleDateFormat sdf = new SimpleDateFormat(&quot;/yyyy/MM/dd/&quot;);</span><br><span class="line">@PostMapping(&quot;/import&quot;)</span><br><span class="line">public RespBean importData(MultipartFile file, HttpServletRequest req) throws IOException &#123;</span><br><span class="line">    String format = sdf.format(new Date());</span><br><span class="line">    String realPath = req.getServletContext().getRealPath(&quot;/upload&quot;) + format;</span><br><span class="line">    File folder = new File(realPath);</span><br><span class="line">    if (!folder.exists()) &#123;</span><br><span class="line">        folder.mkdirs();</span><br><span class="line">    &#125;</span><br><span class="line">    String oldName = file.getOriginalFilename();</span><br><span class="line">    String newName = UUID.randomUUID().toString() + oldName.substring(oldName.lastIndexOf(&quot;.&quot;));</span><br><span class="line">    file.transferTo(new File(folder,newName));</span><br><span class="line">    String url = req.getScheme() + &quot;://&quot; + req.getServerName() + &quot;:&quot; + req.getServerPort() + &quot;/upload&quot; + format + newName;</span><br><span class="line">    System.out.println(url);</span><br><span class="line">    return RespBean.ok(&quot;上传成功!&quot;);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这里的文件上传比较简单，上传的文件按照日期进行归类，使用 UUID 给文件重命名。</p>
+<p><strong>这里为了简化代码，我省略掉了异常捕获，上传结果直接返回成功，后端代码大伙可根据自己的实际情况自行修改。</strong></p>
+<h1 id="Ajax-上传"><a href="#Ajax-上传" class="headerlink" title="Ajax 上传"></a>Ajax 上传</h1><p>在 Vue 中，通过 Ajax 实现文件上传，方案和传统 Ajax 实现文件上传基本上是一致的，唯一不同的是查找元素的方式。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">&lt;input type=&quot;file&quot; ref=&quot;myfile&quot;&gt;</span><br><span class="line">&lt;el-button @click=&quot;importData&quot; type=&quot;success&quot; size=&quot;mini&quot; icon=&quot;el-icon-upload2&quot;&gt;导入数据&lt;/el-button&gt;</span><br></pre></td></tr></table></figure>
+
+<p>在这里，首先提供一个文件导入 input 组件，再来一个导入按钮，在导入按钮的事件中来完成导入的逻辑。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">importData() &#123;</span><br><span class="line">  let myfile = this.$refs.myfile;</span><br><span class="line">  let files = myfile.files;</span><br><span class="line">  let file = files[0];</span><br><span class="line">  var formData = new FormData();</span><br><span class="line">  formData.append(&quot;file&quot;, file);</span><br><span class="line">  this.uploadFileRequest(&quot;/system/basic/jl/import&quot;,formData).then(resp=&gt;&#123;</span><br><span class="line">    if (resp) &#123;</span><br><span class="line">      console.log(resp);</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>关于这段上传核心逻辑，解释如下：</p>
+<ol>
+<li>首先利用 Vue 中的 $refs 查找到存放文件的元素。</li>
+<li>type 为 file 的 input 元素内部有一个 files 数组，里边存放了所有选择的 file，由于文件上传时，文件可以多选，因此这里拿到的 files 对象是一个数组。</li>
+<li>从 files 对象中，获取自己要上传的文件，由于这里是单选，所以其实就是数组中的第一项。</li>
+<li>构造一个 FormData ，用来存放上传的数据,FormData 不可以像 Java 中的 StringBuffer 使用链式配置。</li>
+<li>构造好 FromData 后，就可以直接上传数据了，FormData 就是要上传的数据。</li>
+<li>文件上传注意两点，1. 请求方法为 post，2. 设置 <code>Content-Type</code> 为 <code>multipart/form-data</code> 。</li>
+</ol>
+<p>这种文件上传方式，实际上就是传统的 Ajax 上传文件，和大家常见的 jQuery 中写法不同的是，这里元素查找的方式不一样（实际上元素查找也可以按照JavaScript 中原本的写法来实现），其他写法一模一样。这种方式是一个通用的方式，和使用哪一种前端框架无关。最后再和大家来看下封装的上传方法：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">export const uploadFileRequest = (url, params) =&gt; &#123;</span><br><span class="line">  return axios(&#123;</span><br><span class="line">    method: &apos;post&apos;,</span><br><span class="line">    url: `$&#123;base&#125;$&#123;url&#125;`,</span><br><span class="line">    data: params,</span><br><span class="line">    headers: &#123;</span><br><span class="line">      &apos;Content-Type&apos;: &apos;multipart/form-data&apos;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>经过这几步的配置后，前端就算上传完成了，可以进行文件上传了。</p>
+<h1 id="使用-Upload-组件"><a href="#使用-Upload-组件" class="headerlink" title="使用 Upload 组件"></a>使用 Upload 组件</h1><p>如果使用 Upload ，则需要引入 ElementUI，所以一般建议，如果使用了 ElementUI 做 UI 控件的话，则可以考虑使用 Upload 组件来实现文件上传，如果没有使用 ElementUI 的话，则不建议使用 Upload 组件，至于其他的 UI 控件，各自都有自己的文件上传组件，具体使用可以参考各自文档。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">&lt;el-upload</span><br><span class="line">  style=&quot;display: inline&quot;</span><br><span class="line">  :show-file-list=&quot;false&quot;</span><br><span class="line">  :on-success=&quot;onSuccess&quot;</span><br><span class="line">  :on-error=&quot;onError&quot;</span><br><span class="line">  :before-upload=&quot;beforeUpload&quot;</span><br><span class="line">  action=&quot;/system/basic/jl/import&quot;&gt;</span><br><span class="line">  &lt;el-button size=&quot;mini&quot; type=&quot;success&quot; :disabled=&quot;!enabledUploadBtn&quot; :icon=&quot;uploadBtnIcon&quot;&gt;&#123;&#123;btnText&#125;&#125;&lt;/el-button&gt;</span><br><span class="line">&lt;/el-upload&gt;</span><br></pre></td></tr></table></figure>
+
+<ol>
+<li>show-file-list 表示是否展示上传文件列表，默认为true，这里设置为不展示。</li>
+<li>before-upload 表示上传之前的回调，可以在该方法中，做一些准备工作，例如展示一个进度条给用户 。</li>
+<li>on-success 和 on-error 分别表示上传成功和失败时候的回调，可以在这两个方法中，给用户一个相应的提示，如果有进度条，还需要在这两个方法中关闭进度条。</li>
+<li>action 指文件上传地址。</li>
+<li>上传按钮的点击状态和图标都设置为变量 ，在文件上传过程中，修改上传按钮的点击状态为不可点击，同时修改图标为一个正在加载的图标 loading。</li>
+<li>上传的文本也设为变量，默认上传 button 的文本是 <code>数据导入</code> ，当开始上传后，将找个 button 上的文本修改为 <code>正在导入</code>。</li>
+</ol>
+<p>相应的回调如下：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">onSuccess(response, file, fileList) &#123;</span><br><span class="line">  this.enabledUploadBtn = true;</span><br><span class="line">  this.uploadBtnIcon = &apos;el-icon-upload2&apos;;</span><br><span class="line">  this.btnText = &apos;数据导入&apos;;</span><br><span class="line">&#125;,</span><br><span class="line">onError(err, file, fileList) &#123;</span><br><span class="line">  this.enabledUploadBtn = true;</span><br><span class="line">  this.uploadBtnIcon = &apos;el-icon-upload2&apos;;</span><br><span class="line">  this.btnText = &apos;数据导入&apos;;</span><br><span class="line">&#125;,</span><br><span class="line">beforeUpload(file) &#123;</span><br><span class="line">  this.enabledUploadBtn = false;</span><br><span class="line">  this.uploadBtnIcon = &apos;el-icon-loading&apos;;</span><br><span class="line">  this.btnText = &apos;正在导入&apos;;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<ol>
+<li>在文件开始上传时，修改上传按钮为不可点击，同时修改上传按钮的图标和文本。</li>
+<li>文件上传成功或者失败时，修改上传按钮的状态为可以点击，同时恢复上传按钮的图标和文本。</li>
+</ol>
+<p>上传效果图如下：</p>
+<p><img src="https://user-gold-cdn.xitu.io/2019/4/28/16a61e63ba1cae51?imageView2/0/w/1280/h/960/ignore-error/1" alt></p>
+<h1 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h1><p>两种上传方式各有优缺点：</p>
+<ol>
+<li>第一种方式最大的优势是通用，一招鲜吃遍天，到哪里都能用，但是对于上传过程的监控，进度条的展示等等逻辑都需要自己来实现。</li>
+<li>第二种方式不够通用，因为它是 ElementUI 中的组件，得引入 ElementUI 才能使用，不过这种方式很明显有需多比较方便的回调，可以实现非常方便的处理常见的各种上传问题。</li>
+<li>常规的上传需求第二种方式可以满足，但是如果要对上传的方法进行定制，则还是建议使用第一种上传方案。</li>
+</ol>
+<p>关注公众号牧码小子，专注于 Spring Boot+微服务，定期视频教程分享，关注后回复 Java ，领取松哥为你精心准备的 Java 干货！</p>
+<p><img src="https://user-gold-cdn.xitu.io/2019/4/28/16a61e641c0ec4fc?imageView2/0/w/1280/h/960/ignore-error/1" alt></p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://sillyfan.top/2019/05/03/SpringBoot+Vue前后端分离，两种文件上传方式总结/" data-id="cjx1h8cxv000k662asybdwphq" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Vue-js/">Vue.js</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
     <article id="post-如何优化代码中大量的if-else,switch-case" class="article article-type-post" itemscope itemprop="blogPost">
   <div class="article-meta">
     <a href="/2019/05/01/如何优化代码中大量的if-else,switch-case/" class="article-date">
@@ -93,148 +192,10 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://sillyfan.top/2019/05/01/如何优化代码中大量的if-else,switch-case/" data-id="cjwkcoovd0016n02aacl2m628" class="article-share-link">Share</a>
+      <a data-url="http://sillyfan.top/2019/05/01/如何优化代码中大量的if-else,switch-case/" data-id="cjx1h8cz20020662am7wnus7l" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Java/">Java</a></li></ul>
-
-    </footer>
-  </div>
-  
-</article>
-
-
-  
-    <article id="post-高并发架构的CDN知识介绍" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2019/04/30/高并发架构的CDN知识介绍/" class="article-date">
-  <time datetime="2019-04-29T16:00:00.000Z" itemprop="datePublished">2019-04-30</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2019/04/30/高并发架构的CDN知识介绍/">高并发架构的CDN知识介绍</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <p>对一次网络请求过程的了解程度，一是展现你的专业知识；二是深刻的理解，让你在大型网站架构中做出更适合、可靠的架构。而DNS是这一切的出发点，本文结合一张常用架构图，来描述一下这个过程。</p>
-        
-          <p class="article-more-link">
-            <a href="/2019/04/30/高并发架构的CDN知识介绍/#more">Read More</a>
-          </p>
-        
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://sillyfan.top/2019/04/30/高并发架构的CDN知识介绍/" data-id="cjwkcoovq001zn02abf2g5h56" class="article-share-link">Share</a>
-      
-      
-  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/架构/">架构</a></li></ul>
-
-    </footer>
-  </div>
-  
-</article>
-
-
-  
-    <article id="post-一个简单的基于 Redis 的分布式任务调度器 —— Java 语言实现" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2019/04/30/一个简单的基于 Redis 的分布式任务调度器 —— Java 语言实现/" class="article-date">
-  <time datetime="2019-04-29T16:00:00.000Z" itemprop="datePublished">2019-04-30</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2019/04/30/一个简单的基于 Redis 的分布式任务调度器 —— Java 语言实现/">一个简单的基于 Redis 的分布式任务调度器 —— Java 语言实现</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <blockquote>
-<p>本文来自于 <a href="https://juejin.im/post/5cc6ade4f265da038d0b4fd6" target="_blank" rel="noopener">https://juejin.im/post/5cc6ade4f265da038d0b4fd6</a> </p>
-</blockquote>
-<p>折腾了一周的 <code>Java Quartz</code>集群任务调度，很遗憾没能搞定，网上的相关文章也少得可怜，在多节点（多进程）环境下 Quartz 似乎无法动态增减任务，恼火。无奈之下自己撸了一个简单的任务调度器，结果只花了不到 2天时间，而且感觉非常简单好用，代码量也不多，扩展性很好。</p>
-<p><img src="https://user-gold-cdn.xitu.io/2019/4/29/16a682144a242fdf?imageView2/0/w/1280/h/960/ignore-error/1" alt></p>
-<p>实现一个分布式的任务调度器有几个关键的考虑点</p>
-<ol>
-<li>单次任务和循环任务好做，难的是 cron 表达式的解析和时间计算怎么做？</li>
-<li>多进程同一时间如何保证一个任务的互斥性？</li>
-<li>如何动态变更增加和减少任务？</li>
-</ol>
-<h2 id="代码实例"><a href="#代码实例" class="headerlink" title="代码实例"></a>代码实例</h2><p>在深入讲解实现方法之前，我们先来看看这个调度器是如何使用的</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line">class Demo &#123;</span><br><span class="line">    public static void main(String[] args) &#123;</span><br><span class="line">        var redis = new RedisStore();</span><br><span class="line">        // sample 为任务分组名称</span><br><span class="line">        var store = new RedisTaskStore(redis, &quot;sample&quot;);</span><br><span class="line">        // 5s 为任务锁寿命</span><br><span class="line">        var scheduler = new DistributedScheduler(store, 5);</span><br><span class="line">        // 注册一个单次任务</span><br><span class="line">        scheduler.register(Trigger.onceOfDelay(5), Task.of(&quot;once1&quot;, () -&gt; &#123;</span><br><span class="line">            System.out.println(&quot;once1&quot;);</span><br><span class="line">        &#125;));</span><br><span class="line">        // 注册一个循环任务</span><br><span class="line">        scheduler.register(Trigger.periodOfDelay(5, 5), Task.of(&quot;period2&quot;, () -&gt; &#123;</span><br><span class="line">            System.out.println(&quot;period2&quot;);</span><br><span class="line">        &#125;));</span><br><span class="line">        // 注册一个 CRON 任务</span><br><span class="line">        scheduler.register(Trigger.cronOfMinutes(1), Task.of(&quot;cron3&quot;, () -&gt; &#123;</span><br><span class="line">            System.out.println(&quot;cron3&quot;);</span><br><span class="line">        &#125;));</span><br><span class="line">        // 设置全局版本号</span><br><span class="line">        scheduler.version(1);</span><br><span class="line">        // 注册监听器</span><br><span class="line">        scheduler.listener(ctx -&gt; &#123;</span><br><span class="line">            System.out.println(ctx.task().name() + &quot; is complete&quot;);</span><br><span class="line">        &#125;);</span><br><span class="line">        // 启动调度器</span><br><span class="line">        scheduler.start();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>当代码升级任务需要增加减少时（或者变更调度时间），只需要递增全局版本号，现有的进程中的任务会自动被重新调度，那些没有被注册的任务（任务减少）会自动清除。新增的任务（新任务）在老代码的进程里是不会被调度的（没有新任务的代码无法调度），被清除的任务（老任务）在老代码的进程里会被取消调度。</p>
-<p>比如我们要取消 period2 任务，增加 period4 任务</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line">class Demo &#123;</span><br><span class="line">    public static void main(String[] args) &#123;</span><br><span class="line">        var redis = new RedisStore();</span><br><span class="line">        // sample 为任务分组名称</span><br><span class="line">        var store = new RedisTaskStore(redis, &quot;sample&quot;);</span><br><span class="line">        // 5s 为任务锁寿命</span><br><span class="line">        var scheduler = new DistributedScheduler(store, 5);</span><br><span class="line">        // 注册一个单次任务</span><br><span class="line">        scheduler.register(Trigger.onceOfDelay(5), Task.of(&quot;once1&quot;, () -&gt; &#123;</span><br><span class="line">            System.out.println(&quot;once1&quot;);</span><br><span class="line">        &#125;));</span><br><span class="line">        // 注册一个 CRON 任务</span><br><span class="line">        scheduler.register(Trigger.cronOfMinutes(1), Task.of(&quot;cron3&quot;, () -&gt; &#123;</span><br><span class="line">            System.out.println(&quot;cron3&quot;);</span><br><span class="line">        &#125;));</span><br><span class="line">        // 注册一个循环任务</span><br><span class="line">        scheduler.register(Trigger.periodOfDelay(5, 10), Task.of(&quot;period4&quot;, () -&gt; &#123;</span><br><span class="line">            System.out.println(&quot;period4&quot;);</span><br><span class="line">        &#125;));</span><br><span class="line">        // 递增全局版本号</span><br><span class="line">        scheduler.version(2);</span><br><span class="line">        // 注册监听器</span><br><span class="line">        scheduler.listener(ctx -&gt; &#123;</span><br><span class="line">            System.out.println(ctx.task().name() + &quot; is complete&quot;);</span><br><span class="line">        &#125;);</span><br><span class="line">        // 启动调度器</span><br><span class="line">        scheduler.start();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<h2 id="cron4j"><a href="#cron4j" class="headerlink" title="cron4j"></a>cron4j</h2><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">&lt;dependency&gt;</span><br><span class="line">	&lt;groupId&gt;it.sauronsoftware.cron4j&lt;/groupId&gt;</span><br><span class="line">	&lt;artifactId&gt;cron4j&lt;/artifactId&gt;</span><br><span class="line">	&lt;version&gt;2.2.5&lt;/version&gt;</span><br><span class="line">&lt;/dependency&gt;</span><br></pre></td></tr></table></figure>
-
-<p>这个开源的 library 包含了基础的 cron 表达式解析功能，它还提供了任务的调度功能，不过这里并不需要使用它的调度器。我只会用到它的表达式解析功能，以及一个简单的方法用来判断当前的时间是否匹配表达式（是否该运行任务了）。</p>
-<p>我们对 cron 的时间精度要求很低，1 分钟判断一次当前的时间是否到了该运行任务的时候就可以了。</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">class SchedulingPattern &#123;</span><br><span class="line">    // 表达式是否有效</span><br><span class="line">    boolean validate(String cronExpr);</span><br><span class="line">    // 是否应该运行任务了(一分钟判断一次)</span><br><span class="line">    boolean match(long nowTs);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<h2 id="任务的互斥性"><a href="#任务的互斥性" class="headerlink" title="任务的互斥性"></a>任务的互斥性</h2><p>因为是分布式任务调度器，多进程环境下要控制同一个任务在调度的时间点只能有一个进程运行。使用 Redis 分布式锁很容易就可以搞定。锁需要保持一定的时间（比如默认 5s）。</p>
-<p>所有的进程都会在同一时间调度这个任务，但是只有一个进程可以抢到锁。因为分布式环境下时间的不一致性，不同机器上的进程会有较小的时间差异窗口，锁必须保持一个窗口时间，这里我默认设置为 5s（可定制），这就要求不同机器的时间差不能超过 5s，超出了这个值就会出现重复调度。</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">public boolean grabTask(String name) &#123;</span><br><span class="line">    var holder = new Holder&lt;Boolean&gt;();</span><br><span class="line">    redis.execute(jedis -&gt; &#123;</span><br><span class="line">        var lockKey = keyFor(&quot;task_lock&quot;, name);</span><br><span class="line">        var ok = jedis.set(lockKey, &quot;true&quot;, SetParams.setParams().nx().ex(lockAge));</span><br><span class="line">        holder.value(ok != null);</span><br><span class="line">    &#125;);</span><br><span class="line">    return holder.value();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<h2 id="全局版本号"><a href="#全局版本号" class="headerlink" title="全局版本号"></a>全局版本号</h2><p>我们给任务列表附上一个全局的版本号，当业务上需要增加或者减少调度任务时，通过变更版本号来触发进程的任务重加载。这个重加载的过程包含轮询全局版本号（Redis 的一个key），如果发现版本号变动，立即重新加载任务列表配置并重新调度所有的任务。</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">private void scheduleReload() &#123;</span><br><span class="line">    // 1s 对比一次</span><br><span class="line">    this.scheduler.scheduleWithFixedDelay(() -&gt; &#123;</span><br><span class="line">        try &#123;</span><br><span class="line">            if (this.reloadIfChanged()) &#123;</span><br><span class="line">                this.rescheduleTasks();</span><br><span class="line">            &#125;</span><br><span class="line">        &#125; catch (Exception e) &#123;</span><br><span class="line">            LOG.error(&quot;reloading tasks error&quot;, e);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;, 0, 1, TimeUnit.SECONDS);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>重新调度任务先要取消当前所有正在调度的任务，然后调度刚刚加载的所有任务。</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">private void rescheduleTasks() &#123;</span><br><span class="line">    this.cancelAllTasks();</span><br><span class="line">    this.scheduleTasks();</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">private void cancelAllTasks() &#123;</span><br><span class="line">    this.futures.forEach((name, future) -&gt; &#123;</span><br><span class="line">        LOG.warn(&quot;cancelling task &#123;&#125;&quot;, name);</span><br><span class="line">        future.cancel(false);</span><br><span class="line">    &#125;);</span><br><span class="line">    this.futures.clear();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>因为需要将任务持久化，所以设计了一套任务的序列化格式，这个也很简单，使用文本符号分割任务配置属性就行。</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">// 一次性任务(startTime)</span><br><span class="line">ONCE@2019-04-29T15:26:29.946+0800</span><br><span class="line">// 循环任务，(startTime,endTime,period)，这里任务的结束时间是天荒地老</span><br><span class="line">PERIOD@2019-04-29T15:26:29.949+0800|292278994-08-17T15:12:55.807+0800|5</span><br><span class="line">// cron 任务，一分钟一次</span><br><span class="line">CRON@*/1 * * * *</span><br><span class="line"></span><br><span class="line">$ redis-cli</span><br><span class="line">127.0.0.1:6379&gt; hgetall sample_triggers</span><br><span class="line">1) &quot;task3&quot;</span><br><span class="line">2) &quot;CRON@*/1 * * * *&quot;</span><br><span class="line">3) &quot;task2&quot;</span><br><span class="line">4) &quot;PERIOD@2019-04-29T15:26:29.949+0800|292278994-08-17T15:12:55.807+0800|5&quot;</span><br><span class="line">5) &quot;task1&quot;</span><br><span class="line">6) &quot;ONCE@2019-04-29T15:26:29.946+0800&quot;</span><br><span class="line">7) &quot;task4&quot;</span><br><span class="line">8) &quot;PERIOD@2019-04-29T15:26:29.957+0800|292278994-08-17T15:12:55.807+0800|10&quot;</span><br></pre></td></tr></table></figure>
-
-<h2 id="线程池"><a href="#线程池" class="headerlink" title="线程池"></a>线程池</h2><p>时间调度会有一个单独的线程（单线程线程池），任务的运行由另外一个线程池来完成（数量可定制）。</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">class DistributedScheduler &#123;</span><br><span class="line">    private ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();</span><br><span class="line">    private ExecutorService executor = Executors.newFixedThreadPool(threads);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>之所以要将线程池分开，是为了避免任务的执行（IO）影响了时间的精确调度。</p>
-<h2 id="FixedDelay-vs-FixedRate"><a href="#FixedDelay-vs-FixedRate" class="headerlink" title="FixedDelay vs FixedRate"></a>FixedDelay vs FixedRate</h2><p>Java 的内置调度器提供两种调度策略 FixedDelay 和 FixedRate。FixedDelay 保证同一个任务的连续两次运行有相等的时延（nextRun.startTime - lastRun.endTime），FixedRate 保证同一个任务的连续运行有确定的间隔（nextRun.startTime - lastRun.startTime）。</p>
-<p><img src="https://user-gold-cdn.xitu.io/2019/4/29/16a68a816b58ca9e?imageView2/0/w/1280/h/960/ignore-error/1" alt></p>
-<p>FixedDelay 就好比你加班到深夜12点，可以第二天12点再来上班(保证固定的休息时间)，而 FixedRate 就没那么体贴了，第二天你继续 9点过来上班。如果你不走运到第二天 9 点了还在加班，那你今天就没有休息时间了，继续上班吧。</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">class ScheduledExecutorService &#123;</span><br><span class="line">    void scheduleAtFixedRate(Runnable command, long initialDelay, long period, TimeUnit unit);</span><br><span class="line">    void scheduleAtFixedDelay(Runnable command, long initialDelay, long delay, TimeUnit unit);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>分布式调度器要求有精确的调度时间，所以必须采用 FixedRate 模式，保证多节点同一个任务在同一时间被争抢。如果采用 FixedDelay 模式，会导致不同进程的调度时间错开了，分布式锁的默认 5s 时间窗口将起不到互斥作用。</p>
-<h2 id="支持无互斥任务"><a href="#支持无互斥任务" class="headerlink" title="支持无互斥任务"></a>支持无互斥任务</h2><p>互斥任务要求任务的单进程运行，无互斥任务就是没有加分布式锁的任务，可以多进程同时运行。默认需要互斥。</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">class Task &#123;</span><br><span class="line">    /**</span><br><span class="line">     * 是否需要考虑多进程互斥（true表示不互斥，多进程能同时跑）</span><br><span class="line">     */</span><br><span class="line">    private boolean concurrent;</span><br><span class="line">    private String name;</span><br><span class="line">    private Runnable runner;</span><br><span class="line">    ...</span><br><span class="line">    public static Task of(String name, Runnable runner) &#123;</span><br><span class="line">        return new Task(name, false, runner);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    public static Task concurrent(String name, Runnable runner) &#123;</span><br><span class="line">        return new Task(name, true, runner);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<h2 id="增加回调接口"><a href="#增加回调接口" class="headerlink" title="增加回调接口"></a>增加回调接口</h2><p>考虑到调度器的使用者可能需要对任务运行状态进行监控，这里增加了一个简单的回调接口，目前功能比较简单。能汇报运行结果（成功还是异常）和运行的耗时</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">class TaskContext &#123;</span><br><span class="line">    private Task task;</span><br><span class="line">    private long cost;  // 运行时间</span><br><span class="line">    private boolean ok;</span><br><span class="line">    private Throwable e;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">interface ISchedulerListener &#123;</span><br><span class="line">    public void onComplete(TaskContext ctx);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<h2 id="支持存储扩展"><a href="#支持存储扩展" class="headerlink" title="支持存储扩展"></a>支持存储扩展</h2><p>目前只实现了 Redis 和 Memory 形式的任务存储，扩展到 zk、etcd、关系数据库也是可行的，实现下面的接口即可。</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">interface ITaskStore &#123;</span><br><span class="line">  public long getRemoteVersion();</span><br><span class="line">  public Map&lt;String, String&gt; getAllTriggers();</span><br><span class="line">  public void saveAllTriggers(long version, Map&lt;String, String&gt; triggers);</span><br><span class="line">  public boolean grabTask(String name);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<h2 id="代码地址"><a href="#代码地址" class="headerlink" title="代码地址"></a>代码地址</h2><p><a href="https://link.juejin.im?target=https%3A%2F%2Fgithub.com%2Fpyloque%2Ftaskino" target="_blank" rel="noopener">github.com/pyloque/tas…</a></p>
-
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://sillyfan.top/2019/04/30/一个简单的基于 Redis 的分布式任务调度器 —— Java 语言实现/" data-id="cjwkcoova000xn02ajkqzsvid" class="article-share-link">Share</a>
-      
-      
-  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Java/">Java</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/分布式/">分布式</a></li></ul>
 
     </footer>
   </div>
@@ -400,10 +361,148 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://sillyfan.top/2019/04/30/【面试】吃透了这些Redis知识点，面试官一定觉得你很NB/" data-id="cjwkcoovb000zn02ampl4w01t" class="article-share-link">Share</a>
+      <a data-url="http://sillyfan.top/2019/04/30/【面试】吃透了这些Redis知识点，面试官一定觉得你很NB/" data-id="cjx1h8cyg001b662abpdiuee7" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Java/">Java</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-一个简单的基于 Redis 的分布式任务调度器 —— Java 语言实现" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2019/04/30/一个简单的基于 Redis 的分布式任务调度器 —— Java 语言实现/" class="article-date">
+  <time datetime="2019-04-29T16:00:00.000Z" itemprop="datePublished">2019-04-30</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2019/04/30/一个简单的基于 Redis 的分布式任务调度器 —— Java 语言实现/">一个简单的基于 Redis 的分布式任务调度器 —— Java 语言实现</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <blockquote>
+<p>本文来自于 <a href="https://juejin.im/post/5cc6ade4f265da038d0b4fd6" target="_blank" rel="noopener">https://juejin.im/post/5cc6ade4f265da038d0b4fd6</a> </p>
+</blockquote>
+<p>折腾了一周的 <code>Java Quartz</code>集群任务调度，很遗憾没能搞定，网上的相关文章也少得可怜，在多节点（多进程）环境下 Quartz 似乎无法动态增减任务，恼火。无奈之下自己撸了一个简单的任务调度器，结果只花了不到 2天时间，而且感觉非常简单好用，代码量也不多，扩展性很好。</p>
+<p><img src="https://user-gold-cdn.xitu.io/2019/4/29/16a682144a242fdf?imageView2/0/w/1280/h/960/ignore-error/1" alt></p>
+<p>实现一个分布式的任务调度器有几个关键的考虑点</p>
+<ol>
+<li>单次任务和循环任务好做，难的是 cron 表达式的解析和时间计算怎么做？</li>
+<li>多进程同一时间如何保证一个任务的互斥性？</li>
+<li>如何动态变更增加和减少任务？</li>
+</ol>
+<h2 id="代码实例"><a href="#代码实例" class="headerlink" title="代码实例"></a>代码实例</h2><p>在深入讲解实现方法之前，我们先来看看这个调度器是如何使用的</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line">class Demo &#123;</span><br><span class="line">    public static void main(String[] args) &#123;</span><br><span class="line">        var redis = new RedisStore();</span><br><span class="line">        // sample 为任务分组名称</span><br><span class="line">        var store = new RedisTaskStore(redis, &quot;sample&quot;);</span><br><span class="line">        // 5s 为任务锁寿命</span><br><span class="line">        var scheduler = new DistributedScheduler(store, 5);</span><br><span class="line">        // 注册一个单次任务</span><br><span class="line">        scheduler.register(Trigger.onceOfDelay(5), Task.of(&quot;once1&quot;, () -&gt; &#123;</span><br><span class="line">            System.out.println(&quot;once1&quot;);</span><br><span class="line">        &#125;));</span><br><span class="line">        // 注册一个循环任务</span><br><span class="line">        scheduler.register(Trigger.periodOfDelay(5, 5), Task.of(&quot;period2&quot;, () -&gt; &#123;</span><br><span class="line">            System.out.println(&quot;period2&quot;);</span><br><span class="line">        &#125;));</span><br><span class="line">        // 注册一个 CRON 任务</span><br><span class="line">        scheduler.register(Trigger.cronOfMinutes(1), Task.of(&quot;cron3&quot;, () -&gt; &#123;</span><br><span class="line">            System.out.println(&quot;cron3&quot;);</span><br><span class="line">        &#125;));</span><br><span class="line">        // 设置全局版本号</span><br><span class="line">        scheduler.version(1);</span><br><span class="line">        // 注册监听器</span><br><span class="line">        scheduler.listener(ctx -&gt; &#123;</span><br><span class="line">            System.out.println(ctx.task().name() + &quot; is complete&quot;);</span><br><span class="line">        &#125;);</span><br><span class="line">        // 启动调度器</span><br><span class="line">        scheduler.start();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>当代码升级任务需要增加减少时（或者变更调度时间），只需要递增全局版本号，现有的进程中的任务会自动被重新调度，那些没有被注册的任务（任务减少）会自动清除。新增的任务（新任务）在老代码的进程里是不会被调度的（没有新任务的代码无法调度），被清除的任务（老任务）在老代码的进程里会被取消调度。</p>
+<p>比如我们要取消 period2 任务，增加 period4 任务</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line">class Demo &#123;</span><br><span class="line">    public static void main(String[] args) &#123;</span><br><span class="line">        var redis = new RedisStore();</span><br><span class="line">        // sample 为任务分组名称</span><br><span class="line">        var store = new RedisTaskStore(redis, &quot;sample&quot;);</span><br><span class="line">        // 5s 为任务锁寿命</span><br><span class="line">        var scheduler = new DistributedScheduler(store, 5);</span><br><span class="line">        // 注册一个单次任务</span><br><span class="line">        scheduler.register(Trigger.onceOfDelay(5), Task.of(&quot;once1&quot;, () -&gt; &#123;</span><br><span class="line">            System.out.println(&quot;once1&quot;);</span><br><span class="line">        &#125;));</span><br><span class="line">        // 注册一个 CRON 任务</span><br><span class="line">        scheduler.register(Trigger.cronOfMinutes(1), Task.of(&quot;cron3&quot;, () -&gt; &#123;</span><br><span class="line">            System.out.println(&quot;cron3&quot;);</span><br><span class="line">        &#125;));</span><br><span class="line">        // 注册一个循环任务</span><br><span class="line">        scheduler.register(Trigger.periodOfDelay(5, 10), Task.of(&quot;period4&quot;, () -&gt; &#123;</span><br><span class="line">            System.out.println(&quot;period4&quot;);</span><br><span class="line">        &#125;));</span><br><span class="line">        // 递增全局版本号</span><br><span class="line">        scheduler.version(2);</span><br><span class="line">        // 注册监听器</span><br><span class="line">        scheduler.listener(ctx -&gt; &#123;</span><br><span class="line">            System.out.println(ctx.task().name() + &quot; is complete&quot;);</span><br><span class="line">        &#125;);</span><br><span class="line">        // 启动调度器</span><br><span class="line">        scheduler.start();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="cron4j"><a href="#cron4j" class="headerlink" title="cron4j"></a>cron4j</h2><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">&lt;dependency&gt;</span><br><span class="line">	&lt;groupId&gt;it.sauronsoftware.cron4j&lt;/groupId&gt;</span><br><span class="line">	&lt;artifactId&gt;cron4j&lt;/artifactId&gt;</span><br><span class="line">	&lt;version&gt;2.2.5&lt;/version&gt;</span><br><span class="line">&lt;/dependency&gt;</span><br></pre></td></tr></table></figure>
+
+<p>这个开源的 library 包含了基础的 cron 表达式解析功能，它还提供了任务的调度功能，不过这里并不需要使用它的调度器。我只会用到它的表达式解析功能，以及一个简单的方法用来判断当前的时间是否匹配表达式（是否该运行任务了）。</p>
+<p>我们对 cron 的时间精度要求很低，1 分钟判断一次当前的时间是否到了该运行任务的时候就可以了。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">class SchedulingPattern &#123;</span><br><span class="line">    // 表达式是否有效</span><br><span class="line">    boolean validate(String cronExpr);</span><br><span class="line">    // 是否应该运行任务了(一分钟判断一次)</span><br><span class="line">    boolean match(long nowTs);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="任务的互斥性"><a href="#任务的互斥性" class="headerlink" title="任务的互斥性"></a>任务的互斥性</h2><p>因为是分布式任务调度器，多进程环境下要控制同一个任务在调度的时间点只能有一个进程运行。使用 Redis 分布式锁很容易就可以搞定。锁需要保持一定的时间（比如默认 5s）。</p>
+<p>所有的进程都会在同一时间调度这个任务，但是只有一个进程可以抢到锁。因为分布式环境下时间的不一致性，不同机器上的进程会有较小的时间差异窗口，锁必须保持一个窗口时间，这里我默认设置为 5s（可定制），这就要求不同机器的时间差不能超过 5s，超出了这个值就会出现重复调度。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">public boolean grabTask(String name) &#123;</span><br><span class="line">    var holder = new Holder&lt;Boolean&gt;();</span><br><span class="line">    redis.execute(jedis -&gt; &#123;</span><br><span class="line">        var lockKey = keyFor(&quot;task_lock&quot;, name);</span><br><span class="line">        var ok = jedis.set(lockKey, &quot;true&quot;, SetParams.setParams().nx().ex(lockAge));</span><br><span class="line">        holder.value(ok != null);</span><br><span class="line">    &#125;);</span><br><span class="line">    return holder.value();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="全局版本号"><a href="#全局版本号" class="headerlink" title="全局版本号"></a>全局版本号</h2><p>我们给任务列表附上一个全局的版本号，当业务上需要增加或者减少调度任务时，通过变更版本号来触发进程的任务重加载。这个重加载的过程包含轮询全局版本号（Redis 的一个key），如果发现版本号变动，立即重新加载任务列表配置并重新调度所有的任务。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">private void scheduleReload() &#123;</span><br><span class="line">    // 1s 对比一次</span><br><span class="line">    this.scheduler.scheduleWithFixedDelay(() -&gt; &#123;</span><br><span class="line">        try &#123;</span><br><span class="line">            if (this.reloadIfChanged()) &#123;</span><br><span class="line">                this.rescheduleTasks();</span><br><span class="line">            &#125;</span><br><span class="line">        &#125; catch (Exception e) &#123;</span><br><span class="line">            LOG.error(&quot;reloading tasks error&quot;, e);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;, 0, 1, TimeUnit.SECONDS);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>重新调度任务先要取消当前所有正在调度的任务，然后调度刚刚加载的所有任务。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">private void rescheduleTasks() &#123;</span><br><span class="line">    this.cancelAllTasks();</span><br><span class="line">    this.scheduleTasks();</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">private void cancelAllTasks() &#123;</span><br><span class="line">    this.futures.forEach((name, future) -&gt; &#123;</span><br><span class="line">        LOG.warn(&quot;cancelling task &#123;&#125;&quot;, name);</span><br><span class="line">        future.cancel(false);</span><br><span class="line">    &#125;);</span><br><span class="line">    this.futures.clear();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>因为需要将任务持久化，所以设计了一套任务的序列化格式，这个也很简单，使用文本符号分割任务配置属性就行。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">// 一次性任务(startTime)</span><br><span class="line">ONCE@2019-04-29T15:26:29.946+0800</span><br><span class="line">// 循环任务，(startTime,endTime,period)，这里任务的结束时间是天荒地老</span><br><span class="line">PERIOD@2019-04-29T15:26:29.949+0800|292278994-08-17T15:12:55.807+0800|5</span><br><span class="line">// cron 任务，一分钟一次</span><br><span class="line">CRON@*/1 * * * *</span><br><span class="line"></span><br><span class="line">$ redis-cli</span><br><span class="line">127.0.0.1:6379&gt; hgetall sample_triggers</span><br><span class="line">1) &quot;task3&quot;</span><br><span class="line">2) &quot;CRON@*/1 * * * *&quot;</span><br><span class="line">3) &quot;task2&quot;</span><br><span class="line">4) &quot;PERIOD@2019-04-29T15:26:29.949+0800|292278994-08-17T15:12:55.807+0800|5&quot;</span><br><span class="line">5) &quot;task1&quot;</span><br><span class="line">6) &quot;ONCE@2019-04-29T15:26:29.946+0800&quot;</span><br><span class="line">7) &quot;task4&quot;</span><br><span class="line">8) &quot;PERIOD@2019-04-29T15:26:29.957+0800|292278994-08-17T15:12:55.807+0800|10&quot;</span><br></pre></td></tr></table></figure>
+
+<h2 id="线程池"><a href="#线程池" class="headerlink" title="线程池"></a>线程池</h2><p>时间调度会有一个单独的线程（单线程线程池），任务的运行由另外一个线程池来完成（数量可定制）。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">class DistributedScheduler &#123;</span><br><span class="line">    private ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();</span><br><span class="line">    private ExecutorService executor = Executors.newFixedThreadPool(threads);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>之所以要将线程池分开，是为了避免任务的执行（IO）影响了时间的精确调度。</p>
+<h2 id="FixedDelay-vs-FixedRate"><a href="#FixedDelay-vs-FixedRate" class="headerlink" title="FixedDelay vs FixedRate"></a>FixedDelay vs FixedRate</h2><p>Java 的内置调度器提供两种调度策略 FixedDelay 和 FixedRate。FixedDelay 保证同一个任务的连续两次运行有相等的时延（nextRun.startTime - lastRun.endTime），FixedRate 保证同一个任务的连续运行有确定的间隔（nextRun.startTime - lastRun.startTime）。</p>
+<p><img src="https://user-gold-cdn.xitu.io/2019/4/29/16a68a816b58ca9e?imageView2/0/w/1280/h/960/ignore-error/1" alt></p>
+<p>FixedDelay 就好比你加班到深夜12点，可以第二天12点再来上班(保证固定的休息时间)，而 FixedRate 就没那么体贴了，第二天你继续 9点过来上班。如果你不走运到第二天 9 点了还在加班，那你今天就没有休息时间了，继续上班吧。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">class ScheduledExecutorService &#123;</span><br><span class="line">    void scheduleAtFixedRate(Runnable command, long initialDelay, long period, TimeUnit unit);</span><br><span class="line">    void scheduleAtFixedDelay(Runnable command, long initialDelay, long delay, TimeUnit unit);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>分布式调度器要求有精确的调度时间，所以必须采用 FixedRate 模式，保证多节点同一个任务在同一时间被争抢。如果采用 FixedDelay 模式，会导致不同进程的调度时间错开了，分布式锁的默认 5s 时间窗口将起不到互斥作用。</p>
+<h2 id="支持无互斥任务"><a href="#支持无互斥任务" class="headerlink" title="支持无互斥任务"></a>支持无互斥任务</h2><p>互斥任务要求任务的单进程运行，无互斥任务就是没有加分布式锁的任务，可以多进程同时运行。默认需要互斥。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">class Task &#123;</span><br><span class="line">    /**</span><br><span class="line">     * 是否需要考虑多进程互斥（true表示不互斥，多进程能同时跑）</span><br><span class="line">     */</span><br><span class="line">    private boolean concurrent;</span><br><span class="line">    private String name;</span><br><span class="line">    private Runnable runner;</span><br><span class="line">    ...</span><br><span class="line">    public static Task of(String name, Runnable runner) &#123;</span><br><span class="line">        return new Task(name, false, runner);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    public static Task concurrent(String name, Runnable runner) &#123;</span><br><span class="line">        return new Task(name, true, runner);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="增加回调接口"><a href="#增加回调接口" class="headerlink" title="增加回调接口"></a>增加回调接口</h2><p>考虑到调度器的使用者可能需要对任务运行状态进行监控，这里增加了一个简单的回调接口，目前功能比较简单。能汇报运行结果（成功还是异常）和运行的耗时</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">class TaskContext &#123;</span><br><span class="line">    private Task task;</span><br><span class="line">    private long cost;  // 运行时间</span><br><span class="line">    private boolean ok;</span><br><span class="line">    private Throwable e;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">interface ISchedulerListener &#123;</span><br><span class="line">    public void onComplete(TaskContext ctx);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="支持存储扩展"><a href="#支持存储扩展" class="headerlink" title="支持存储扩展"></a>支持存储扩展</h2><p>目前只实现了 Redis 和 Memory 形式的任务存储，扩展到 zk、etcd、关系数据库也是可行的，实现下面的接口即可。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">interface ITaskStore &#123;</span><br><span class="line">  public long getRemoteVersion();</span><br><span class="line">  public Map&lt;String, String&gt; getAllTriggers();</span><br><span class="line">  public void saveAllTriggers(long version, Map&lt;String, String&gt; triggers);</span><br><span class="line">  public boolean grabTask(String name);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="代码地址"><a href="#代码地址" class="headerlink" title="代码地址"></a>代码地址</h2><p><a href="https://link.juejin.im?target=https%3A%2F%2Fgithub.com%2Fpyloque%2Ftaskino" target="_blank" rel="noopener">github.com/pyloque/tas…</a></p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://sillyfan.top/2019/04/30/一个简单的基于 Redis 的分布式任务调度器 —— Java 语言实现/" data-id="cjx1h8cyb0018662agq1vsw3u" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Java/">Java</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/分布式/">分布式</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-高并发架构的CDN知识介绍" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2019/04/30/高并发架构的CDN知识介绍/" class="article-date">
+  <time datetime="2019-04-29T16:00:00.000Z" itemprop="datePublished">2019-04-30</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2019/04/30/高并发架构的CDN知识介绍/">高并发架构的CDN知识介绍</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>对一次网络请求过程的了解程度，一是展现你的专业知识；二是深刻的理解，让你在大型网站架构中做出更适合、可靠的架构。而DNS是这一切的出发点，本文结合一张常用架构图，来描述一下这个过程。</p>
+        
+          <p class="article-more-link">
+            <a href="/2019/04/30/高并发架构的CDN知识介绍/#more">Read More</a>
+          </p>
+        
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://sillyfan.top/2019/04/30/高并发架构的CDN知识介绍/" data-id="cjx1h8czc002d662a0kixf2zb" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/架构/">架构</a></li></ul>
 
     </footer>
   </div>
@@ -437,12 +536,12 @@
         <p>网站大部分内容都来自于转载，正文第一行已注明转载地址。</p>
 <p>所有内容仅用于学习交流，当为个人笔记用。</p>
 <p>如侵权，请在文章下方评论告知，谢谢。</p>
-<p>或者联系邮箱 <a href="mailto:&#x68;&#x75;&#97;&#x6e;&#x2e;&#x64;&#x72;&#101;&#97;&#109;&#x65;&#x72;&#64;&#103;&#x6d;&#x61;&#105;&#108;&#46;&#99;&#x6f;&#x6d;" target="_blank" rel="noopener">&#x68;&#x75;&#97;&#x6e;&#x2e;&#x64;&#x72;&#101;&#97;&#109;&#x65;&#x72;&#64;&#103;&#x6d;&#x61;&#105;&#108;&#46;&#99;&#x6f;&#x6d;</a></p>
+<p>或者联系邮箱 <a href="mailto:&#x68;&#x75;&#x61;&#110;&#46;&#100;&#114;&#x65;&#97;&#x6d;&#x65;&#x72;&#x40;&#103;&#109;&#97;&#105;&#x6c;&#x2e;&#99;&#x6f;&#109;" target="_blank" rel="noopener">&#x68;&#x75;&#x61;&#110;&#46;&#100;&#114;&#x65;&#97;&#x6d;&#x65;&#x72;&#x40;&#103;&#109;&#97;&#105;&#x6c;&#x2e;&#99;&#x6f;&#109;</a></p>
 
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://sillyfan.top/2019/01/25/about/" data-id="cjwkcoov6000on02audsa05bq" class="article-share-link">Share</a>
+      <a data-url="http://sillyfan.top/2019/01/25/about/" data-id="cjx1h8cxw000m662am5tnq09l" class="article-share-link">Share</a>
       
       
     </footer>
@@ -502,6 +601,10 @@
       <ul>
         
           <li>
+            <a href="/2019/06/18/死磕Java内部类（一篇就够）/">死磕Java内部类（一篇就够）</a>
+          </li>
+        
+          <li>
             <a href="/2019/06/06/面试那点小事，你从未见过的springboot面试集锦（附详细答案）/">面试那点小事，你从未见过的spring boot面试集锦（附详细答案）</a>
           </li>
         
@@ -515,10 +618,6 @@
         
           <li>
             <a href="/2019/05/30/README/">(no title)</a>
-          </li>
-        
-          <li>
-            <a href="/2019/05/30/Effective Java/">(no title)</a>
           </li>
         
       </ul>
