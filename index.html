@@ -62,6 +62,146 @@
       <div class="outer">
         <section id="main">
   
+    <article id="post-Linux生产环境上，最常用的一套“AWK“技巧" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2019/06/20/Linux生产环境上，最常用的一套“AWK“技巧/" class="article-date">
+  <time datetime="2019-06-20T09:56:51.051Z" itemprop="datePublished">2019-06-20</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2019/06/20/Linux生产环境上，最常用的一套“AWK“技巧/">Linux生产环境上，最常用的一套“AWK“技巧</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <blockquote>
+<p>本文转载自 <a href="https://juejin.im/post/5d0b4ca1f265da1bbc6fdb9e" target="_blank" rel="noopener">https://juejin.im/post/5d0b4ca1f265da1bbc6fdb9e</a> </p>
+</blockquote>
+<p>hi，大家好，小姐姐味道最有用系列完结。记得多多转发，点赞哦。</p>
+<p>最有用系列：</p>
+<p><a href="https://juejin.im/post/5bfa4211e51d4550184546ea" target="_blank" rel="noopener">《Linux生产环境上，最常用的一套“vim“技巧》</a></p>
+<p><a href="https://juejin.im/post/5ce5190b5188252dbb08baa8" target="_blank" rel="noopener">《Linux生产环境上，最常用的一套“Sed“技巧》</a></p>
+<p><a href="https://juejin.im/post/5d0b4ca1f265da1bbc6fdb9e" target="_blank" rel="noopener">《Linux生产环境上，最常用的一套“AWK“技巧》</a></p>
+<p><a href="https://juejin.im/post/5cf5cb8c6fb9a07ef2010cb1" target="_blank" rel="noopener">《”Sed” 高级功能：我这小脑瓜都快绕晕了》</a></p>
+<p>敢用自己的名字做软件名字的，都有非常强大的自信。比如，垠语言什么的。</p>
+<p><code>awk</code>的命名得自于它的三个创始人姓别的首字母，都是<code>80来岁</code>的老爷爷了。当然也有四个人的组合：流行的GoF设计模式。但对于我这游戏爱好者来说，想到的竟然是三位一体，果然是不争气啊。</p>
+<p>它长的很像C，为什么这么有名，除了它强大的功能，我们姑且认为<code>a</code>这个字母比较靠前吧。<code>awk</code>比<code>sed</code>简单，它更像一门编程语言。</p>
+<h1 id="打印某一列"><a href="#打印某一列" class="headerlink" title="打印某一列"></a>打印某一列</h1><p>下面，这几行代码的效果基本是相同的：打印文件中的第一列。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">#Java</span><br><span class="line">System.out.println(aStr.split(&quot; &quot;)[0]);</span><br><span class="line"></span><br><span class="line">#Python</span><br><span class="line">print(aString.split(&quot; &quot;)[0])</span><br><span class="line"></span><br><span class="line">#cut 命令</span><br><span class="line">cut -d &quot; &quot; -f1   file</span><br><span class="line"></span><br><span class="line">#awk命令</span><br><span class="line">awk &apos;&#123;print $1&#125;&apos; file</span><br></pre></td></tr></table></figure>
+
+<p>这可能是awk最常用的功能了：<strong>打印文件中的某一列</strong>。它智能的去切分你的数据，不管是<code>空格</code>，还是<code>TAB</code>，大概率是你想要的。</p>
+<p>对于csv这种文件来说，分隔的字符是<code>,</code>。AWK使用<code>-F</code>参数去指定。以下代码打印csv文件中的第1和第2列。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">awk -F &quot;,&quot;  &apos;&#123;print $1,$2&#125;&apos; file</span><br></pre></td></tr></table></figure>
+
+<p>由此，我们可以看出一个基本的awk命令的组成部分。</p>
+<p><img src="https://user-gold-cdn.xitu.io/2019/6/20/16b7424643b79faa?imageView2/0/w/1280/h/960/ignore-error/1" alt></p>
+<p><strong>一般的开发语言，数组下标是以0开始的，但awk的列<code>$</code>是以<code>1</code>开始的，而<code>0</code>指的是原始字符串。</strong></p>
+<h1 id="网络状态统计"><a href="#网络状态统计" class="headerlink" title="网络状态统计"></a>网络状态统计</h1><p>本小节，采用awk统计netstat命令的一些网络状态，来看一下awk语言的基本要素。netstat的输出类似于：</p>
+<p><img src="https://user-gold-cdn.xitu.io/2019/6/20/16b7424af6eabdd0?imageView2/0/w/1280/h/960/ignore-error/1" alt></p>
+<p>其中，第6列，标明了网络连接所处于的网络状态。我们先给出awk命令，看一下统计结果。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">netstat  -ant | </span><br><span class="line">awk &apos; \</span><br><span class="line">    BEGIN&#123;print  &quot;State&quot;,&quot;Count&quot; &#125;  \</span><br><span class="line">    /^tcp/ \</span><br><span class="line">    &#123; rt[$6]++ &#125; \</span><br><span class="line">    END&#123;  for(i in rt)&#123;print i,rt[i]&#125;  &#125;&apos;</span><br></pre></td></tr></table></figure>
+
+<p>输出结果为：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">State Count</span><br><span class="line">LAST_ACK 1</span><br><span class="line">LISTEN 64</span><br><span class="line">CLOSE_WAIT 43</span><br><span class="line">ESTABLISHED 719</span><br><span class="line">SYN_SENT 5</span><br><span class="line">TIME_WAIT 146</span><br></pre></td></tr></table></figure>
+
+<p>下面这张图会配合以上命令详细说明，希望你能了解awk的精髓。</p>
+<p><img src="https://user-gold-cdn.xitu.io/2019/6/20/16b7424e94105932?imageView2/0/w/1280/h/960/ignore-error/1" alt></p>
+<p>乍一看，好吓人的命令，但是很简单。awk和我们通常的程序不太一样，它分为四个部分。</p>
+<p>1、<strong>BEGIN 开头部分</strong>，可选的。用来设置一些参数，输出一些表头，定义一些变量等。上面的命令仅打印了一行信息而已。</p>
+<p>2、<strong>END 结尾部分</strong>，可选的。用来计算一些汇总逻辑，或者输出这些内容。上面的命令，使用简单的for循环，输出了数组rt中的内容。</p>
+<p>3、<strong>Pattern 匹配部分</strong>，依然可选。用来匹配一些需要处理的行。上面的命令，只匹配tcp开头的行，其他的不进入处理。</p>
+<p>4、<strong>Action 模块</strong>。主要逻辑体，按行处理，统计打印，都可以。</p>
+<h3 id="注意点"><a href="#注意点" class="headerlink" title="注意点"></a>注意点</h3><p>1、awk的主程序部分使用单引号‘包围，而不能是双引号 2、awk的列开始的index是0，而不是1</p>
+<h1 id="例子"><a href="#例子" class="headerlink" title="例子"></a>例子</h1><p>我们从几个简单的例子，来看下awk的作用。</p>
+<p>1、输出Recv-Q不为0的记录</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">netstat -ant | awk &apos;$2 &gt; 0 &#123;print&#125;&apos;</span><br></pre></td></tr></table></figure>
+
+<p>2、外网连接数，根据ip分组</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">netstat -ant | awk &apos;/^tcp/&#123;print $4&#125;&apos; | awk -F: &apos;!/^:/&#123;print $1&#125;&apos; | sort | uniq -c</span><br></pre></td></tr></table></figure>
+
+<p>3、打印RSS物理内存占用</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">top -b -n 1 | awk &apos;NR&gt;7&#123;rss+=$6&#125;END&#123;print rss&#125;</span><br></pre></td></tr></table></figure>
+
+<p>4、过滤（去掉）空白行</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">awk &apos;NF&apos; file</span><br></pre></td></tr></table></figure>
+
+<p>5、打印奇数行</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">awk &apos;a=!a&apos; file</span><br></pre></td></tr></table></figure>
+
+<p>6、输出行数</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">awk &apos;END&#123;print NR&#125;&apos; file</span><br></pre></td></tr></table></figure>
+
+<p>这些命令，是需要了解awk的一些内部变量的，接下来我们来介绍。</p>
+<h1 id="内置变量"><a href="#内置变量" class="headerlink" title="内置变量"></a>内置变量</h1><h2 id="FS"><a href="#FS" class="headerlink" title="FS"></a>FS</h2><p>下面的两个命令是等价的 。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">awk -F &apos;:&apos;  &apos;&#123;print $3&#125;&apos; file</span><br><span class="line">awk &apos;BEGIN&#123;FS=&quot;:&quot;&#125;&#123;print $3&#125;&apos; file</span><br></pre></td></tr></table></figure>
+
+<p>/<em>/</em>BEGIN块中的<code>FS</code>，就是内部变量，可以直接指定或者输出。/<em>/</em>如果你的文件既有用<code>,</code>分隔的，也有用<code>:</code>分割的，FS甚至可以指定多个分隔符同时起作用。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">FS=&quot;[,:|]&quot;</span><br></pre></td></tr></table></figure>
+
+<h2 id="其他"><a href="#其他" class="headerlink" title="其他"></a>其他</h2><p><strong>OFS</strong> 指定输出内容的分割符，列数非常多的时候，简化操作。相似命令：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">awk -F &apos;:&apos; &apos;&#123;print $1,&quot;-&quot;,$2,&quot;-&quot;,$4&#125;&apos; file</span><br><span class="line">awk &apos;BEGIN&#123;FS=&quot;:&quot;;OFS=&quot;-&quot;&#125;&#123;print $1,$2,$4&#125;&apos; file</span><br></pre></td></tr></table></figure>
+
+<p><strong>NF</strong> 列数。非常有用，比如，过滤一些列数不满足条件的内容。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">awk -F, &apos;&#123;if(NF==3)&#123;print&#125;&#125;&apos; file</span><br></pre></td></tr></table></figure>
+
+<p><strong>NR</strong> 行号，例如，下面两个命令是等价的。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">cat -n file</span><br><span class="line">awk &apos;&#123;print NR,$0&#125;&apos; file</span><br></pre></td></tr></table></figure>
+
+<p><strong>RS</strong> 记录分隔标志 <strong>ORS</strong> 指定记录输出的分隔标志</p>
+<p><strong>FILENAME</strong> 当前处理的文件名称，在一次性处理多个文件时非常有用</p>
+<h2 id="编程语言特性"><a href="#编程语言特性" class="headerlink" title="编程语言特性"></a>编程语言特性</h2><h3 id="数学运算"><a href="#数学运算" class="headerlink" title="数学运算"></a>数学运算</h3><p>从上面的代码可以看出，awk可以做一些简单的运算。它的语言简洁，不需要显示的定义变量的类型。</p>
+<p>比如上面的<code>rt[$6]++</code>，就已经默认定义了一个叫做rt的hash(array?)，里面的key是网络状态，而value是可以进行运算的(+-/*/%)。</p>
+<p>包含一些内置的数学运算（有限)</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">int</span><br><span class="line">log</span><br><span class="line">sqrt</span><br><span class="line">exp</span><br><span class="line">sin</span><br><span class="line">cos</span><br><span class="line">atan2</span><br><span class="line">rand</span><br><span class="line">srand</span><br></pre></td></tr></table></figure>
+
+<h3 id="字符串操作"><a href="#字符串操作" class="headerlink" title="字符串操作"></a>字符串操作</h3><p>类似其他语言，awk也内置了很多字符串操作函数。它本来就是处理字符串的，所以必须强大。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">length(str) #获取字符串长度</span><br><span class="line">split(input-string,output-array,separator)</span><br><span class="line">substr(input-string, location, length)</span><br></pre></td></tr></table></figure>
+
+<h3 id="语言特性"><a href="#语言特性" class="headerlink" title="语言特性"></a>语言特性</h3><p>awk是个小型的编程语言，看它的基本语法，如果你需要复杂一点的逻辑，请自行深入了解，包括一些时间处理函数：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"># logic</span><br><span class="line">if(x=a)&#123;&#125;</span><br><span class="line">if(x=a)&#123;&#125;else&#123;&#125;</span><br><span class="line">while(x=a)&#123;break;continue;&#125;</span><br><span class="line">do&#123;&#125;while(x=a)</span><br><span class="line">for(;;)&#123;&#125;</span><br><span class="line"></span><br><span class="line"># array</span><br><span class="line">arr[key] = value</span><br><span class="line">for(key in arr)&#123;arr[key]&#125;</span><br><span class="line">delete arr[key]</span><br><span class="line"></span><br><span class="line">asort(arr) #简单排序</span><br></pre></td></tr></table></figure>
+
+<p>据说，awk可以胜任所有的文本操作。因为它本身就是一门语言啊。</p>
+<h1 id="End"><a href="#End" class="headerlink" title="End"></a>End</h1><p>曾经使用awk编写过复杂的日志处理和统计程序。虽然比写<code>sed</code>舒畅了很多，但还是备受煎熬。更加上现在有各种nawk,gawk版本之间的区别，所以业务复杂度一增长，就习惯性的转向更加简洁、工具更全的python。</p>
+<p>awk处理一些简单的文本还是极其方便的，最常用的还是打印某一列之类的，包括一些格式化输出。对于awk，要简单的滚瓜烂熟，复杂的耳熟能详，毕竟有些<code>大牛</code>，就喜欢写这种脚本呢。</p>
+<p>更多精彩文章。</p>
+<p><a href="https://juejin.im/post/5c49317d5188252d3b3e377b" target="_blank" rel="noopener">《微服务不是全部，只是特定领域的子集》</a></p>
+<p><a href="https://juejin.im/post/5bf778ef5188251b8a26ed8b" target="_blank" rel="noopener">《“分库分表” ？选型和流程要慎重，否则会失控》</a></p>
+<p><a href="https://juejin.im/post/5bee22c051882528c4466334" target="_blank" rel="noopener">这么多监控组件，总有一款适合你</a></p>
+<p><a href="https://juejin.im/post/5c186088f265da61691728fd" target="_blank" rel="noopener">《Kafka消息系统基础知识索引》</a></p>
+<p><a href="https://juejin.im/post/5c75cbabe51d453ecf7d6f3f" target="_blank" rel="noopener">《使用Netty，我们到底在开发些什么？》</a></p>
+<p>Linux五件套之类的。</p>
+<p><a href="https://juejin.im/post/5bed239251882502df7f1e8e" target="_blank" rel="noopener">《Linux之《荒岛余生》（一）准备篇》</a></p>
+<p><a href="https://juejin.im/post/5bf0b52df265da611b57f0e6" target="_blank" rel="noopener">《Linux之《荒岛余生》（二）CPU篇》</a></p>
+<p><a href="https://juejin.im/post/5c00aee06fb9a049be5d3641" target="_blank" rel="noopener">《Linux之《荒岛余生》（三）内存篇》</a></p>
+<p><a href="https://juejin.im/post/5c1dff6851882546150afb8f" target="_blank" rel="noopener">《Linux之《荒岛余生》（四）I/O篇》</a></p>
+<p><a href="https://juejin.im/post/5c272ec66fb9a049e93ccffe" target="_blank" rel="noopener">《Linux之《荒岛余生》（五）网络篇》</a></p>
+<p><img src="https://user-gold-cdn.xitu.io/2019/6/17/16b64cb6e60d3b3a?imageView2/0/w/1280/h/960/ignore-error/1" alt></p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://sillyfan.top/2019/06/20/Linux生产环境上，最常用的一套“AWK“技巧/" data-id="cjx4hrzj900059c2aoewiejxu" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Linux/">Linux</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Shell/">Shell</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
     <article id="post-死磕Java内部类（一篇就够）" class="article article-type-post" itemscope itemprop="blogPost">
   <div class="article-meta">
     <a href="/2019/06/18/死磕Java内部类（一篇就够）/" class="article-date">
@@ -214,7 +354,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://sillyfan.top/2019/06/18/死磕Java内部类（一篇就够）/" data-id="cjx1h8cyc0019662ardop49cy" class="article-share-link">Share</a>
+      <a data-url="http://sillyfan.top/2019/06/18/死磕Java内部类（一篇就够）/" data-id="cjx4hrzkc001z9c2asd54sq5x" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Java/">Java</a></li></ul>
@@ -330,7 +470,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://sillyfan.top/2019/06/06/面试那点小事，你从未见过的springboot面试集锦（附详细答案）/" data-id="cjx1h8cz60025662ao9r4ekru" class="article-share-link">Share</a>
+      <a data-url="http://sillyfan.top/2019/06/06/面试那点小事，你从未见过的springboot面试集锦（附详细答案）/" data-id="cjx4hrzka001u9c2azjvds5cg" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Java/">Java</a></li></ul>
@@ -389,7 +529,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://sillyfan.top/2019/06/01/SpringBoot实现动态控制定时任务-支持多参数/" data-id="cjx1h8cxt000i662ahmua16o8" class="article-share-link">Share</a>
+      <a data-url="http://sillyfan.top/2019/06/01/SpringBoot实现动态控制定时任务-支持多参数/" data-id="cjx4hrzjm000n9c2a2mf0jizh" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Java/">Java</a></li></ul>
@@ -532,7 +672,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://sillyfan.top/2019/05/31/感受lambda之美，推荐收藏，需要时查阅/" data-id="cjx1h8cyl001g662a7orz5ag3" class="article-share-link">Share</a>
+      <a data-url="http://sillyfan.top/2019/05/31/感受lambda之美，推荐收藏，需要时查阅/" data-id="cjx4hrzjs00119c2aqf04zogn" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Java/">Java</a></li></ul>
@@ -577,7 +717,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://sillyfan.top/2019/05/30/README/" data-id="cjx1h8cxz000r662axs53vaw6" class="article-share-link">Share</a>
+      <a data-url="http://sillyfan.top/2019/05/30/README/" data-id="cjx4hrzjf000d9c2a90qphtp6" class="article-share-link">Share</a>
       
       
     </footer>
@@ -626,7 +766,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://sillyfan.top/2019/05/30/Effective Java/" data-id="cjx1h8cxf0001662arcjaje6r" class="article-share-link">Share</a>
+      <a data-url="http://sillyfan.top/2019/05/30/Effective Java/" data-id="cjx4hrziw00009c2a1u5m42op" class="article-share-link">Share</a>
       
       
     </footer>
@@ -675,7 +815,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://sillyfan.top/2019/05/30/hello-world/" data-id="cjx1h8cy0000t662at3ojvg0x" class="article-share-link">Share</a>
+      <a data-url="http://sillyfan.top/2019/05/30/hello-world/" data-id="cjx4hrzjk000j9c2a4f7hi1h4" class="article-share-link">Share</a>
       
       
     </footer>
@@ -778,7 +918,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://sillyfan.top/2019/05/28/熟练掌握各种MQ？那面试官很可能用这道题目先摸摸你的老底！/" data-id="cjx1h8cza002a662amj4xwv81" class="article-share-link">Share</a>
+      <a data-url="http://sillyfan.top/2019/05/28/熟练掌握各种MQ？那面试官很可能用这道题目先摸摸你的老底！/" data-id="cjx4hrzk6001n9c2akzav9ay0" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Java/">Java</a></li></ul>
@@ -927,145 +1067,10 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://sillyfan.top/2019/05/22/从模板方法模式到JDBCTemplate/" data-id="cjx1h8cy1000w662at3asvbja" class="article-share-link">Share</a>
+      <a data-url="http://sillyfan.top/2019/05/22/从模板方法模式到JDBCTemplate/" data-id="cjx4hrzjt00139c2aq4ok9vd0" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Java/">Java</a></li></ul>
-
-    </footer>
-  </div>
-  
-</article>
-
-
-  
-    <article id="post-拜托！面试请不要再问我SpringCloud底层原理" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2019/05/21/拜托！面试请不要再问我SpringCloud底层原理/" class="article-date">
-  <time datetime="2019-05-21T02:50:09.009Z" itemprop="datePublished">2019-05-21</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2019/05/21/拜托！面试请不要再问我SpringCloud底层原理/">拜托！面试请不要再问我Spring Cloud底层原理</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <blockquote>
-<p>本文转载自 <a href="https://juejin.im/post/5be13b83f265da6116393fc7" target="_blank" rel="noopener">https://juejin.im/post/5be13b83f265da6116393fc7</a><br>欢迎关注微信公众号：<strong>石杉的架构笔记（id：shishan100）</strong></p>
-</blockquote>
-<p>每周一至五早8点半，精品技术文章准时送上！</p>
-<h2 id="目录"><a href="#目录" class="headerlink" title="目录"></a>目录</h2><p><strong>一、业务场景介绍</strong></p>
-<p><strong>二、Spring Cloud核心组件：Eureka</strong></p>
-<p><strong>三、Spring Cloud核心组件：Feign</strong></p>
-<p><strong>四、Spring Cloud核心组件：Ribbon</strong></p>
-<p><strong>五、Spring Cloud核心组件：Hystrix</strong></p>
-<p><strong>六、Spring Cloud核心组件：Zuul</strong></p>
-<p><strong>七、总结</strong></p>
-<hr>
-<h2 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h2><p>毫无疑问，Spring Cloud是目前微服务架构领域的翘楚，无数的书籍博客都在讲解这个技术。不过大多数讲解还停留在对Spring Cloud功能使用的层面，其底层的很多原理，很多人可能并不知晓。<strong>因此本文将通过大量的手绘图</strong>，给大家谈谈Spring Cloud微服务架构的底层原理。</p>
-<p>实际上，Spring Cloud是一个全家桶式的技术栈，包含了很多组件。本文先从其最核心的几个组件入手，来剖析一下其底层的工作原理。<strong>也就是Eureka、Ribbon、Feign、Hystrix、Zuul这几个组件。</strong></p>
-<hr>
-<h2 id="一、业务场景介绍"><a href="#一、业务场景介绍" class="headerlink" title="一、业务场景介绍"></a>一、业务场景介绍</h2><p>先来给大家说一个业务场景，假设咱们现在开发一个电商网站，要实现支付订单的功能，流程如下：</p>
-<pre><code>* 创建一个订单后，如果用户立刻支付了这个订单，我们需要将订单状态更新为“已支付”
-* 扣减相应的商品库存
-* 通知仓储中心，进行发货
-* 给用户的这次购物增加相应的积分</code></pre><p>针对上述流程，<strong>我们需要有订单服务、库存服务、仓储服务、积分服务</strong>。整个流程的大体思路如下：</p>
-<pre><code>* 用户针对一个订单完成支付之后，就会去找订单服务，更新订单状态
-* 订单服务调用库存服务，完成相应功能
-* 订单服务调用仓储服务，完成相应功能
-* 订单服务调用积分服务，完成相应功能</code></pre><p><strong>至此，整个支付订单的业务流程结束</strong></p>
-<hr>
-<p>下图这张图，清晰表明了各服务间的调用过程：<br><img src="https://user-gold-cdn.xitu.io/2018/11/7/166ebffb48c481a3?imageView2/0/w/1280/h/960/ignore-error/1" alt></p>
-<p>好！有了业务场景之后，咱们就一起来看看Spring Cloud微服务架构中，这几个组件如何相互协作，各自发挥的作用以及其背后的原理。</p>
-<h2 id="二、Spring-Cloud核心组件：Eureka"><a href="#二、Spring-Cloud核心组件：Eureka" class="headerlink" title="二、Spring Cloud核心组件：Eureka"></a>二、Spring Cloud核心组件：Eureka</h2><p><strong>咱们来考虑第一个问题</strong>：订单服务想要调用库存服务、仓储服务，或者积分服务，怎么调用？</p>
-<pre><code>* 订单服务压根儿就不知道人家库存服务在哪台机器上啊！他就算想要发起一个请求，都不知道发送给谁，有心无力！
-* 这时候，就轮到Spring Cloud Eureka出场了。Eureka是微服务架构中的注册中心，专门负责服务的注册与发现。</code></pre><p>咱们来看看下面的这张图，结合图来仔细剖析一下整个流程：<br><img src="https://user-gold-cdn.xitu.io/2018/11/7/166ebffcb7ce31b8?imageView2/0/w/1280/h/960/ignore-error/1" alt></p>
-<p>如上图所示，库存服务、仓储服务、积分服务中都有一个<strong>Eureka Client组件，这个组件专门负责将这个服务的信息注册到Eureka Server中</strong>。说白了，就是告诉Eureka Server，自己在哪台机器上，监听着哪个端口。而<strong>Eureka Server是一个注册中心，里面有一个注册表，保存了各服务所在的机器和端口号</strong></p>
-<p>订单服务里也有一个Eureka Client组件，这个Eureka Client组件会找Eureka Server问一下：库存服务在哪台机器啊？监听着哪个端口啊？仓储服务呢？积分服务呢？然后就可以把这些相关信息从Eureka Server的注册表中拉取到自己本地缓存起来。</p>
-<p>这时如果订单服务想要调用库存服务，不就可以找自己本地的Eureka Client问一下库存服务在哪台机器？监听哪个端口吗？收到响应后，紧接着就可以发送一个请求过去，调用库存服务扣减库存的那个接口！同理，如果订单服务要调用仓储服务、积分服务，也是如法炮制。</p>
-<p>总结一下：</p>
-<pre><code>* **Eureka Client：**负责将这个服务的信息注册到Eureka Server中
-* **Eureka Server：**注册中心，里面有一个注册表，保存了各个服务所在的机器和端口号</code></pre><h2 id="三、Spring-Cloud核心组件：Feign"><a href="#三、Spring-Cloud核心组件：Feign" class="headerlink" title="三、Spring Cloud核心组件：Feign"></a>三、Spring Cloud核心组件：Feign</h2><p>现在订单服务确实知道库存服务、积分服务、仓库服务在哪里了，同时也监听着哪些端口号了。<strong>但是新问题又来了：难道订单服务要自己写一大堆代码，跟其他服务建立网络连接，然后构造一个复杂的请求，接着发送请求过去，最后对返回的响应结果再写一大堆代码来处理吗？</strong></p>
-<hr>
-<p>这是上述流程翻译的代码片段，咱们一起来看看，体会一下这种绝望而无助的感受！！！</p>
-<p><strong>友情提示，前方高能：</strong><br><img src="https://user-gold-cdn.xitu.io/2018/11/7/166ebced960f2024?imageView2/0/w/1280/h/960/ignore-error/1" alt><br><a href></a></p>
-<p><a href></a></p>
-<p>看完上面那一大段代码，有没有感到后背发凉、一身冷汗？实际上你进行服务间调用时，如果每次都手写代码，代码量比上面那段要多至少几倍，所以这个事压根儿就不是地球人能干的。</p>
-<p>既然如此，那怎么办呢？别急，Feign早已为我们提供好了优雅的解决方案。来看看如果用Feign的话，你的订单服务调用库存服务的代码会变成啥样？<br><img src="https://user-gold-cdn.xitu.io/2018/11/7/166ebcf01b773dd4?imageView2/0/w/1280/h/960/ignore-error/1" alt><br><a href></a></p>
-<p><a href></a></p>
-<p>看完上面的代码什么感觉？是不是感觉整个世界都干净了，又找到了活下去的勇气！没有底层的建立连接、构造请求、解析响应的代码，直接就是用注解定义一个 FeignClient接口，然后调用那个接口就可以了。人家Feign Client会在底层根据你的注解，跟你指定的服务建立连接、构造请求、发起靕求、获取响应、解析响应，等等。这一系列脏活累活，人家Feign全给你干了。</p>
-<p>那么问题来了，Feign是如何做到这么神奇的呢？很简单，<strong>Feign的一个关键机制就是使用了动态代理</strong>。咱们一起来看看下面的图，结合图来分析：</p>
-<pre><code>* 首先，如果你对某个接口定义了@FeignClient注解，Feign就会针对这个接口创建一个动态代理
-* 接着你要是调用那个接口，本质就是会调用 Feign创建的动态代理，这是核心中的核心
-* Feign的动态代理会根据你在接口上的@RequestMapping等注解，来动态构造出你要请求的服务的地址
-* 最后针对这个地址，发起请求、解析响应</code></pre><p><img src="https://user-gold-cdn.xitu.io/2018/11/7/166ebfff505b2a20?imageView2/0/w/1280/h/960/ignore-error/1" alt><br><a href></a></p>
-<p><a href></a></p>
-<h2 id="四、Spring-Cloud核心组件：Ribbon"><a href="#四、Spring-Cloud核心组件：Ribbon" class="headerlink" title="四、Spring Cloud核心组件：Ribbon"></a>四、Spring Cloud核心组件：Ribbon</h2><p>说完了Feign，还没完。现在新的问题又来了，如果人家库存服务部署在了5台机器上，如下所示：</p>
-<pre><code>* 192.168.169:9000
-* 192.168.170:9000
-* 192.168.171:9000
-* 192.168.172:9000
-* 192.168.173:9000</code></pre><p><strong>这下麻烦了！人家Feign怎么知道该请求哪台机器呢？</strong></p>
-<pre><code>* 这时Spring Cloud Ribbon就派上用场了。Ribbon就是专门解决这个问题的。它的作用是**负载均衡**，会帮你在每次请求时选择一台机器，均匀的把请求分发到各个机器上
-* Ribbon的负载均衡默认使用的最经典的**Round Robin轮询算法**。这是啥？简单来说，就是如果订单服务对库存服务发起10次请求，那就先让你请求第1台机器、然后是第2台机器、第3台机器、第4台机器、第5台机器，接着再来—个循环，第1台机器、第2台机器。。。以此类推。</code></pre><p><strong>此外，Ribbon是和Feign以及Eureka紧密协作，完成工作的，具体如下：</strong></p>
-<pre><code>* 首先Ribbon会从 Eureka Client里获取到对应的服务注册表，也就知道了所有的服务都部署在了哪些机器上，在监听哪些端口号。
-* 然后Ribbon就可以使用默认的Round Robin算法，从中选择一台机器
-* Feign就会针对这台机器，构造并发起请求。</code></pre><p>对上述整个过程，再来一张图，帮助大家更深刻的理解：<br><img src="https://user-gold-cdn.xitu.io/2018/11/7/166ec001dc155e98?imageView2/0/w/1280/h/960/ignore-error/1" alt><br><a href></a></p>
-<p><a href></a></p>
-<hr>
-<h2 id="五、Spring-Cloud核心组件：Hystrix"><a href="#五、Spring-Cloud核心组件：Hystrix" class="headerlink" title="五、Spring Cloud核心组件：Hystrix"></a>五、Spring Cloud核心组件：Hystrix</h2><p>在微服务架构里，一个系统会有很多的服务。<strong>以本文的业务场景为例</strong>：订单服务在一个业务流程里需要调用三个服务。现在假设订单服务自己最多只有100个线程可以处理请求，然后呢，积分服务不幸的挂了，每次订单服务调用积分服务的时候，都会卡住几秒钟，然后抛出—个超时异常。</p>
-<p><strong>咱们一起来分析一下，这样会导致什么问题？</strong></p>
-<pre><code>1. 如果系统处于高并发的场景下，大量请求涌过来的时候，订单服务的100个线程都会卡在请求积分服务这块。导致订单服务没有一个线程可以处理请求
-1. 然后就会导致别人请求订单服务的时候，发现订单服务也挂了，不响应任何请求了</code></pre><p>上面这个，就是<strong>微服务架构中恐怖的服务雪崩问题</strong>，如下图所示：<br><img src="https://user-gold-cdn.xitu.io/2018/11/7/166ec0033f64a0a7?imageView2/0/w/1280/h/960/ignore-error/1" alt></p>
-<p>如上图，这么多服务互相调用，要是不做任何保护的话，某一个服务挂了，就会引起连锁反应，导致别的服务也挂。比如积分服务挂了，会导致订单服务的线程全部卡在请求积分服务这里，没有一个线程可以工作，瞬间导致订单服务也挂了，别人请求订单服务全部会卡住，无法响应。</p>
-<p><strong>但是我们思考一下，就算积分服务挂了，订单服务也可以不用挂啊！为什么？</strong></p>
-<pre><code>* 我们结合业务来看：支付订单的时候，只要把库存扣减了，然后通知仓库发货就OK了
-* 如果积分服务挂了，大不了等他恢复之后，慢慢人肉手工恢复数据！为啥一定要因为一个积分服务挂了，就直接导致订单服务也挂了呢？不可以接受！</code></pre><p><strong>现在问题分析完了，如何解决？</strong></p>
-<p>这时就轮到Hystrix闪亮登场了。Hystrix是隔离、熔断以及降级的一个框架。啥意思呢？说白了，<strong>Hystrix会搞很多个小小的线程池</strong>，比如订单服务请求库存服务是一个线程池，请求仓储服务是一个线程池，请求积分服务是一个线程池。每个线程池里的线程就仅仅用于请求那个服务。</p>
-<p><strong>打个比方：现在很不幸，积分服务挂了，会咋样？</strong></p>
-<p>当然会导致订单服务里那个用来调用积分服务的线程都卡死不能工作了啊！但由于订单服务调用库存服务、仓储服务的这两个线程池都是正常工作的，所以这两个服务不会受到任何影响。</p>
-<p>这个时候如果别人请求订单服务，订单服务还是可以正常调用库存服务扣减库存，调用仓储服务通知发货。只不过调用积分服务的时候，每次都会报错。<strong>但是如果积分服务都挂了，每次调用都要去卡住几秒钟干啥呢？有意义吗？当然没有！</strong>所以我们直接对积分服务熔断不就得了，比如在5分钟内请求积分服务直接就返回了，不要去走网络请求卡住几秒钟，<strong>这个过程，就是所谓的熔断！</strong></p>
-<hr>
-<p><strong>那人家又说，兄弟，积分服务挂了你就熔断，好歹你干点儿什么啊！别啥都不干就直接返回啊？</strong>没问题，咱们就来个降级：每次调用积分服务，你就在数据库里记录一条消息，说给某某用户增加了多少积分，因为积分服务挂了，导致没增加成功！这样等积分服务恢复了，你可以根据这些记录手工加一下积分。<strong>这个过程，就是所谓的降级。</strong></p>
-<hr>
-<p>为帮助大家更直观的理解，接下来用一张图，梳理一下Hystrix隔离、熔断和降级的全流程：<br><img src="https://user-gold-cdn.xitu.io/2018/11/7/166ec004edf94426?imageView2/0/w/1280/h/960/ignore-error/1" alt><br><a href></a></p>
-<p><a href></a></p>
-<h2 id="六、Spring-Cloud核心组件：Zuul"><a href="#六、Spring-Cloud核心组件：Zuul" class="headerlink" title="六、Spring Cloud核心组件：Zuul"></a>六、Spring Cloud核心组件：Zuul</h2><p>说完了Hystrix，接着给大家说说最后一个组件：Zuul，也就是微服务网关。<strong>这个组件是负责网络路由的。</strong>不懂网络路由？行，那我给你说说，如果没有Zuul的日常工作会怎样？</p>
-<p>假设你后台部署了几百个服务，现在有个前端兄弟，人家请求是直接从浏览器那儿发过来的。<strong>打个比方</strong>：人家要请求一下库存服务，你难道还让人家记着这服务的名字叫做inventory-service？部署在5台机器上？就算人家肯记住这一个，你后台可有几百个服务的名称和地址呢？难不成人家请求一个，就得记住一个？你要这样玩儿，那真是友谊的小船，说翻就翻！</p>
-<p>上面这种情况，压根儿是不现实的。所以一般微服务架构中都必然会设计一个网关在里面，像android、ios、pc前端、微信小程序、H5等等，不用去关心后端有几百个服务，就知道有一个网关，所有请求都往网关走，网关会根据请求中的一些特征，将请求转发给后端的各个服务。</p>
-<p>而且有一个网关之后，还有很多好处，比如可以做<strong>统一的降级、限流、认证授权、安全</strong>，等等。</p>
-<h2 id="七、总结："><a href="#七、总结：" class="headerlink" title="七、总结："></a>七、总结：</h2><p>最后再来总结一下，上述几个Spring Cloud核心组件，在微服务架构中，分别扮演的角色：</p>
-<pre><code>* **Eureka**：各个服务启动时，Eureka Client都会将服务注册到Eureka Server，并且Eureka Client还可以反过来从Eureka Server拉取注册表，从而知道其他服务在哪里
-* **Ribbon**：服务间发起请求的时候，基于Ribbon做负载均衡，从一个服务的多台机器中选择一台
-* **Feign**：基于Feign的动态代理机制，根据注解和选择的机器，拼接请求URL地址，发起请求
-* **Hystrix**：发起请求是通过Hystrix的线程池来走的，不同的服务走不同的线程池，实现了不同服务调用的隔离，避免了服务雪崩的问题
-* **Zuul**：如果前端、移动端要调用后端系统，统一从Zuul网关进入，由Zuul网关转发请求给对应的服务</code></pre><p>以上就是我们通过一个电商业务场景，阐述了Spring Cloud微服务架构几个核心组件的底层原理。</p>
-<p><strong>文字总结还不够直观？没问题！</strong>我们将Spring Cloud的5个核心组件通过一张图串联起来，再来直观的感受一下其底层的架构原理：<br><img src="https://user-gold-cdn.xitu.io/2018/11/7/166ec006b1536f43?imageView2/0/w/1280/h/960/ignore-error/1" alt><br><a href></a></p>
-<p><a href></a></p>
-<p>如有收获，请帮忙转发，您的鼓励是作者最大的动力，谢谢！</p>
-<p><img src="https://user-gold-cdn.xitu.io/2018/11/6/166e9511e7162c8b?imageView2/0/w/1280/h/960/ignore-error/1" alt></p>
-<p>Spring Cloud原创系列文章，将会持续更新</p>
-<p>欢迎关注微信公众号：<strong>石杉的架构笔记（id:shishan100）</strong></p>
-<p>十余年<strong>BAT架构经验</strong>倾囊相授</p>
-
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://sillyfan.top/2019/05/21/拜托！面试请不要再问我SpringCloud底层原理/" data-id="cjx1h8cy80014662a17wdmng4" class="article-share-link">Share</a>
-      
-      
-  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Spring/">Spring</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/微服务/">微服务</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/服务器/">服务器</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/架构/">架构</a></li></ul>
 
     </footer>
   </div>
@@ -1092,7 +1097,7 @@
   <div class="widget-wrap">
     <h3 class="widget-title">Tags</h3>
     <div class="widget">
-      <ul class="tag-list"><li class="tag-list-item"><a class="tag-list-link" href="/tags/HDFS/">HDFS</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Hadoop/">Hadoop</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Java/">Java</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/MySQL/">MySQL</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Reactor/">Reactor</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/RxJava/">RxJava</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Spring/">Spring</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/TCP-IP/">TCP/IP</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Vue-js/">Vue.js</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/java/">java</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/分布式/">分布式</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/后端/">后端</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/微服务/">微服务</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/数据库/">数据库</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/服务器/">服务器</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/架构/">架构</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/源码/">源码</a></li></ul>
+      <ul class="tag-list"><li class="tag-list-item"><a class="tag-list-link" href="/tags/HDFS/">HDFS</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Hadoop/">Hadoop</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Java/">Java</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Linux/">Linux</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/MySQL/">MySQL</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Reactor/">Reactor</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/RxJava/">RxJava</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Shell/">Shell</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Spring/">Spring</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/TCP-IP/">TCP/IP</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Vue-js/">Vue.js</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/java/">java</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/分布式/">分布式</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/后端/">后端</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/微服务/">微服务</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/数据库/">数据库</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/服务器/">服务器</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/架构/">架构</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/源码/">源码</a></li></ul>
     </div>
   </div>
 
@@ -1102,7 +1107,7 @@
   <div class="widget-wrap">
     <h3 class="widget-title">Tag Cloud</h3>
     <div class="widget tagcloud">
-      <a href="/tags/HDFS/" style="font-size: 10px;">HDFS</a> <a href="/tags/Hadoop/" style="font-size: 10px;">Hadoop</a> <a href="/tags/Java/" style="font-size: 20px;">Java</a> <a href="/tags/MySQL/" style="font-size: 10px;">MySQL</a> <a href="/tags/Reactor/" style="font-size: 10px;">Reactor</a> <a href="/tags/RxJava/" style="font-size: 10px;">RxJava</a> <a href="/tags/Spring/" style="font-size: 13.33px;">Spring</a> <a href="/tags/TCP-IP/" style="font-size: 10px;">TCP/IP</a> <a href="/tags/Vue-js/" style="font-size: 10px;">Vue.js</a> <a href="/tags/java/" style="font-size: 10px;">java</a> <a href="/tags/分布式/" style="font-size: 10px;">分布式</a> <a href="/tags/后端/" style="font-size: 10px;">后端</a> <a href="/tags/微服务/" style="font-size: 10px;">微服务</a> <a href="/tags/数据库/" style="font-size: 10px;">数据库</a> <a href="/tags/服务器/" style="font-size: 10px;">服务器</a> <a href="/tags/架构/" style="font-size: 16.67px;">架构</a> <a href="/tags/源码/" style="font-size: 10px;">源码</a>
+      <a href="/tags/HDFS/" style="font-size: 10px;">HDFS</a> <a href="/tags/Hadoop/" style="font-size: 10px;">Hadoop</a> <a href="/tags/Java/" style="font-size: 20px;">Java</a> <a href="/tags/Linux/" style="font-size: 10px;">Linux</a> <a href="/tags/MySQL/" style="font-size: 10px;">MySQL</a> <a href="/tags/Reactor/" style="font-size: 10px;">Reactor</a> <a href="/tags/RxJava/" style="font-size: 10px;">RxJava</a> <a href="/tags/Shell/" style="font-size: 10px;">Shell</a> <a href="/tags/Spring/" style="font-size: 13.33px;">Spring</a> <a href="/tags/TCP-IP/" style="font-size: 10px;">TCP/IP</a> <a href="/tags/Vue-js/" style="font-size: 10px;">Vue.js</a> <a href="/tags/java/" style="font-size: 10px;">java</a> <a href="/tags/分布式/" style="font-size: 10px;">分布式</a> <a href="/tags/后端/" style="font-size: 10px;">后端</a> <a href="/tags/微服务/" style="font-size: 10px;">微服务</a> <a href="/tags/数据库/" style="font-size: 10px;">数据库</a> <a href="/tags/服务器/" style="font-size: 10px;">服务器</a> <a href="/tags/架构/" style="font-size: 16.67px;">架构</a> <a href="/tags/源码/" style="font-size: 10px;">源码</a>
     </div>
   </div>
 
@@ -1124,6 +1129,10 @@
       <ul>
         
           <li>
+            <a href="/2019/06/20/Linux生产环境上，最常用的一套“AWK“技巧/">Linux生产环境上，最常用的一套“AWK“技巧</a>
+          </li>
+        
+          <li>
             <a href="/2019/06/18/死磕Java内部类（一篇就够）/">死磕Java内部类（一篇就够）</a>
           </li>
         
@@ -1137,10 +1146,6 @@
         
           <li>
             <a href="/2019/05/31/感受lambda之美，推荐收藏，需要时查阅/">感受lambda之美，推荐收藏，需要时查阅</a>
-          </li>
-        
-          <li>
-            <a href="/2019/05/30/README/">(no title)</a>
           </li>
         
       </ul>
