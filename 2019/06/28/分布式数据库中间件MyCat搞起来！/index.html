@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html>
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="utf-8">
+  
+
+  
+  <title>分布式数据库中间件 MyCat 搞起来！ | HUAN</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="本文转载自 https://juejin.im/post/5d1566caf265da1ba77cb708   关于 MyCat 的铺垫文章已经写了三篇了： 1. [MySQL 只能做小项目？松哥要说几句公道话！](https://link.juejin.im?target=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2FbcyjBgEqg6Or5zdi4jHaiA)">
+<meta name="keywords" content="MySQL">
+<meta property="og:type" content="article">
+<meta property="og:title" content="分布式数据库中间件 MyCat 搞起来！">
+<meta property="og:url" content="http://sillyfan.top/2019/06/28/分布式数据库中间件MyCat搞起来！/index.html">
+<meta property="og:site_name" content="HUAN">
+<meta property="og:description" content="本文转载自 https://juejin.im/post/5d1566caf265da1ba77cb708   关于 MyCat 的铺垫文章已经写了三篇了： 1. [MySQL 只能做小项目？松哥要说几句公道话！](https://link.juejin.im?target=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2FbcyjBgEqg6Or5zdi4jHaiA)">
+<meta property="og:locale" content="default">
+<meta property="og:image" content="https://user-gold-cdn.xitu.io/2019/6/28/16b9b999eca3fda2?imageView2/0/w/1280/h/960/ignore-error/1">
+<meta property="og:image" content="https://user-gold-cdn.xitu.io/2019/6/28/16b9b999ec783a97?imageView2/0/w/1280/h/960/ignore-error/1">
+<meta property="og:image" content="https://user-gold-cdn.xitu.io/2019/6/28/16b9b99a1a7fec73?imageView2/0/w/1280/h/960/ignore-error/1">
+<meta property="og:image" content="https://user-gold-cdn.xitu.io/2019/6/28/16b9b999ecbdcb90?imageView2/0/w/1280/h/960/ignore-error/1">
+<meta property="og:image" content="https://user-gold-cdn.xitu.io/2019/6/28/16b9b999f41ebb17?imageView2/0/w/1280/h/960/ignore-error/1">
+<meta property="og:image" content="https://user-gold-cdn.xitu.io/2019/6/28/16b9b999eccf3c2f?imageView2/0/w/1280/h/960/ignore-error/1">
+<meta property="og:image" content="https://user-gold-cdn.xitu.io/2019/6/28/16b9b99ae9446d11?imageView2/0/w/1280/h/960/ignore-error/1">
+<meta property="og:updated_time" content="2019-06-28T07:51:14.856Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="分布式数据库中间件 MyCat 搞起来！">
+<meta name="twitter:description" content="本文转载自 https://juejin.im/post/5d1566caf265da1ba77cb708   关于 MyCat 的铺垫文章已经写了三篇了： 1. [MySQL 只能做小项目？松哥要说几句公道话！](https://link.juejin.im?target=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2FbcyjBgEqg6Or5zdi4jHaiA)">
+<meta name="twitter:image" content="https://user-gold-cdn.xitu.io/2019/6/28/16b9b999eca3fda2?imageView2/0/w/1280/h/960/ignore-error/1">
+  
+    <link rel="alternate" href="/atom.xml" title="HUAN" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png">
+  
+  
+    <link href="//fonts.googleapis.com/css?family=Source+Code+Pro" rel="stylesheet" type="text/css">
+  
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+</html>
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">HUAN</a>
+      </h1>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
+        
+        <a id="nav-search-btn" class="nav-icon" title="Search"></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://sillyfan.top"></form>
+      </div>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main"><article id="post-分布式数据库中间件MyCat搞起来！" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2019/06/28/分布式数据库中间件MyCat搞起来！/" class="article-date">
+  <time datetime="2019-06-28T07:51:14.014Z" itemprop="datePublished">2019-06-28</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      分布式数据库中间件 MyCat 搞起来！
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <blockquote>
+<p>本文转载自 <a href="https://juejin.im/post/5d1566caf265da1ba77cb708" target="_blank" rel="noopener">https://juejin.im/post/5d1566caf265da1ba77cb708</a> </p>
+</blockquote>
+<p>关于 MyCat 的铺垫文章已经写了三篇了：</p>
+<pre><code>1. [MySQL 只能做小项目？松哥要说几句公道话！](https://link.juejin.im?target=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2FbcyjBgEqg6Or5zdi4jHaiA)
+1. [北冥有 Data，其名为鲲，鲲之大，一个 MySQL 放不下！](https://link.juejin.im?target=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2FqUGANVj2mmoMwUZEV5Zc1w)
+1. [What？Tomcat 竟然也算中间件？](https://link.juejin.im?target=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2F7pj5E2HvmiejBJrW0T86oQ)</code></pre><p>今天终于可以迎接我们的大 Boss 出场了！</p>
+<h1 id="MyCat-简介"><a href="#MyCat-简介" class="headerlink" title="MyCat 简介"></a>MyCat 简介</h1><p>前面文章我们提到，如果数据量比较大的话，我们需要对数据进行分库分表，分完之后，原本存在一个数据库中的数据，现在就存在多个数据库中了，就像下面这样：</p>
+<p><img src="https://user-gold-cdn.xitu.io/2019/6/28/16b9b999eca3fda2?imageView2/0/w/1280/h/960/ignore-error/1" alt></p>
+<p>那么此时 MyCat 所扮演的角色就是分布式数据库中间件！</p>
+<p>MyCat 是一个开源的分布式数据库中间件，它实现了 MySQL 协议，在开发者眼里，他就是一个数据库代理，我们甚至可以使用 MySQL 的客户端工具以及命令行来访问 MyCat 。</p>
+<p>MyCat 现在已经不仅仅只支持 MySQL 了，同时也支持 MSSQL、Oracle、DB2、以及 PostgreSQL等主流数据库。甚至像 MongoDB 这种 NoSQL 也支持。</p>
+<h1 id="快速入门"><a href="#快速入门" class="headerlink" title="快速入门"></a>快速入门</h1><h2 id="搭建读写分离"><a href="#搭建读写分离" class="headerlink" title="搭建读写分离"></a>搭建读写分离</h2><p>要搞 MyCat ，一般要先搭建好 MySQL 的读写分离，MySQL 的读写分离可以参考松哥之前的这篇文章：</p>
+<pre><code>1. [提高性能，MySQL 读写分离环境搭建(二)](https://link.juejin.im?target=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2FSC0OYM6yO_GxQh9DvSsnoQ)</code></pre><h2 id="MyCat-安装"><a href="#MyCat-安装" class="headerlink" title="MyCat 安装"></a>MyCat 安装</h2><p>环境：</p>
+<pre><code>* CentOS7
+* JDK1.8</code></pre><p>MyCat 使用 Java 开发，因此，运行 MyCat ，一定要具备 Java 环境，配置 Java 运行环境这个比较容易，网上资料也很多，我就不详细介绍了。</p>
+<p>Java 环境安装好之后，首先下载 MyCat：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">wget http://dl.mycat.io/1.6.7.1/Mycat-server-1.6.7.1-release-20190213150257-linux.tar.gz</span><br></pre></td></tr></table></figure>
+
+<p>下载完成后，对下载文件进行解压。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">tar -zxvf Mycat-server-1.6.7.1-release-20190213150257-linux.tar.gz</span><br></pre></td></tr></table></figure>
+
+<p>解压成功后，会出现一个 <code>mycat</code> 目录，进入到 <code>mycat/conf</code> 目录，对 <code>mycat</code> 进行配置：</p>
+<p>首先来配置 <code>schema.xml</code> 文件：</p>
+<p><img src="https://user-gold-cdn.xitu.io/2019/6/28/16b9b999ec783a97?imageView2/0/w/1280/h/960/ignore-error/1" alt></p>
+<pre><code>1. 首先在 `schema` 中指定逻辑库的名字，逻辑库是指 `MyCat` 中的库，这个库不存储数据，数据存储在 `MySQL` 中的物理库中。
+1. 逻辑库中配置逻辑表，配置逻辑表时，需要指定 `dataNode` 节点， `dataNode` 就是指数据库存储的位置
+1. 配置 `dataNode` ，`dataNode` 指定 `dataHost` 和物理库的名字。
+1. `dataHost` 则配置 `MySQL` 的主机和从机的位置，登录密码等。主机和从机都可以配置多个。</code></pre><p>配置完 schema.xml 后 ，接下来配置 server.xml。</p>
+<p>server.xml 中主要配置 MyCat 的登录用户名和密码，以及需要操作的逻辑库。</p>
+<p><img src="https://user-gold-cdn.xitu.io/2019/6/28/16b9b99a1a7fec73?imageView2/0/w/1280/h/960/ignore-error/1" alt></p>
+<p>配置完成后，接下来就可以启动 MyCat 了 。</p>
+<p>执行 MyCat 解压目录下的 bin 目录下的 mycat 命令，可以启动 MyCat</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">./bin/mycat start</span><br></pre></td></tr></table></figure>
+
+<p>如果启动后，提示无法创建 <code>mycat.pid</code> 文件，就自己手动创建一个 <code>mycat.pid</code> 文件。启动成功之后，就可以在本地连接 <code>MyCat</code> 了，连接方式和 <code>MySQL</code> 一样，唯一的区别在于端口号不同。</p>
+<p>在连接 <code>MyCat</code> 之前，先在 <code>MySQL</code> 物理库中创建 <code>db1</code>、<code>db2</code> 以及 <code>db3</code> 三个数据库。</p>
+<p>使用 <code>SQLyog</code> 连接：</p>
+<p><img src="https://user-gold-cdn.xitu.io/2019/6/28/16b9b999ecbdcb90?imageView2/0/w/1280/h/960/ignore-error/1" alt></p>
+<p>也可以在 <code>cmd</code> 命令行登录 <code>MyCat</code> ：</p>
+<p><img src="https://user-gold-cdn.xitu.io/2019/6/28/16b9b999f41ebb17?imageView2/0/w/1280/h/960/ignore-error/1" alt></p>
+<p>登录成功后 ，在 <code>MyCat</code> 的窗口中，执行如下命令，创建表：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">create table t_user (id integer primary key,username varchar(255))</span><br></pre></td></tr></table></figure>
+
+<p>执行成功后，我们会发现物理库中出现了相应的表。 接下来，手动往各个物理库的物理表中存储一条数据，然后在 MyCat 窗口中查询：</p>
+<p><img src="https://user-gold-cdn.xitu.io/2019/6/28/16b9b999eccf3c2f?imageView2/0/w/1280/h/960/ignore-error/1" alt></p>
+<p>这样就可以查询到 三个库中的三个表中的数据。</p>
+<h1 id="问题分析"><a href="#问题分析" class="headerlink" title="问题分析"></a>问题分析</h1><p>整个过程不难，但是有的小伙伴在第一次配置的过程中还是容易出错，因此我这里还是来说两句，出错了要如何定位。</p>
+<p>一般来说，配置 MyCat 出错，问题可能发生在两个阶段。第一个阶段就是客户端连接 MyCat 出错，第二个阶段就是 MyCat 连接 MySQL 出错。</p>
+<p>无论你是使用 SQLyog 还是 Navicat ，我们在连接数据库的过程中，都可以先测试连接，很多人卡在这一步。</p>
+<p>如果在测试连接的时候就连接不通，说明是 MyCat 的问题，这个时候检查步骤如下：</p>
+<pre><code>1. 首先当然是查看日志信息，看能不能找出端倪
+1. 通过 jps 命令查看 mycat 是否成功启动
+1. 检查 server.xml 中配置是否正确，用户名密码是否输入正确</code></pre><p>这是第一种可能的问题，第二种问题就是测试连接没问题，但是测试完后，却连接不上。反映到 Navicat 上，就是测试连接没问题，测完之后，点击连接名要打开连接时，Navicat 就崩了，出现这个问题一般是 MyCat 在连接 MySQL 出问题了，这个时候就要去检查 schema.xml 文件中关于 MySQL 主机和从机的配置是否正确，数据库地址是否正确，用户名密码是否正确。</p>
+<h1 id="结语"><a href="#结语" class="headerlink" title="结语"></a>结语</h1><p>好了，本文主要简单介绍了下 MyCat 的安装问题，下篇文章我们来看 MyCat 中的分片规则问题。</p>
+<p>参考资料：</p>
+<pre><code>1. [MyCat 官方文档](https://link.juejin.im?target=http%3A%2F%2Fwww.mycat.io%2F)</code></pre><p>关注公众号【江南一点雨】，专注于 Spring Boot+微服务以及前后端分离等全栈技术，定期视频教程分享，关注后回复 Java ，领取松哥为你精心准备的 Java 干货！<br><img src="https://user-gold-cdn.xitu.io/2019/6/28/16b9b99ae9446d11?imageView2/0/w/1280/h/960/ignore-error/1" alt></p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://sillyfan.top/2019/06/28/分布式数据库中间件MyCat搞起来！/" data-id="cjxfssno50011xx2akfpfa136" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/MySQL/">MySQL</a></li></ul>
+
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+  
+    <a href="/2019/06/20/Linux生产环境上，最常用的一套“AWK“技巧/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">Linux生产环境上，最常用的一套“AWK“技巧</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tags</h3>
+    <div class="widget">
+      <ul class="tag-list"><li class="tag-list-item"><a class="tag-list-link" href="/tags/HDFS/">HDFS</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Hadoop/">Hadoop</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Java/">Java</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Linux/">Linux</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/MySQL/">MySQL</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Reactor/">Reactor</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/RxJava/">RxJava</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Shell/">Shell</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Spring/">Spring</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/TCP-IP/">TCP/IP</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Vue-js/">Vue.js</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/java/">java</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/分布式/">分布式</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/后端/">后端</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/微服务/">微服务</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/数据库/">数据库</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/服务器/">服务器</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/架构/">架构</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/源码/">源码</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tag Cloud</h3>
+    <div class="widget tagcloud">
+      <a href="/tags/HDFS/" style="font-size: 10px;">HDFS</a> <a href="/tags/Hadoop/" style="font-size: 10px;">Hadoop</a> <a href="/tags/Java/" style="font-size: 20px;">Java</a> <a href="/tags/Linux/" style="font-size: 10px;">Linux</a> <a href="/tags/MySQL/" style="font-size: 13.33px;">MySQL</a> <a href="/tags/Reactor/" style="font-size: 10px;">Reactor</a> <a href="/tags/RxJava/" style="font-size: 10px;">RxJava</a> <a href="/tags/Shell/" style="font-size: 10px;">Shell</a> <a href="/tags/Spring/" style="font-size: 13.33px;">Spring</a> <a href="/tags/TCP-IP/" style="font-size: 10px;">TCP/IP</a> <a href="/tags/Vue-js/" style="font-size: 10px;">Vue.js</a> <a href="/tags/java/" style="font-size: 10px;">java</a> <a href="/tags/分布式/" style="font-size: 10px;">分布式</a> <a href="/tags/后端/" style="font-size: 10px;">后端</a> <a href="/tags/微服务/" style="font-size: 10px;">微服务</a> <a href="/tags/数据库/" style="font-size: 10px;">数据库</a> <a href="/tags/服务器/" style="font-size: 10px;">服务器</a> <a href="/tags/架构/" style="font-size: 16.67px;">架构</a> <a href="/tags/源码/" style="font-size: 10px;">源码</a>
+    </div>
+  </div>
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Archives</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/06/">June 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/05/">May 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/04/">April 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/01/">January 2019</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Recent Posts</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2019/06/28/分布式数据库中间件MyCat搞起来！/">分布式数据库中间件 MyCat 搞起来！</a>
+          </li>
+        
+          <li>
+            <a href="/2019/06/20/Linux生产环境上，最常用的一套“AWK“技巧/">Linux生产环境上，最常用的一套“AWK“技巧</a>
+          </li>
+        
+          <li>
+            <a href="/2019/06/18/死磕Java内部类（一篇就够）/">死磕Java内部类（一篇就够）</a>
+          </li>
+        
+          <li>
+            <a href="/2019/06/06/面试那点小事，你从未见过的springboot面试集锦（附详细答案）/">面试那点小事，你从未见过的spring boot面试集锦（附详细答案）</a>
+          </li>
+        
+          <li>
+            <a href="/2019/06/01/SpringBoot实现动态控制定时任务-支持多参数/">SpringBoot实现动态控制定时任务-支持多参数</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2019 huan<br>
+      Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  <link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+  <script src="/fancybox/jquery.fancybox.pack.js"></script>
+
+
+<script src="/js/script.js"></script>
+
+
+
+  </div>
+</body>
+</html>
