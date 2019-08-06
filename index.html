@@ -62,6 +62,95 @@
       <div class="outer">
         <section id="main">
   
+    <article id="post-万万没想到，JVM内存结构的面试题可以问的这么难？" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2019/08/06/万万没想到，JVM内存结构的面试题可以问的这么难？/" class="article-date">
+  <time datetime="2019-08-06T03:41:56.056Z" itemprop="datePublished">2019-08-06</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2019/08/06/万万没想到，JVM内存结构的面试题可以问的这么难？/">万万没想到，JVM内存结构的面试题可以问的这么难？</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <blockquote>
+<p>本文转载自 <a href="https://juejin.im/post/5d4789afe51d453b386a62ac" target="_blank" rel="noopener">https://juejin.im/post/5d4789afe51d453b386a62ac</a> </p>
+</blockquote>
+<p>在我的博客中，之前有很多文章介绍过JVM内存结构，相信很多看多我文章的朋友对这部分知识都有一定的了解了。</p>
+<p>那么，请大家尝试着回答一下以下问题：</p>
+<p>1、JVM管理的内存结构是怎样的？<br>2、不同的虚拟机在实现运行时内存的时候有什么区别？<br>3、运行时数据区中哪些区域是线程共享的？哪些是独享的？<br>4、除了JVM运行时内存以外，还有什么区域可以用吗？<br>5、堆和栈的区别是什么？<br>6、Java中的数组是存储在堆上还是栈上的？<br>7、Java中的对象创建有多少种方式？<br>8、Java中对象创建的过程是怎么样的？<br>9、Java中的对象一定在堆上分配内存吗？<br>10、如何获取堆和栈的dump文件？</p>
+<p>以上10道题，如果您可以全部准确无误的回答的话，那说明你真的很了解JVM的内存结构以及内存分配相关的知识了，如果有哪些知识点是不了解的，那么本文正好可以帮你答疑解惑。<br>JVM管理的内存结构是怎样的？</p>
+<p>Java虚拟机在执行Java程序的过程中会把他所管理的内存划分为若干个不同的数据区域。《Java虚拟机规范》中规定了JVM所管理的内存需要包括一下几个运行时区域：</p>
+<p><img src="https://user-gold-cdn.xitu.io/2019/8/5/16c5f71ceedef2ff?imageView2/0/w/1280/h/960/ignore-error/1" alt>￼</p>
+<p>主要包含了PC寄存器（程序计数器）、Java虚拟机栈、本地方法栈、Java堆、方法区以及运行时常量池。</p>
+<p>各个区域有各自不同的作用，关于各个区域的作用就不在本文中相信介绍了。</p>
+<p>但是，需要注意的是，上面的区域划分只是逻辑区域，对于有些区域的限制是比较松的，所以不同的虚拟机厂商在实现上，甚至是同一款虚拟机的不同版本也是不尽相同的。<br>不同的虚拟机在实现运行时内存的时候有什么区别？</p>
+<p>前面提到过《Java虚拟机规范》定义的JVM运行时所需的内存区域，不同的虚拟机实现上有所不同，而在这么多区域中，规范对于方法区的管理是最宽松的，规范中关于这部分的描述如下：</p>
+<p>方法区在虚拟机启动的时候创建，虽然方法区是堆的逻辑组成部分，但是简单的虚拟机实现可以选择在这个区域不实现垃圾收集与压缩。本版本的规范也不限定实现方法区的内存位置和代码编译的管理策略。方法区的容量可以是固定的，也可以随着程序执行的需求动态扩展，并在不需要过多的空间时自行收缩。方法区在实际内存空间站可以是不连续的。</p>
+<p>这一规定，可以说是给了虚拟机厂商很大的自由。</p>
+<p>虚拟机规范对方法区实现的位置并没有明确要求，在最著名的HotSopt虚拟机实现中（在Java 8 之前），方法区仅是逻辑上的独立区域，在物理上并没有独立于堆而存在，而是位于永久代中。所以，这时候方法区也是可以被垃圾回收的。<br>实践证明，JVM中存在着大量的声明短暂的对象，还有一些生命周期比较长的对象。为了对他们采用不同的收集策略，采用了分代收集算法，所以HotSpot虚拟机把的根据对象的年龄不同，把堆分位新生代、老年代和永久代。</p>
+<p>在Java 8中 ，HotSpot虚拟机移除了永久代，使用本地内存来存储类元数据信息并称之为：元空间（Metaspace）</p>
+<p><img src="https://user-gold-cdn.xitu.io/2019/8/5/16c5f71cedf925ff?imageView2/0/w/1280/h/960/ignore-error/1" alt>￼
+运行时数据区中哪些区域是线程共享的？哪些是独享的？</p>
+<p>在JVM运行时内存区域中，PC寄存器、虚拟机栈和本地方法栈是线程独享的。</p>
+<p>而Java堆、方法区是线程共享的。但是值得注意的是，Java堆其实还未每一个线程单独分配了一块<a href="https://link.juejin.im?target=https%3A%2F%2Fwww.hollischuang.com%2Farchives%2F3855" target="_blank" rel="noopener">TLAB空间</a>，这部分空间在分配时是线程独享的，在使用时是线程共享的。<br>除了JVM运行时内存以外，还有什么区域可以用吗？</p>
+<p>除了我们前面介绍的虚拟机运行时数据区以外，还有一部分内存也被频繁使用，他不是运行时数据区的一部分，也不是Java虚拟机规范中定义的内存区域，他就是——直接内存。</p>
+<p>直接内存的分配不受Java堆大小的限制，但是他还是会收到服务器总内存的影响。</p>
+<p>在JDK 1.4中引入的NIO中，引入了一种基于Channel和Buffer的I/O方式，他可以使用Native函数直接分配堆外内存，然后通过一个存储在Java堆中的DirectByteBuffer对象作为这块内存的应用进行操作。</p>
+<p><img src="https://user-gold-cdn.xitu.io/2019/8/5/16c5f71cf1ef6818?imageView2/0/w/1280/h/960/ignore-error/1" alt>￼
+堆和栈的区别是什么？</p>
+<p>堆和栈（虚拟机栈）是完全不同的两块内存区域，一个是线程独享的，一个是线程共享的，二者之间最大的区别就是存储的内容不同：</p>
+<p>堆中主要存放对象实例。<br>栈（局部变量表）中主要存放各种基本数据类型、对象的引用。<br>Java中的数组是存储在堆上还是栈上的？</p>
+<p>在Java中，数组同样是一个对象，所以对象在内存中如何存放同样适用于数组；</p>
+<p>所以，数组的实例是保存在堆中，而数组的引用是保存在栈上的。</p>
+<p><img src="https://user-gold-cdn.xitu.io/2019/8/5/16c5f71ceef4b84d?imageView2/0/w/1280/h/960/ignore-error/1" alt>￼
+Java中的对象创建有多少种方式？</p>
+<p>Java中有很多方式可以创建一个对象，最简单的方式就是使用new关键字。</p>
+<p><code>User user = new User();</code></p>
+<p>除此以外，还可以使用反射机制创建对象：</p>
+<p><code>User user = User.class.newInstance();</code></p>
+<p>或者使用Constructor类的newInstance：</p>
+<p><code>Constructor&lt;User&gt; constructor = User.class.getConstructor();
+User user = constructor.newInstance();</code></p>
+<p>除此之外还可以使用clone方法和反序列化的方式，这两种方式不常用并且代码比较复杂，就不在这里展示了，感兴趣的可以自行了解下。</p>
+<p>Java中对象创建的过程是怎么样的？</p>
+<p>对于一个普通的Java对象的创建，大致过程如下：</p>
+<p>1、虚拟机遇到new指令，到常量池定位到这个类的符号引用。<br>2、检查符号引用代表的类是否被加载、解析、初始化过。<br>3、虚拟机为对象分配内存。<br>4、虚拟机将分配到的内存空间都初始化为零值。<br>5、虚拟机对对象进行必要的设置。<br>6、执行方法，成员变量进行初始化。<br>Java中的对象一定在堆上分配内存吗？</p>
+<p>前面我们说过，Java堆中主要保存了对象实例，但是，随着JIT编译期的发展与<a href="https://link.juejin.im?target=https%3A%2F%2Fwww.hollischuang.com%2Farchives%2F2583" target="_blank" rel="noopener">逃逸分析</a>技术逐渐成熟，<a href="https://link.juejin.im?target=https%3A%2F%2Fwww.hollischuang.com%2Farchives%2F2398" target="_blank" rel="noopener">栈上分配</a>、标量替换优化技术将会导致一些微妙的变化，所有的对象都分配到堆上也渐渐变得不那么“绝对”了。</p>
+<p>其实，在编译期间，JIT会对代码做很多优化。其中有一部分优化的目的就是减少内存堆分配压力，其中一种重要的技术叫做逃逸分析。</p>
+<p>如果JIT经过逃逸分析，发现有些对象没有逃逸出方法，那么有可能堆内存分配会被优化成栈内存分配。</p>
+<p><img src="https://user-gold-cdn.xitu.io/2019/8/5/16c5f71cf10db7bf?imageView2/0/w/1280/h/960/ignore-error/1" alt>￼
+10、如何获取堆和栈的dump文件？</p>
+<p>Java Dump，Java虚拟机的运行时快照。将Java虚拟机运行时的状态和信息保存到文件。</p>
+<p>可以使用在服务器上使用<a href="https://link.juejin.im?target=https%3A%2F%2Fwww.hollischuang.com%2Farchives%2F303" target="_blank" rel="noopener">jmap</a>命令来获取堆dump，使用<a href="https://link.juejin.im?target=http%3A%2F%2Fwww.hollischuang.com%2Farchives%2F110" target="_blank" rel="noopener">jstack</a>命令来获取线程的调用栈dump。</p>
+<p>最后，欢迎大家关注我的公众号：<br><img src="https://user-gold-cdn.xitu.io/2019/8/5/16c5f71f7d7e8f51?imageView2/0/w/1280/h/960/ignore-error/1" alt></p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://sillyfan.top/2019/08/06/万万没想到，JVM内存结构的面试题可以问的这么难？/" data-id="cjyza2xxk0012af2arguanpjo" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/JVM/">JVM</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Java/">Java</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+  
     <article id="post-分布式数据库中间件MyCat搞起来！" class="article article-type-post" itemscope itemprop="blogPost">
   <div class="article-meta">
     <a href="/2019/06/28/分布式数据库中间件MyCat搞起来！/" class="article-date">
@@ -145,7 +234,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://sillyfan.top/2019/06/28/分布式数据库中间件MyCat搞起来！/" data-id="cjxfssno50011xx2akfpfa136" class="article-share-link">Share</a>
+      <a data-url="http://sillyfan.top/2019/06/28/分布式数据库中间件MyCat搞起来！/" data-id="cjyza2xy60029af2avq48pj00" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/MySQL/">MySQL</a></li></ul>
@@ -285,7 +374,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://sillyfan.top/2019/06/20/Linux生产环境上，最常用的一套“AWK“技巧/" data-id="cjxfssnnv000ixx2aic1b2jku" class="article-share-link">Share</a>
+      <a data-url="http://sillyfan.top/2019/06/20/Linux生产环境上，最常用的一套“AWK“技巧/" data-id="cjyza2xy50027af2awsd510qu" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Linux/">Linux</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Shell/">Shell</a></li></ul>
@@ -449,7 +538,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://sillyfan.top/2019/06/18/死磕Java内部类（一篇就够）/" data-id="cjxfssnol001oxx2atj10t8wl" class="article-share-link">Share</a>
+      <a data-url="http://sillyfan.top/2019/06/18/死磕Java内部类（一篇就够）/" data-id="cjyza2xyl002zaf2a167513a4" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Java/">Java</a></li></ul>
@@ -565,7 +654,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://sillyfan.top/2019/06/06/面试那点小事，你从未见过的springboot面试集锦（附详细答案）/" data-id="cjxfssnot0025xx2alm4d67f1" class="article-share-link">Share</a>
+      <a data-url="http://sillyfan.top/2019/06/06/面试那点小事，你从未见过的springboot面试集锦（附详细答案）/" data-id="cjyza2xym0030af2aqlxkqytj" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Java/">Java</a></li></ul>
@@ -624,7 +713,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://sillyfan.top/2019/06/01/SpringBoot实现动态控制定时任务-支持多参数/" data-id="cjxfssno0000sxx2a2hmesfwk" class="article-share-link">Share</a>
+      <a data-url="http://sillyfan.top/2019/06/01/SpringBoot实现动态控制定时任务-支持多参数/" data-id="cjyza2xxt001laf2aeliin5hx" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Java/">Java</a></li></ul>
@@ -767,7 +856,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://sillyfan.top/2019/05/31/感受lambda之美，推荐收藏，需要时查阅/" data-id="cjxfssnoe001exx2a8ks6xngl" class="article-share-link">Share</a>
+      <a data-url="http://sillyfan.top/2019/05/31/感受lambda之美，推荐收藏，需要时查阅/" data-id="cjyza2xxz001xaf2ayvax0fk4" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Java/">Java</a></li></ul>
@@ -812,7 +901,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://sillyfan.top/2019/05/30/README/" data-id="cjxfssnou0027xx2atk2mbf62" class="article-share-link">Share</a>
+      <a data-url="http://sillyfan.top/2019/05/30/README/" data-id="cjyza2xx7000eaf2amc9rputv" class="article-share-link">Share</a>
       
       
     </footer>
@@ -861,7 +950,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://sillyfan.top/2019/05/30/Effective Java/" data-id="cjxfssnn30000xx2a1eztrftn" class="article-share-link">Share</a>
+      <a data-url="http://sillyfan.top/2019/05/30/Effective Java/" data-id="cjyza2xx40008af2amcd2qgw9" class="article-share-link">Share</a>
       
       
     </footer>
@@ -910,114 +999,9 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://sillyfan.top/2019/05/30/hello-world/" data-id="cjxfssno1000uxx2azbdjt575" class="article-share-link">Share</a>
+      <a data-url="http://sillyfan.top/2019/05/30/hello-world/" data-id="cjyza2xxf000saf2a8vrb76qb" class="article-share-link">Share</a>
       
       
-    </footer>
-  </div>
-  
-</article>
-
-
-  
-    <article id="post-熟练掌握各种MQ？那面试官很可能用这道题目先摸摸你的老底！" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2019/05/28/熟练掌握各种MQ？那面试官很可能用这道题目先摸摸你的老底！/" class="article-date">
-  <time datetime="2019-05-28T07:38:06.006Z" itemprop="datePublished">2019-05-28</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2019/05/28/熟练掌握各种MQ？那面试官很可能用这道题目先摸摸你的老底！/">熟练掌握各种MQ？那面试官很可能用这道题目先摸摸你的老底！</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <blockquote>
-<p>本文转载自 <a href="https://juejin.im/post/5ceb79fef265da1bb47d4222" target="_blank" rel="noopener">https://juejin.im/post/5ceb79fef265da1bb47d4222</a><br><strong>公众号：狸猫技术窝</strong></p>
-</blockquote>
-<p><strong>作者：爱钓鱼的桌子哥，资深架构师</strong></p>
-<h3 id="目录"><a href="#目录" class="headerlink" title="目录"></a><strong>目录</strong></h3><p>1.有Broker的暴力路由：<strong>Kafka</strong></p>
-<p>2.有Broker的复杂路由：<strong>RabbitMQ</strong></p>
-<p>3.无Broker的通信流派：<strong>ZeroMQ</strong></p>
-<p>4.总结</p>
-<h3 id="写在前面"><a href="#写在前面" class="headerlink" title="写在前面"></a><strong>写在前面</strong></h3><p>我们知道，目前市面上的MQ包括Kafka、RabbitMQ、ZeroMQ、RocketMQ等等。</p>
-<p>那么他们之间究竟有什么本质区别，分别适用于什么场景呢？</p>
-<p>上述抛出的问题，同样在不少公司的Java工程师面试中出现，特别是当你简历上的技术栈包含了这些技术，面试官往往喜欢用这个问题，对你进行摸底考察。</p>
-<p>本文我们就一起来探讨一下。</p>
-<h3 id="（1）有Broker的暴力路由"><a href="#（1）有Broker的暴力路由" class="headerlink" title="（1）有Broker的暴力路由"></a><strong>（1）有Broker的暴力路由</strong></h3><p>这个流派最典型的就是<strong>Kafka</strong>，Kafka实际上为了提升性能，简化了MQ功能模型，仅仅提供了一些最基础的MQ相关的功能，但是大幅度优化和提升了吞吐量。</p>
-<p>首先，这个流派一定是有一个Broker角色的，也就是说，Kafka需要部署一套服务器集群，每台机器上都有一个Kafka Broker进程，这个进程就负责接收请求，存储数据，发送数据。</p>
-<p>Kafka的生产消费模型做的相对是比较暴力简单的，就是简单的数据流模型。</p>
-<p>简单来说，他有一个概念，叫做“<strong>Topic</strong>”，你可以往这个“Topic”里写数据，然后让别人从这里来消费。</p>
-<p>这个Topic可以划分为多个Partition，每个Partition放一台机器上，存储一部分数据。</p>
-<p>在写消息到Topic的时候，会自动把你这个消息给分发到某一个Partition上去。</p>
-<p>然后消费消息的时候，有一个<strong>Consumer Group</strong>的概念，你部署在多台机器上的Consumer可以组成一个Group，一个Partition只能给一个Consumer消费，一个Cosumer可以消费多个Partition，这是最最核心的一点。</p>
-<p>通过这个模型，保证一个Topic里的每条消息，只会交给Consumer Group里的一个Consumer来消费，形成了一个Queue（队列）的效果。</p>
-<p>假如你想要有一个Queue的效果，也就是希望不停的往Queue里写数据，然后多个消费者消费，每条消息就只能给一个消费者，那么通过Kafka来实现，其实就是生产者写多个Partition，每个Partition只能给Consumer Group中的一个Consumer来消费。如下图所示：</p>
-<p><img src="https://user-gold-cdn.xitu.io/2019/5/27/16af7d5d9e1690c5?imageView2/0/w/1280/h/960/ignore-error/1" alt></p>
-<p>如果要实现Publish/Subscribe的模型呢？就是说生产者发送的每条消息，都要让所有消费都消费到，怎么实现？</p>
-<p>那就让每个消费者都是一个独立的消费组，这样每条消息都会发送给所有的消费组，每个消费组里那唯一的一个消费者一定会消费到所有的消息。</p>
-<p><img src="https://user-gold-cdn.xitu.io/2019/5/27/16af7d5d918ca40f?imageView2/0/w/1280/h/960/ignore-error/1" alt></p>
-<p>但是除此之外，Kafka就没有任何其他的消费功能了，就是如此简单，所以属于一种比较暴力直接的流派。</p>
-<p>它就是简单的消费模型，实现最基础的Queue和Pub/Sub两种消费模型，但是内核中大幅度优化和提升了性能以及吞吐量。</p>
-<p>所以Kafka天生适合的场景，就是大数据领域的实时数据计算的场景。</p>
-<p>因为在大数据的场景下，通常是弱业务的场景，没有太多复杂的业务系统交互，而主要是大量的数据流入Kafka，然后进行实时计算。</p>
-<p>所以就是需要简单的消费模型，但是必须在内核中对吞吐量和性能进行大幅度的优化。</p>
-<p>因此Kafka技术通常是在大数据的实时数据计算领域中使用的，比如说每秒处理几十万条消息，甚至每秒处理上百万条消息。</p>
-<h3 id="（2）有Broker的复杂路由"><a href="#（2）有Broker的复杂路由" class="headerlink" title="（2）有Broker的复杂路由"></a>（2）有Broker的复杂路由</h3><p>第二个流派，就是<strong>RabbitMQ</strong>为代表的流派，他强调的不是说如何提升性能和吞吐量，关注的是说要提供非常强大、复杂而且完善的消息路由功能。</p>
-<p>所以对于RabbitMQ而言，他就不是那么简单的Topic-Partition的消费模型了。</p>
-<p>在RabbitMQ中引入了一个非常核心的概念，叫做<strong>Exchange</strong>，这个Exchange就是负责根据复杂的业务规则把消息路由到内部的不同的Queue里去。</p>
-<p>举个例子，如果要实现最简单的队列功能，就是让exchange往一个queue里写数据，然后多个消费者来消费这个queue里的数据，每条消息只能给一个消费者，那么可以是类似下面的方式。</p>
-<p><img src="https://user-gold-cdn.xitu.io/2019/5/27/16af7d5d91903b11?imageView2/0/w/1280/h/960/ignore-error/1" alt></p>
-<p>如果想要实现Pub/Sub的模型，就是一条消息要被所有的消费者给消费到，那么就可以让每个消费者都有一个自己的Queue，然后绑定到一个Exchange上去。</p>
-<p>接着，这个Exchange就设定把消息路由给所有的Queue即可，如下面这样。</p>
-<p>此时Exchange可以把每条消息都路由给所有的Queue，每个Consumer都可以从自己的Queue里拿到所有的消息。</p>
-<p><img src="https://user-gold-cdn.xitu.io/2019/5/27/16af7d5d91efcb5b?imageView2/0/w/1280/h/960/ignore-error/1" alt></p>
-<p>RabbitMQ这种流派，其实最核心的是，基于Exchange这个概念，他可以做很多复杂的事情。</p>
-<p>比如：如果你想要某个Consumer只能消费到<strong>某一类数据</strong>，那么Exchange可以把消息里比如带“XXX”前缀的消息路由给某个Queue。或者你可以限定某个Consumer就只能消费<strong>某一部分数据</strong>。总之在这里你可以做很多的限制，设置复杂的路由规则。</p>
-<p>但是也正是因为引入了这种复杂的消费模型，支持复杂的路由功能，导致RabbitMQ在内核以及架构设计上没法像Kafka做的那么的轻量级、高性能、可扩展、高吞吐，所以RabbitMQ在吞吐量上要比Kafka低一个数量级。</p>
-<p>所以这种流派的MQ，往往适合用在Java业务系统中，不同的业务系统需要进行复杂的消息路由。</p>
-<p>比如说业务系统A发送了10条消息，其中3条消息是给业务系统B的，7条消息是给业务系统C的，要实现这种复杂的路由模型，就必须依靠RabbitMQ来实现。</p>
-<p>当然，对于这种业务系统之间的消息流转而言，可能不需要那么高的吞吐量，可能每秒业务系统之间也就转发几十条或者几百条消息，那么就完全适合采用RabbitMQ来实现。</p>
-<h3 id="（3）无Broker的通信流派"><a href="#（3）无Broker的通信流派" class="headerlink" title="（3）无Broker的通信流派"></a>（3）无Broker的通信流派</h3><p><strong>ZeroMQ</strong>代表的是第三种MQ。说白了，他是不需要在服务器上部署的，就是一个客户端的库而已。</p>
-<p>也就是说，他主要是封装了底层的Socket网络通讯，然后一个系统要发送一条消息给另外一个消息消费 。</p>
-<p>通过ZeroMQ，本质就是底层ZeroMQ发送一条消息到另外一个系统上去。</p>
-<p>所以ZeroMQ是<strong>去中心化</strong>的，不需要跟Kafka、RabbitMQ一样在服务器上部署的。</p>
-<p>他主要是用来进行业务系统之间的网络通信的，有点类似于比如你是一个分布式系统架构，那么此时分布式架构中的各个子系统互相之间要通信，你是基于Dubbo RPC？还是Spring Cloud HTTP？</p>
-<p>可能上述两种你都不想要，就是要基于原始的Socket进行网络通信，简单的收发消息而已。</p>
-<p>此时就可以使用ZeroMQ作为分布式系统之间的消息通信，如下面那样。</p>
-<p><img src="https://user-gold-cdn.xitu.io/2019/5/27/16af7d5d91f778d7?imageView2/0/w/1280/h/960/ignore-error/1" alt></p>
-<h3 id="（4）总结"><a href="#（4）总结" class="headerlink" title="（4）总结"></a>（4）总结</h3><p>其实现在基本上MQ主要就是这三个流派，很多小众的MQ一般很少有人会用。</p>
-<p>而且用MQ的场景主要就是两大类：</p>
-<pre><code>1. </code></pre><p><strong>业务系统之间异步通信</strong><br>    1.<br><strong>大数据领域的实时数据计算</strong></p>
-<p>所以一般业务系统之间通信就是会采用RabbitMQ/RocketMQ，需要复杂的消息路由功能的支撑。</p>
-<p>大数据的实时计算场景会采用Kafka，需要简单的消费模型，但是超高的吞吐量。</p>
-<p>至于ZeroMQ，一般来说，少数分布式系统中子系统之间的分布式通信时会采用，作为轻量级的异步化的通信组件。</p>
-<p><strong>END</strong></p>
-<p><strong>作者简介：</strong></p>
-<p><strong>爱钓鱼的桌子哥，资深架构师</strong></p>
-<p>作者先后工作于滴滴、百度、字节跳动等国内一线互联网大厂，从事基础架构相关工作。带领团队设计与构建了大规模的分布式存储系统、分布式消息中间件、分布式数据库，对分布式架构设计、系统高可用体系构建、基础中间件架构都有丰富的经验。</p>
-<p><strong>END</strong></p>
-<p>长按下图二维码，即刻关注【狸猫技术窝】 阿里、京东、美团、字节跳动 顶尖技术专家坐镇 为IT人打造一个 “有温度” 的技术窝！</p>
-<p><img src="https://user-gold-cdn.xitu.io/2019/4/23/16a4aea4c6855bb5?imageView2/0/w/1280/h/960/ignore-error/1" alt><br>作者：狸猫技术窝<br>链接：<a href="https://juejin.im/post/5ce1975af265da1bd42450b5" target="_blank" rel="noopener">https://juejin.im/post/5ce1975af265da1bd42450b5</a><br>来源：掘金<br>著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。</p>
-
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://sillyfan.top/2019/05/28/熟练掌握各种MQ？那面试官很可能用这道题目先摸摸你的老底！/" data-id="cjxfssnov002axx2alwi4ynvv" class="article-share-link">Share</a>
-      
-      
-  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Java/">Java</a></li></ul>
-
     </footer>
   </div>
   
@@ -1043,7 +1027,7 @@
   <div class="widget-wrap">
     <h3 class="widget-title">Tags</h3>
     <div class="widget">
-      <ul class="tag-list"><li class="tag-list-item"><a class="tag-list-link" href="/tags/HDFS/">HDFS</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Hadoop/">Hadoop</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Java/">Java</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Linux/">Linux</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/MySQL/">MySQL</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Reactor/">Reactor</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/RxJava/">RxJava</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Shell/">Shell</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Spring/">Spring</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/TCP-IP/">TCP/IP</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Vue-js/">Vue.js</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/java/">java</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/分布式/">分布式</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/后端/">后端</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/微服务/">微服务</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/数据库/">数据库</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/服务器/">服务器</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/架构/">架构</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/源码/">源码</a></li></ul>
+      <ul class="tag-list"><li class="tag-list-item"><a class="tag-list-link" href="/tags/HDFS/">HDFS</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Hadoop/">Hadoop</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/JVM/">JVM</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Java/">Java</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Linux/">Linux</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/MySQL/">MySQL</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Reactor/">Reactor</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/RxJava/">RxJava</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Shell/">Shell</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Spring/">Spring</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/TCP-IP/">TCP/IP</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Vue-js/">Vue.js</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/java/">java</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/分布式/">分布式</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/后端/">后端</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/微服务/">微服务</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/数据库/">数据库</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/服务器/">服务器</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/架构/">架构</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/源码/">源码</a></li></ul>
     </div>
   </div>
 
@@ -1053,7 +1037,7 @@
   <div class="widget-wrap">
     <h3 class="widget-title">Tag Cloud</h3>
     <div class="widget tagcloud">
-      <a href="/tags/HDFS/" style="font-size: 10px;">HDFS</a> <a href="/tags/Hadoop/" style="font-size: 10px;">Hadoop</a> <a href="/tags/Java/" style="font-size: 20px;">Java</a> <a href="/tags/Linux/" style="font-size: 10px;">Linux</a> <a href="/tags/MySQL/" style="font-size: 13.33px;">MySQL</a> <a href="/tags/Reactor/" style="font-size: 10px;">Reactor</a> <a href="/tags/RxJava/" style="font-size: 10px;">RxJava</a> <a href="/tags/Shell/" style="font-size: 10px;">Shell</a> <a href="/tags/Spring/" style="font-size: 13.33px;">Spring</a> <a href="/tags/TCP-IP/" style="font-size: 10px;">TCP/IP</a> <a href="/tags/Vue-js/" style="font-size: 10px;">Vue.js</a> <a href="/tags/java/" style="font-size: 10px;">java</a> <a href="/tags/分布式/" style="font-size: 10px;">分布式</a> <a href="/tags/后端/" style="font-size: 10px;">后端</a> <a href="/tags/微服务/" style="font-size: 10px;">微服务</a> <a href="/tags/数据库/" style="font-size: 10px;">数据库</a> <a href="/tags/服务器/" style="font-size: 10px;">服务器</a> <a href="/tags/架构/" style="font-size: 16.67px;">架构</a> <a href="/tags/源码/" style="font-size: 10px;">源码</a>
+      <a href="/tags/HDFS/" style="font-size: 10px;">HDFS</a> <a href="/tags/Hadoop/" style="font-size: 10px;">Hadoop</a> <a href="/tags/JVM/" style="font-size: 10px;">JVM</a> <a href="/tags/Java/" style="font-size: 20px;">Java</a> <a href="/tags/Linux/" style="font-size: 10px;">Linux</a> <a href="/tags/MySQL/" style="font-size: 13.33px;">MySQL</a> <a href="/tags/Reactor/" style="font-size: 10px;">Reactor</a> <a href="/tags/RxJava/" style="font-size: 10px;">RxJava</a> <a href="/tags/Shell/" style="font-size: 10px;">Shell</a> <a href="/tags/Spring/" style="font-size: 13.33px;">Spring</a> <a href="/tags/TCP-IP/" style="font-size: 10px;">TCP/IP</a> <a href="/tags/Vue-js/" style="font-size: 10px;">Vue.js</a> <a href="/tags/java/" style="font-size: 10px;">java</a> <a href="/tags/分布式/" style="font-size: 10px;">分布式</a> <a href="/tags/后端/" style="font-size: 10px;">后端</a> <a href="/tags/微服务/" style="font-size: 10px;">微服务</a> <a href="/tags/数据库/" style="font-size: 10px;">数据库</a> <a href="/tags/服务器/" style="font-size: 10px;">服务器</a> <a href="/tags/架构/" style="font-size: 16.67px;">架构</a> <a href="/tags/源码/" style="font-size: 10px;">源码</a>
     </div>
   </div>
 
@@ -1062,7 +1046,7 @@
   <div class="widget-wrap">
     <h3 class="widget-title">Archives</h3>
     <div class="widget">
-      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/06/">June 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/05/">May 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/04/">April 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/01/">January 2019</a></li></ul>
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/08/">August 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/06/">June 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/05/">May 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/04/">April 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/01/">January 2019</a></li></ul>
     </div>
   </div>
 
@@ -1073,6 +1057,10 @@
     <h3 class="widget-title">Recent Posts</h3>
     <div class="widget">
       <ul>
+        
+          <li>
+            <a href="/2019/08/06/万万没想到，JVM内存结构的面试题可以问的这么难？/">万万没想到，JVM内存结构的面试题可以问的这么难？</a>
+          </li>
         
           <li>
             <a href="/2019/06/28/分布式数据库中间件MyCat搞起来！/">分布式数据库中间件 MyCat 搞起来！</a>
@@ -1088,10 +1076,6 @@
         
           <li>
             <a href="/2019/06/06/面试那点小事，你从未见过的springboot面试集锦（附详细答案）/">面试那点小事，你从未见过的spring boot面试集锦（附详细答案）</a>
-          </li>
-        
-          <li>
-            <a href="/2019/06/01/SpringBoot实现动态控制定时任务-支持多参数/">SpringBoot实现动态控制定时任务-支持多参数</a>
           </li>
         
       </ul>
