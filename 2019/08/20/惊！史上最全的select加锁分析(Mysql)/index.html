@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html>
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="utf-8">
+  
+
+  
+  <title>惊！史上最全的select加锁分析(Mysql) | HUAN</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="本文转载自 https://juejin.im/post/5d5671a2e51d45620821cea7   引言大家在面试中有没遇到面试官问你下面六句Sql的区别呢 123456select * from table where id = ?select * from table where id &amp;lt; ?select * from table where id = ? lock in">
+<meta name="keywords" content="Java">
+<meta property="og:type" content="article">
+<meta property="og:title" content="惊！史上最全的select加锁分析(Mysql)">
+<meta property="og:url" content="http://sillyfan.top/2019/08/20/惊！史上最全的select加锁分析(Mysql)/index.html">
+<meta property="og:site_name" content="HUAN">
+<meta property="og:description" content="本文转载自 https://juejin.im/post/5d5671a2e51d45620821cea7   引言大家在面试中有没遇到面试官问你下面六句Sql的区别呢 123456select * from table where id = ?select * from table where id &amp;lt; ?select * from table where id = ? lock in">
+<meta property="og:locale" content="default">
+<meta property="og:updated_time" content="2019-08-20T03:08:21.724Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="惊！史上最全的select加锁分析(Mysql)">
+<meta name="twitter:description" content="本文转载自 https://juejin.im/post/5d5671a2e51d45620821cea7   引言大家在面试中有没遇到面试官问你下面六句Sql的区别呢 123456select * from table where id = ?select * from table where id &amp;lt; ?select * from table where id = ? lock in">
+  
+    <link rel="alternate" href="/atom.xml" title="HUAN" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png">
+  
+  
+    <link href="//fonts.googleapis.com/css?family=Source+Code+Pro" rel="stylesheet" type="text/css">
+  
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+</html>
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">HUAN</a>
+      </h1>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
+        
+        <a id="nav-search-btn" class="nav-icon" title="Search"></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://sillyfan.top"></form>
+      </div>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main"><article id="post-惊！史上最全的select加锁分析(Mysql)" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2019/08/20/惊！史上最全的select加锁分析(Mysql)/" class="article-date">
+  <time datetime="2019-08-20T03:08:21.021Z" itemprop="datePublished">2019-08-20</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      惊！史上最全的select加锁分析(Mysql)
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <blockquote>
+<p>本文转载自 <a href="https://juejin.im/post/5d5671a2e51d45620821cea7" target="_blank" rel="noopener">https://juejin.im/post/5d5671a2e51d45620821cea7</a> </p>
+</blockquote>
+<h2 id="引言"><a href="#引言" class="headerlink" title="引言"></a>引言</h2><p>大家在面试中有没遇到面试官问你下面六句Sql的区别呢</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">select * from table where id = ?</span><br><span class="line">select * from table where id &lt; ?</span><br><span class="line">select * from table where id = ? lock in share mode</span><br><span class="line">select * from table where id &lt; ? lock in share mode</span><br><span class="line">select * from table where id = ? for update</span><br><span class="line">select * from table where id &lt; ? for update</span><br></pre></td></tr></table></figure>
+
+<p>如果你能清楚的说出，这六句sql在不同的事务隔离级别下，是否加锁，加的是共享锁还是排他锁，是否存在间隙锁，那这篇文章就没有看的意义了。 之所以写这篇文章是因为目前为止网上这方面的文章太片面，都只说了一半，且大多没指明隔离级别，以及<code>where</code>后跟的是否为索引条件列。在此，我就不一一列举那些有误的文章了，大家可以自行百度一下，大多都是讲不清楚。 OK，要回答这个问题，先问自己三个问题</p>
+<pre><code>* 当前事务隔离级别是什么
+* id列是否存在索引
+* 如果存在索引是聚簇索引还是非聚簇索引呢？</code></pre><p>OK，开始回答</p>
+<h2 id="正文"><a href="#正文" class="headerlink" title="正文"></a>正文</h2><pre><code>* innodb一定存在聚簇索引，默认以主键作为聚簇索引
+* 有几个索引，就有几棵B+树(不考虑hash索引的情形)
+* 聚簇索引的叶子节点为磁盘上的真实数据。非聚簇索引的叶子节点还是索引，指向聚簇索引B+树。</code></pre><p>下面啰嗦点基础知识</p>
+<h3 id="锁类型"><a href="#锁类型" class="headerlink" title="锁类型"></a>锁类型</h3><p><strong>共享锁</strong>(S锁):假设事务T1对数据A加上共享锁，那么事务T2<strong>可以</strong>读数据A，<strong>不能</strong>修改数据A。</p>
+<p><strong>排他锁</strong>(X锁):假设事务T1对数据A加上共享锁，那么事务T2<strong>不能</strong>读数据A，<strong>不能</strong>修改数据A。 我们通过<code>update</code>、<code>delete</code>等语句加上的锁都是行级别的锁。只有<code>LOCK TABLE … READ</code>和<code>LOCK TABLE … WRITE</code>才能申请表级别的锁。</p>
+<p><strong>意向共享锁</strong>(IS锁):一个事务在获取（任何一行/或者全表）S锁之前，一定会先在所在的表上加IS锁。</p>
+<p><strong>意向排他锁</strong>(IX锁):一个事务在获取（任何一行/或者全表）X锁之前，一定会先在所在的表上加IX锁。<br><strong>意向锁存在的目的?</strong></p>
+<p>OK，这里说一下意向锁存在的目的。假设事务T1，用X锁来锁住了表上的几条记录，那么此时表上存在IX锁，即意向排他锁。那么此时事务T2要进行<code>LOCK TABLE … WRITE</code>的表级别锁的请求，可以直接根据意向锁是否存在而判断是否有锁冲突。</p>
+<h3 id="加锁算法"><a href="#加锁算法" class="headerlink" title="加锁算法"></a>加锁算法</h3><p>我的说法是来自官方文档: <code>https://dev.mysql.com/doc/refman/5.7/en/innodb-locking.html</code> 加上自己矫揉造作的见解得出。</p>
+<p>ok，记得如下三种，本文就够用了</p>
+<p><code>Record Locks</code>：简单翻译为行锁吧。注意了，该锁是对索引记录进行加锁！锁是在加索引上而不是行上的。注意了，innodb一定存在聚簇索引，因此行锁最终都会落到聚簇索引上！</p>
+<p><code>Gap Locks</code>：简单翻译为间隙锁，是对索引的间隙加锁，其目的只有一个，防止其他事物插入数据。在<code>Read Committed</code>隔离级别下，不会使用间隙锁。这里我对官网补充一下，隔离级别比<code>Read Committed</code>低的情况下，也不会使用间隙锁，如隔离级别为<code>Read Uncommited</code>时，也不存在间隙锁。当隔离级别为<code>Repeatable Read</code>和<code>Serializable</code>时，就会存在间隙锁。</p>
+<p><code>Next-Key Locks</code>：这个理解为<code>Record Lock</code>+索引前面的<code>Gap Lock</code>。记住了，锁住的是索引前面的间隙！比如一个索引包含值，10，11，13和20。那么，间隙锁的范围如下</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">(negative infinity, 10]</span><br><span class="line">(10, 11]</span><br><span class="line">(11, 13]</span><br><span class="line">(13, 20]</span><br><span class="line">(20, positive infinity)</span><br></pre></td></tr></table></figure>
+
+<h3 id="快照读和当前读"><a href="#快照读和当前读" class="headerlink" title="快照读和当前读"></a>快照读和当前读</h3><p>最后一点基础知识了，大家坚持看完，这些是后面分析的基础！ 在mysql中select分为快照读和当前读，执行下面的语句</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">select * from table where id = ?;</span><br></pre></td></tr></table></figure>
+
+<p>执行的是快照读，读的是数据库记录的快照版本，是不加锁的。（这种说法在隔离级别为<code>Serializable</code>中不成立，后面我会补充。） 那么，执行</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">select * from table where id = ? lock in share mode;</span><br></pre></td></tr></table></figure>
+
+<p>会对读取记录加S锁 (共享锁)，执行</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">select * from table where id = ? for update</span><br></pre></td></tr></table></figure>
+
+<p>会对读取记录加X锁 (排他锁)，那么</p>
+<p><strong>加的是表锁还是行锁呢？</strong></p>
+<p>针对这点，我们先回忆一下事务的四个隔离级别，他们由弱到强如下所示:</p>
+<pre><code>* `Read Uncommited(RU)`：读未提交，一个事务可以读到另一个事务未提交的数据！
+* `Read Committed (RC)`：读已提交，一个事务可以读到另一个事务已提交的数据!
+* `Repeatable Read (RR)`:可重复读，加入间隙锁，一定程度上避免了幻读的产生！注意了，只是一定程度上，并没有完全避免!我会在下一篇文章说明!另外就是记住从该级别才开始加入间隙锁(这句话记下来，后面有用到)!
+* `Serializable`：串行化，该级别下读写串行化，且所有的`select`语句后都自动加上`lock in share mode`，即使用了共享锁。因此在该隔离级别下，使用的是当前读，而不是快照读。</code></pre><p>那么关于是表锁还是行锁，大家可以看到网上最流传的一个说法是这样的，<br><strong>InnoDB行锁是通过给索引上的索引项加锁来实现的，这一点MySQL与Oracle不同，后者是通过在数据块中对相应数据行加锁来实现的。 InnoDB这种行锁实现特点意味着：只有通过索引条件检索数据，InnoDB才使用行级锁，否则，InnoDB将使用表锁！</strong></p>
+<p>这句话大家可以搜一下，都是你抄我的，我抄你的。那么，这句话本身有两处错误！ <strong>错误一</strong>:并不是用表锁来实现锁表的操作，而是利用了<code>Next-Key Locks</code>，也可以理解为是用了行锁+间隙锁来实现锁表的操作! 为了便于说明，我来个例子，假设有表数据如下，pId为主键索引</p>
+<table>
+<thead>
+<tr>
+<th align="center">pId(int)</th>
+<th align="center">name(varchar)</th>
+<th align="center">num(int)</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center">1</td>
+<td align="center">aaa</td>
+<td align="center">100</td>
+</tr>
+<tr>
+<td align="center">2</td>
+<td align="center">bbb</td>
+<td align="center">200</td>
+</tr>
+<tr>
+<td align="center">7</td>
+<td align="center">ccc</td>
+<td align="center">200</td>
+</tr>
+</tbody></table>
+<p>执行语句(name列无索引)</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">select * from table where name = `aaa` for update</span><br></pre></td></tr></table></figure>
+
+<p>那么此时在pId=1,2,7这三条记录上存在行锁(把行锁住了)。另外，在(-∞,1)(1,2)(2,7)(7,+∞)上存在间隙锁(把间隙锁住了)。因此，给人一种整个表锁住的错觉！</p>
+<p><code>ps:</code>对该结论有疑问的，可自行执行<code>show engine innodb status;</code>语句进行分析。</p>
+<p><strong>错误二</strong>:所有文章都不提隔离级别！</p>
+<p>注意我上面说的，之所以能够锁表，是通过行锁+间隙锁来实现的。那么，<code>RU</code>和<code>RC</code>都不存在间隙锁，这种说法在<code>RU</code>和<code>RC</code>中还能成立么？ 因此，该说法只在<code>RR</code>和<code>Serializable</code>中是成立的。如果隔离级别为<code>RU</code>和<code>RC</code>，无论条件列上是否有索引，都不会锁表，只锁行！</p>
+<h3 id="分析"><a href="#分析" class="headerlink" title="分析"></a>分析</h3><p>下面来对开始的问题作出解答，假设有表如下，pId为主键索引</p>
+<table>
+<thead>
+<tr>
+<th align="center">pId(int)</th>
+<th align="center">name(varchar)</th>
+<th align="center">num(int)</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center">1</td>
+<td align="center">aaa</td>
+<td align="center">100</td>
+</tr>
+<tr>
+<td align="center">2</td>
+<td align="center">bbb</td>
+<td align="center">200</td>
+</tr>
+<tr>
+<td align="center">3</td>
+<td align="center">bbb</td>
+<td align="center">300</td>
+</tr>
+<tr>
+<td align="center">7</td>
+<td align="center">ccc</td>
+<td align="center">200</td>
+</tr>
+</tbody></table>
+<h3 id="RC-RU-条件列非索引"><a href="#RC-RU-条件列非索引" class="headerlink" title="RC/RU+条件列非索引"></a>RC/RU+条件列非索引</h3><p>(1)<code>select * from table where num = 200</code></p>
+<p>不加任何锁，是快照读。</p>
+<p>(2)<code>select * from table where num &gt; 200</code></p>
+<p>不加任何锁，是快照读。</p>
+<p>(3)<code>select * from table where num = 200 lock in share mode</code></p>
+<p>当num = 200，有两条记录。这两条记录对应的pId=2，7，因此在pId=2，7的聚簇索引上加行级S锁，采用当前读。</p>
+<p>(4)<code>select * from table where num &gt; 200 lock in share mode</code></p>
+<p>当num &gt; 200，有一条记录。这条记录对应的pId=3，因此在pId=3的聚簇索引上加上行级S锁，采用当前读。</p>
+<p>(5)<code>select * from table where num = 200 for update</code></p>
+<p>当num = 200，有两条记录。这两条记录对应的pId=2，7，因此在pId=2，7的聚簇索引上加行级X锁，采用当前读。</p>
+<p>(6)<code>select * from table where num &gt; 200 for update</code></p>
+<p>当num &gt; 200，有一条记录。这条记录对应的pId=3，因此在pId=3的聚簇索引上加上行级X锁，采用当前读。</p>
+<h3 id="RC-RU-条件列是聚簇索引"><a href="#RC-RU-条件列是聚簇索引" class="headerlink" title="RC/RU+条件列是聚簇索引"></a>RC/RU+条件列是聚簇索引</h3><p>恩，大家应该知道pId是主键列，因此pId用的就是聚簇索引。此情况其实和<strong>RC/RU+条件列非索引</strong>情况是类似的。</p>
+<p>(1)<code>select * from table where pId = 2</code></p>
+<p>不加任何锁，是快照读。</p>
+<p>(2)<code>select * from table where pId &gt; 2</code></p>
+<p>不加任何锁，是快照读。</p>
+<p>(3)<code>select * from table where pId = 2 lock in share mode</code></p>
+<p>在pId=2的聚簇索引上，加S锁，为当前读。</p>
+<p>(4)<code>select * from table where pId &gt; 2 lock in share mode</code></p>
+<p>在pId=3，7的聚簇索引上，加S锁，为当前读。</p>
+<p>(5)<code>select * from table where pId = 2 for update</code></p>
+<p>在pId=2的聚簇索引上，加X锁，为当前读。</p>
+<p>(6)<code>select * from table where pId &gt; 2 for update</code></p>
+<p>在pId=3，7的聚簇索引上，加X锁，为当前读。</p>
+<p>这里，大家可能有疑问<br><strong>为什么条件列加不加索引，加锁情况是一样的？</strong></p>
+<p>ok,其实是不一样的。在RC/RU隔离级别中，MySQL Server做了优化。在条件列没有索引的情况下，尽管通过聚簇索引来扫描全表，进行全表加锁。但是，MySQL Server层会进行过滤并把不符合条件的锁当即释放掉，因此你看起来最终结果是一样的。但是<strong>RC/RU+条件列非索引</strong>比本例多了一个释放不符合条件的锁的过程！</p>
+<h3 id="RC-RU-条件列是非聚簇索引"><a href="#RC-RU-条件列是非聚簇索引" class="headerlink" title="RC/RU+条件列是非聚簇索引"></a>RC/RU+条件列是非聚簇索引</h3><p>我们在num列上建上非唯一索引。此时有一棵聚簇索引(主键索引，pId)形成的B+索引树，其叶子节点为硬盘上的真实数据。以及另一棵非聚簇索引(非唯一索引，num)形成的B+索引树，其叶子节点依然为索引节点，保存了num列的字段值，和对应的聚簇索引。</p>
+<p>接下来分析开始</p>
+<p>(1)<code>select * from table where num = 200</code></p>
+<p>不加任何锁，是快照读。</p>
+<p>(2)<code>select * from table where num &gt; 200</code></p>
+<p>不加任何锁，是快照读。</p>
+<p>(3)<code>select * from table where num = 200 lock in share mode</code></p>
+<p>当num = 200，由于num列上有索引，因此先在 num = 200的两条索引记录上加行级S锁。接着，去聚簇索引树上查询，这两条记录对应的pId=2，7，因此在pId=2，7的聚簇索引上加行级S锁，采用当前读。</p>
+<p>(4)<code>select * from table where num &gt; 200 lock in share mode</code></p>
+<p>当num &gt; 200，由于num列上有索引，因此先在符合条件的 num = 300的一条索引记录上加行级S锁。接着，去聚簇索引树上查询，这条记录对应的pId=3，因此在pId=3的聚簇索引上加行级S锁，采用当前读。</p>
+<p>(5)<code>select * from table where num = 200 for update</code></p>
+<p>当num = 200，由于num列上有索引，因此先在 num = 200的两条索引记录上加行级X锁。接着，去聚簇索引树上查询，这两条记录对应的pId=2，7，因此在pId=2，7的聚簇索引上加行级X锁，采用当前读。</p>
+<p>(6)<code>select * from table where num &gt; 200 for update</code></p>
+<p>当num &gt; 200，由于num列上有索引，因此先在符合条件的 num = 300的一条索引记录上加行级X锁。接着，去聚簇索引树上查询，这条记录对应的pId=3，因此在pId=3的聚簇索引上加行级X锁，采用当前读。</p>
+<h3 id="RR-Serializable-条件列非索引"><a href="#RR-Serializable-条件列非索引" class="headerlink" title="RR/Serializable+条件列非索引"></a>RR/Serializable+条件列非索引</h3><p>RR级别需要多考虑的就是gap lock，他的加锁特征在于，无论你怎么查都是锁全表。如下所示 接下来分析开始</p>
+<p>(1)<code>select * from table where num = 200</code></p>
+<p>在RR级别下，不加任何锁，是快照读。 在Serializable级别下，在pId = 1,2,3,7（全表所有记录）的聚簇索引上加S锁。并且在 聚簇索引的所有间隙(-∞,1)(1,2)(2,3)(3,7)(7,+∞)加gap lock</p>
+<p>(2)<code>select * from table where num &gt; 200</code></p>
+<p>在RR级别下，不加任何锁，是快照读。 在Serializable级别下，在pId = 1,2,3,7（全表所有记录）的聚簇索引上加S锁。并且在 聚簇索引的所有间隙(-∞,1)(1,2)(2,3)(3,7)(7,+∞)加gap lock</p>
+<p>(3)<code>select * from table where num = 200 lock in share mode</code></p>
+<p>在pId = 1,2,3,7（全表所有记录）的聚簇索引上加S锁。并且在 聚簇索引的所有间隙(-∞,1)(1,2)(2,3)(3,7)(7,+∞)加gap lock</p>
+<p>(4)<code>select * from table where num &gt; 200 lock in share mode</code></p>
+<p>在pId = 1,2,3,7（全表所有记录）的聚簇索引上加S锁。并且在 聚簇索引的所有间隙(-∞,1)(1,2)(2,3)(3,7)(7,+∞)加gap lock</p>
+<p>(5)<code>select * from table where num = 200 for update</code></p>
+<p>在pId = 1,2,3,7（全表所有记录）的聚簇索引上加X锁。并且在 聚簇索引的所有间隙(-∞,1)(1,2)(2,3)(3,7)(7,+∞)加gap lock</p>
+<p>(6)<code>select * from table where num &gt; 200 for update</code></p>
+<p>在pId = 1,2,3,7（全表所有记录）的聚簇索引上加X锁。并且在 聚簇索引的所有间隙(-∞,1)(1,2)(2,3)(3,7)(7,+∞)加gap lock</p>
+<h3 id="RR-Serializable-条件列是聚簇索引"><a href="#RR-Serializable-条件列是聚簇索引" class="headerlink" title="RR/Serializable+条件列是聚簇索引"></a>RR/Serializable+条件列是聚簇索引</h3><p>恩，大家应该知道pId是主键列，因此pId用的就是聚簇索引。该情况的加锁特征在于，如果<code>where</code>后的条件为精确查询(<code>=</code>的情况)，那么只存在record lock。如果<code>where</code>后的条件为范围查询(<code>&gt;</code>或<code>&lt;</code>的情况)，那么存在的是record lock+gap lock。</p>
+<p>(1)<code>select * from table where pId = 2</code></p>
+<p>在RR级别下，不加任何锁，是快照读。 在Serializable级别下，是当前读，在pId=2的聚簇索引上加S锁，不存在gap lock。</p>
+<p>(2)<code>select * from table where pId &gt; 2</code></p>
+<p>在RR级别下，不加任何锁，是快照读。 在Serializable级别下，是当前读，在pId=3,7的聚簇索引上加S锁。在(2,3)(3,7)(7,+∞)加上gap lock</p>
+<p>(3)<code>select * from table where pId = 2 lock in share mode</code></p>
+<p>是当前读，在pId=2的聚簇索引上加S锁，不存在gap lock。</p>
+<p>(4)<code>select * from table where pId &gt; 2 lock in share mode</code></p>
+<p>是当前读，在pId=3,7的聚簇索引上加S锁。在(2,3)(3,7)(7,+∞)加上gap lock</p>
+<p>(5)<code>select * from table where pId = 2 for update</code></p>
+<p>是当前读，在pId=2的聚簇索引上加X锁。</p>
+<p>(6)<code>select * from table where pId &gt; 2 for update</code></p>
+<p>在pId=3,7的聚簇索引上加X锁。在(2,3)(3,7)(7,+∞)加上gap lock</p>
+<p>(7)<code>select * from table where pId = 6 [lock in share mode|for update]</code></p>
+<p>注意了，pId=6是不存在的列，这种情况会在(3,7)上加gap lock。</p>
+<p>(8)<code>select * from table where pId &gt; 18 [lock in share mode|for update]</code></p>
+<p>注意了，pId&gt;18，查询结果是空的。在这种情况下，是在(7,+∞)上加gap lock。</p>
+<h3 id="RR-Serializable-条件列是非聚簇索引"><a href="#RR-Serializable-条件列是非聚簇索引" class="headerlink" title="RR/Serializable+条件列是非聚簇索引"></a>RR/Serializable+条件列是非聚簇索引</h3><p>这里非聚簇索引，需要区分是否为唯一索引。因为如果是非唯一索引，间隙锁的加锁方式是有区别的。</p>
+<p>先说一下，唯一索引的情况。如果是唯一索引，情况和<strong>RR/Serializable+条件列是聚簇索引</strong>类似，唯一有区别的是:这个时候有两棵索引树，加锁是加在对应的非聚簇索引树和聚簇索引树上！大家可以自行推敲!</p>
+<p>下面说一下，非聚簇索引是非唯一索引的情况，他和唯一索引的区别就是通过索引进行精确查询以后，不仅存在record lock，还存在gap lock。而通过唯一索引进行精确查询后，只存在record lock，不存在gap lock。老规矩在num列建立非唯一索引</p>
+<p>(1)<code>select * from table where num = 200</code></p>
+<p>在RR级别下，不加任何锁，是快照读。 在Serializable级别下，是当前读，在pId=2，7的聚簇索引上加S锁，在num=200的非聚集索引上加S锁，在(100,200)(200,300)加上gap lock。</p>
+<p>(2)<code>select * from table where num &gt; 200</code></p>
+<p>在RR级别下，不加任何锁，是快照读。 在Serializable级别下，是当前读，在pId=3的聚簇索引上加S锁，在num=300的非聚集索引上加S锁。在(200,300)(300,+∞)加上gap lock</p>
+<p>(3)<code>select * from table where num = 200 lock in share mode</code></p>
+<p>是当前读，在pId=2，7的聚簇索引上加S锁，在num=200的非聚集索引上加S锁，在(100,200)(200,300)加上gap lock。</p>
+<p>(4)<code>select * from table where num &gt; 200 lock in share mode</code></p>
+<p>是当前读，在pId=3的聚簇索引上加S锁，在num=300的非聚集索引上加S锁。在(200,300)(300,+∞)加上gap lock。</p>
+<p>(5)<code>select * from table where num = 200 for update</code></p>
+<p>是当前读，在pId=2，7的聚簇索引上加S锁，在num=200的非聚集索引上加X锁，在(100,200)(200,300)加上gap lock。</p>
+<p>(6)<code>select * from table where num &gt; 200 for update</code></p>
+<p>是当前读，在pId=3的聚簇索引上加S锁，在num=300的非聚集索引上加X锁。在(200,300)(300,+∞)加上gap lock</p>
+<p>(7)<code>select * from table where num = 250 [lock in share mode|for update]</code></p>
+<p>注意了，num=250是不存在的列，这种情况会在(200,300)上加gap lock。</p>
+<p>(8)<code>select * from table where num &gt; 400 [lock in share mode|for update]</code></p>
+<p>注意了，pId&gt;400，查询结果是空的。在这种情况下，是在(400,+∞)上加gap lock。</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://sillyfan.top/2019/08/20/惊！史上最全的select加锁分析(Mysql)/" data-id="cjzj9197m001hs22au6iabh7r" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Java/">Java</a></li></ul>
+
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+  
+    <a href="/2019/08/06/万万没想到，JVM内存结构的面试题可以问的这么难？/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">万万没想到，JVM内存结构的面试题可以问的这么难？</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tags</h3>
+    <div class="widget">
+      <ul class="tag-list"><li class="tag-list-item"><a class="tag-list-link" href="/tags/HDFS/">HDFS</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Hadoop/">Hadoop</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/JVM/">JVM</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Java/">Java</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Linux/">Linux</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/MySQL/">MySQL</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Reactor/">Reactor</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/RxJava/">RxJava</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Shell/">Shell</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Spring/">Spring</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/TCP-IP/">TCP/IP</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Vue-js/">Vue.js</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/java/">java</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/分布式/">分布式</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/后端/">后端</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/微服务/">微服务</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/数据库/">数据库</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/服务器/">服务器</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/架构/">架构</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/源码/">源码</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tag Cloud</h3>
+    <div class="widget tagcloud">
+      <a href="/tags/HDFS/" style="font-size: 10px;">HDFS</a> <a href="/tags/Hadoop/" style="font-size: 10px;">Hadoop</a> <a href="/tags/JVM/" style="font-size: 10px;">JVM</a> <a href="/tags/Java/" style="font-size: 20px;">Java</a> <a href="/tags/Linux/" style="font-size: 10px;">Linux</a> <a href="/tags/MySQL/" style="font-size: 13.33px;">MySQL</a> <a href="/tags/Reactor/" style="font-size: 10px;">Reactor</a> <a href="/tags/RxJava/" style="font-size: 10px;">RxJava</a> <a href="/tags/Shell/" style="font-size: 10px;">Shell</a> <a href="/tags/Spring/" style="font-size: 13.33px;">Spring</a> <a href="/tags/TCP-IP/" style="font-size: 10px;">TCP/IP</a> <a href="/tags/Vue-js/" style="font-size: 10px;">Vue.js</a> <a href="/tags/java/" style="font-size: 10px;">java</a> <a href="/tags/分布式/" style="font-size: 10px;">分布式</a> <a href="/tags/后端/" style="font-size: 10px;">后端</a> <a href="/tags/微服务/" style="font-size: 10px;">微服务</a> <a href="/tags/数据库/" style="font-size: 10px;">数据库</a> <a href="/tags/服务器/" style="font-size: 10px;">服务器</a> <a href="/tags/架构/" style="font-size: 16.67px;">架构</a> <a href="/tags/源码/" style="font-size: 10px;">源码</a>
+    </div>
+  </div>
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Archives</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/08/">August 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/06/">June 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/05/">May 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/04/">April 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/01/">January 2019</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Recent Posts</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2019/08/20/惊！史上最全的select加锁分析(Mysql)/">惊！史上最全的select加锁分析(Mysql)</a>
+          </li>
+        
+          <li>
+            <a href="/2019/08/06/万万没想到，JVM内存结构的面试题可以问的这么难？/">万万没想到，JVM内存结构的面试题可以问的这么难？</a>
+          </li>
+        
+          <li>
+            <a href="/2019/06/28/分布式数据库中间件MyCat搞起来！/">分布式数据库中间件 MyCat 搞起来！</a>
+          </li>
+        
+          <li>
+            <a href="/2019/06/20/Linux生产环境上，最常用的一套“AWK“技巧/">Linux生产环境上，最常用的一套“AWK“技巧</a>
+          </li>
+        
+          <li>
+            <a href="/2019/06/18/死磕Java内部类（一篇就够）/">死磕Java内部类（一篇就够）</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2019 huan<br>
+      Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  <link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+  <script src="/fancybox/jquery.fancybox.pack.js"></script>
+
+
+<script src="/js/script.js"></script>
+
+
+
+  </div>
+</body>
+</html>
