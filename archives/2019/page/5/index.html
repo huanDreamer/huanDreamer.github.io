@@ -6,20 +6,15 @@
   <meta name="renderer" content="webkit">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <link rel="dns-prefetch" href="http://sillyfan.top">
-  <title>Java8新的异步编程方式 CompletableFuture(一) | HUAN</title>
+  <title>Archives: 2019 | HUAN</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-  <meta name="description" content="本文转载自 https://juejin.im/post/59eae61b51882549fc512b34   一. FutureJDK 5引入了Future模式。Future接口是Java多线程Future模式的实现，在java.util.concurrent包中，可以来进行异步计算。 Future模式是多线程设计常用的一种设计模式。Future模式可以理解成：我有一个任务，提交给了Futur">
-<meta name="keywords" content="Java">
-<meta property="og:type" content="article">
-<meta property="og:title" content="Java8新的异步编程方式 CompletableFuture(一)">
-<meta property="og:url" content="http://sillyfan.top/2019/05/14/Java8新的异步编程方式CompletableFuture(1)/index.html">
+  <meta property="og:type" content="website">
+<meta property="og:title" content="HUAN">
+<meta property="og:url" content="http://sillyfan.top/archives/2019/page/5/index.html">
 <meta property="og:site_name" content="HUAN">
-<meta property="og:description" content="本文转载自 https://juejin.im/post/59eae61b51882549fc512b34   一. FutureJDK 5引入了Future模式。Future接口是Java多线程Future模式的实现，在java.util.concurrent包中，可以来进行异步计算。 Future模式是多线程设计常用的一种设计模式。Future模式可以理解成：我有一个任务，提交给了Futur">
 <meta property="og:locale" content="default">
-<meta property="og:updated_time" content="2019-05-30T00:52:25.403Z">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="Java8新的异步编程方式 CompletableFuture(一)">
-<meta name="twitter:description" content="本文转载自 https://juejin.im/post/59eae61b51882549fc512b34   一. FutureJDK 5引入了Future模式。Future接口是Java多线程Future模式的实现，在java.util.concurrent包中，可以来进行异步计算。 Future模式是多线程设计常用的一种设计模式。Future模式可以理解成：我有一个任务，提交给了Futur">
+<meta name="twitter:title" content="HUAN">
   
     <link rel="alternative" href="/atom.xml" title="HUAN" type="application/atom+xml">
   
@@ -155,322 +150,52 @@
             <canvas data-colors="#eaeaea" data-sectionHeight="100" data-contentId="js-content" id="myCanvas1" class="anm-canvas"></canvas>
           </div>
           <div id="js-content" class="content-ll">
-            <article id="post-Java8新的异步编程方式CompletableFuture(1)" class="article article-type-post " itemscope itemprop="blogPost">
-  <div class="article-inner">
-    
-      <header class="article-header">
-        
+            
   
-    <h1 class="article-title" itemprop="name">
-      Java8新的异步编程方式 CompletableFuture(一)
+  
+    
+    
+      
+      
+      <section class="archives-wrap">
+        <div class="archive-year-wrap">
+          <a href="/archives/2019" class="archive-year">2019</a>
+        </div>
+        <div class="archives">
+    
+    <article class="archive-article archive-type-post">
+  <div class="archive-article-inner">
+    <header class="archive-article-header">
+      	<div class="article-meta">
+	      	<a href="/2019/01/25/about/" class="archive-article-date">
+  	<time datetime="2019-01-25T11:09:48.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2019-01-25</time>
+</a>
+        </div>
+    	 
+  
+    <h1 itemprop="name">
+      <a class="archive-article-title" href="/2019/01/25/about/">关于</a>
     </h1>
   
 
-        
-        <a href="/2019/05/14/Java8新的异步编程方式CompletableFuture(1)/" class="archive-article-date">
-  	<time datetime="2019-05-14T03:45:42.042Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2019-05-14</time>
-</a>
-        
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <blockquote>
-<p>本文转载自 <a href="https://juejin.im/post/59eae61b51882549fc512b34" target="_blank" rel="noopener">https://juejin.im/post/59eae61b51882549fc512b34</a> </p>
-</blockquote>
-<h1 id="一-Future"><a href="#一-Future" class="headerlink" title="一. Future"></a>一. Future</h1><p>JDK 5引入了Future模式。Future接口是Java多线程Future模式的实现，在java.util.concurrent包中，可以来进行异步计算。</p>
-<p>Future模式是多线程设计常用的一种设计模式。Future模式可以理解成：我有一个任务，提交给了Future，Future替我完成这个任务。期间我自己可以去做任何想做的事情。一段时间之后，我就便可以从Future那儿取出结果。</p>
-<p>Future的接口很简单，只有五个方法。<br>`{</p>
-<pre><code>;
+        <div class="article-info info-on-right">
+          
+          
 
-;
-
-;
-
-;
-
-;</code></pre><p>}`</p>
-<p>Future接口的方法介绍如下：</p>
-<pre><code>* boolean cancel (boolean mayInterruptIfRunning) 取消任务的执行。参数指定是否立即中断任务执行，或者等等任务结束
-* boolean isCancelled () 任务是否已经取消，任务正常完成前将其取消，则返回 true
-* boolean isDone () 任务是否已经完成。需要注意的是如果任务正常终止、异常或取消，都将返回true
-* V get () throws InterruptedException, ExecutionException 等待任务执行结束，然后获得V类型的结果。InterruptedException 线程被中断异常， ExecutionException任务执行异常，如果任务被取消，还会抛出CancellationException
-* V get (long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException 同上面的get功能一样，多了设置超时时间。参数timeout指定超时时间，uint指定时间的单位，在枚举类TimeUnit中有相关的定义。如果计 算超时，将抛出TimeoutException</code></pre><p>一般情况下，我们会结合Callable和Future一起使用，通过ExecutorService的submit方法执行Callable，并返回Future。<br>`ExecutorService executor = Executors.newCachedThreadPool();</p>
-<pre><code>Future&lt;String&gt; future = executor.submit(() -&gt; { 
-    System.out.println();
-    Thread.sleep();
-     ;
-});
-
- {
-    Thread.sleep();
-}  (InterruptedException e) {
-}
-
-System.out.println();  
-
- {
-    System.out.println(future.get());  
-}  (InterruptedException e) {
-}  (ExecutionException e) {
-
-}  {
-    executor.shutdown();
-}`</code></pre><p>比起future.get()，其实更推荐使用get (long timeout, TimeUnit unit) 方法，设置了超时时间可以防止程序无限制的等待future的结果。</p>
-<h1 id="二-CompletableFuture介绍"><a href="#二-CompletableFuture介绍" class="headerlink" title="二. CompletableFuture介绍"></a>二. CompletableFuture介绍</h1><h2 id="2-1-Future模式的缺点"><a href="#2-1-Future模式的缺点" class="headerlink" title="2.1 Future模式的缺点"></a>2.1 Future模式的缺点</h2><pre><code>* Future虽然可以实现获取异步执行结果的需求，但是它没有提供通知的机制，我们无法得知Future什么时候完成。
-* 要么使用阻塞，在future.get()的地方等待future返回的结果，这时又变成同步操作。要么使用isDone()轮询地判断Future是否完成，这样会耗费CPU的资源。</code></pre><h2 id="2-2-CompletableFuture介绍"><a href="#2-2-CompletableFuture介绍" class="headerlink" title="2.2 CompletableFuture介绍"></a>2.2 CompletableFuture介绍</h2><p>Netty、Guava分别扩展了Java 的 Future 接口，方便异步编程。</p>
-<p>Java 8新增的CompletableFuture类正是吸收了所有Google Guava中ListenableFuture和SettableFuture的特征，还提供了其它强大的功能，让Java拥有了完整的非阻塞编程模型：Future、Promise 和 Callback(在Java8之前，只有无Callback 的Future)。</p>
-<p>CompletableFuture能够将回调放到与任务不同的线程中执行，也能将回调作为继续执行的同步函数，在与任务相同的线程中执行。它避免了传统回调最大的问题，那就是能够将控制流分离到不同的事件处理器中。</p>
-<p>CompletableFuture弥补了Future模式的缺点。在异步的任务完成后，需要用其结果继续操作时，无需等待。可以直接通过thenAccept、thenApply、thenCompose等方式将前面异步处理的结果交给另外一个异步事件处理线程来处理。</p>
-<h1 id="三-CompletableFuture特性"><a href="#三-CompletableFuture特性" class="headerlink" title="三. CompletableFuture特性"></a>三. CompletableFuture特性</h1><h2 id="3-1-CompletableFuture的静态工厂方法"><a href="#3-1-CompletableFuture的静态工厂方法" class="headerlink" title="3.1 CompletableFuture的静态工厂方法"></a>3.1 CompletableFuture的静态工厂方法</h2><table>
-<thead>
-<tr>
-<th align="center">方法名</th>
-<th align="center">描述</th>
-</tr>
-</thead>
-<tbody><tr>
-<td align="center">runAsync(Runnable runnable)</td>
-<td align="center">使用ForkJoinPool.commonPool()作为它的线程池执行异步代码。</td>
-</tr>
-<tr>
-<td align="center">runAsync(Runnable runnable, Executor executor)</td>
-<td align="center">使用指定的thread pool执行异步代码。</td>
-</tr>
-<tr>
-<td align="center">supplyAsync(Supplier<u> supplier)</u></td>
-<td align="center">使用ForkJoinPool.commonPool()作为它的线程池执行异步代码，异步操作有返回值</td>
-</tr>
-<tr>
-<td align="center">supplyAsync(Supplier<u> supplier, Executor executor)</u></td>
-<td align="center">使用指定的thread pool执行异步代码，异步操作有返回值</td>
-</tr>
-</tbody></table>
-<p>runAsync 和 supplyAsync 方法的区别是runAsync返回的CompletableFuture是没有返回值的。<br>`CompletableFuture<void> future = CompletableFuture.runAsync(() -&gt; {<br>            System.out.println();<br>        });</void></p>
-<pre><code> {
-    future.get();
-}  (InterruptedException e) {
-    e.printStackTrace();
-}  (ExecutionException e) {
-    e.printStackTrace();
-}
-
-System.out.println();`</code></pre><p>而supplyAsync返回的CompletableFuture是由返回值的，下面的代码打印了future的返回值。</p>
-<p>`CompletableFuture<string> future = CompletableFuture.supplyAsync(() -&gt; );</string></p>
-<pre><code> {
-    System.out.println(future.get());
-}  (InterruptedException e) {
-    e.printStackTrace();
-}  (ExecutionException e) {
-    e.printStackTrace();
-}
-
-System.out.println();`</code></pre><h2 id="3-2-Completable"><a href="#3-2-Completable" class="headerlink" title="3.2 Completable"></a>3.2 Completable</h2><table>
-<thead>
-<tr>
-<th align="center">方法名</th>
-<th align="center">描述</th>
-</tr>
-</thead>
-<tbody><tr>
-<td align="center">complete(T t)</td>
-<td align="center">完成异步执行，并返回future的结果</td>
-</tr>
-<tr>
-<td align="center">completeExceptionally(Throwable ex)</td>
-<td align="center">异步执行不正常的结束</td>
-</tr>
-</tbody></table>
-<p>future.get()在等待执行结果时，程序会一直block，如果此时调用complete(T t)会立即执行。<br>`CompletableFuture<string> future  = CompletableFuture.supplyAsync(() -&gt; );</string></p>
-<pre><code>future.complete();
-
- {
-    System.out.println(future.get());
-}  (InterruptedException e) {
-    e.printStackTrace();
-}  (ExecutionException e) {
-    e.printStackTrace();
-}`</code></pre><p>执行结果：</p>
-<p><code>World</code></p>
-<p>可以看到future调用complete(T t)会立即执行。但是complete(T t)只能调用一次，后续的重复调用会失效。</p>
-<p>如果future已经执行完毕能够返回结果，此时再调用complete(T t)则会无效。<br>`CompletableFuture<string> future = CompletableFuture.supplyAsync(() -&gt; );</string></p>
-<pre><code> {
-    Thread.sleep();
-}  (InterruptedException e) {
-    e.printStackTrace();
-}
-
-future.complete();
-
- {
-    System.out.println(future.get());
-}  (InterruptedException e) {
-    e.printStackTrace();
-}  (ExecutionException e) {
-    e.printStackTrace();
-}`</code></pre><p>执行结果：</p>
-<p><code>Hello</code></p>
-<p>如果使用completeExceptionally(Throwable ex)则抛出一个异常，而不是一个成功的结果。</p>
-<p>`CompletableFuture<string> future = CompletableFuture.supplyAsync(() -&gt; );</string></p>
-<pre><code>future.completeExceptionally( Exception());
-
- {
-    System.out.println(future.get());
-}  (InterruptedException e) {
-    e.printStackTrace();
-}  (ExecutionException e) {
-    e.printStackTrace();
-}`</code></pre><p>执行结果：</p>
-<p><code>java.util.concurrent.ExecutionException: java.lang.Exception
-...</code></p>
-
-      
-
-      
-        <div class="page-reward">
-          <a href="javascript:;" class="page-reward-btn tooltip-top">
-            <div class="tooltip tooltip-east">
-            <span class="tooltip-item">
-              赏
-            </span>
-            <span class="tooltip-content">
-              <span class="tooltip-text">
-                <span class="tooltip-inner">
-                  <p class="reward-p"><i class="icon icon-quo-left"></i>谢谢你请我吃糖果<i class="icon icon-quo-right"></i></p>
-                  <div class="reward-box">
-                    
-                    
-                  </div>
-                </span>
-              </span>
-            </span>
-          </div>
-          </a>
         </div>
-      
-    </div>
-    <div class="article-info article-info-index">
-      
-      
-	<div class="article-tag tagcloud">
-		<i class="icon-price-tags icon"></i>
-		<ul class="article-tag-list">
-			 
-        		<li class="article-tag-list-item">
-        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color5">Java</a>
-        		</li>
-      		
-		</ul>
-	</div>
-
-      
-
-      
-
-      
-        
-<div class="share-btn share-icons tooltip-left">
-  <div class="tooltip tooltip-east">
-    <span class="tooltip-item">
-      <a href="javascript:;" class="share-sns share-outer">
-        <i class="icon icon-share"></i>
-      </a>
-    </span>
-    <span class="tooltip-content">
-      <div class="share-wrap">
-        <div class="share-icons">
-          <a class="weibo share-sns" href="javascript:;" data-type="weibo">
-            <i class="icon icon-weibo"></i>
-          </a>
-          <a class="weixin share-sns wxFab" href="javascript:;" data-type="weixin">
-            <i class="icon icon-weixin"></i>
-          </a>
-          <a class="qq share-sns" href="javascript:;" data-type="qq">
-            <i class="icon icon-qq"></i>
-          </a>
-          <a class="douban share-sns" href="javascript:;" data-type="douban">
-            <i class="icon icon-douban"></i>
-          </a>
-          <a class="qzone share-sns" href="javascript:;" data-type="qzone">
-            <i class="icon icon-qzone"></i>
-          </a>
-          <a class="facebook share-sns" href="javascript:;" data-type="facebook">
-            <i class="icon icon-facebook"></i>
-          </a>
-          <a class="twitter share-sns" href="javascript:;" data-type="twitter">
-            <i class="icon icon-twitter"></i>
-          </a>
-          <a class="google share-sns" href="javascript:;" data-type="google">
-            <i class="icon icon-google"></i>
-          </a>
-        </div>
-      </div>
-    </span>
-  </div>
-</div>
-
-<div class="page-modal wx-share js-wx-box">
-    <a class="close js-modal-close" href="javascript:;"><i class="icon icon-close"></i></a>
-    <p>扫一扫，分享到微信</p>
-    <div class="wx-qrcode">
-      <img src="//pan.baidu.com/share/qrcode?url=http://sillyfan.top/2019/05/14/Java8新的异步编程方式CompletableFuture(1)/" alt="微信分享二维码">
-    </div>
-</div>
-
-<div class="mask js-mask"></div>
-      
-      <div class="clearfix"></div>
-    </div>
+        <div class="clearfix"></div>
+    </header>
   </div>
 </article>
-
-  
-<nav id="article-nav">
-  
-    <a href="/2019/05/14/Java8新的异步编程方式CompletableFuture(2)/" id="article-nav-newer" class="article-nav-link-wrap">
-      <i class="icon-circle-left"></i>
-      <div class="article-nav-title">
-        
-          Java8新的异步编程方式 CompletableFuture(二)
-        
-      </div>
-    </a>
   
   
-    <a href="/2019/05/14/Java8的CompletableFuture进阶之道/" id="article-nav-older" class="article-nav-link-wrap">
-      <div class="article-nav-title">Java8的CompletableFuture进阶之道</div>
-      <i class="icon-circle-right"></i>
-    </a>
-  
-</nav>
-
-
-<aside class="wrap-side-operation">
-    <div class="mod-side-operation">
-        
-        <div class="jump-container" id="js-jump-container" style="display:none;">
-            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
-                <i class="icon-font icon-back"></i>
-            </a>
-            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
-                <i class="icon-font icon-plane jump-plane"></i>
-            </div>
-        </div>
-        
-        
-    </div>
-</aside>
-
-
-
-  
-  
+    </div></section>
   
 
-  
-
-  
-
+    
+    <nav id="page-nav">
+      <a class="extend prev" rel="prev" href="/archives/2019/page/4/">&laquo; Prev</a><a class="page-number" href="/archives/2019/">1</a><span class="space">&hellip;</span><a class="page-number" href="/archives/2019/page/3/">3</a><a class="page-number" href="/archives/2019/page/4/">4</a><span class="page-number current">5</span>
+    </nav>
   
 
 
@@ -494,8 +219,8 @@ future.complete();
 	var yiliaConfig = {
 		mathjax: false,
 		isHome: false,
-		isPost: true,
-		isArchive: false,
+		isPost: false,
+		isArchive: true,
 		isTag: false,
 		isCategory: false,
 		open_in_new: false,

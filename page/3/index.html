@@ -152,6 +152,397 @@
           <div id="js-content" class="content-ll">
             
   
+    <article id="post-Java8新的异步编程方式CompletableFuture(2)" class="article article-type-post  article-index" itemscope itemprop="blogPost">
+  <div class="article-inner">
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2019/05/14/Java8新的异步编程方式CompletableFuture(2)/">Java8新的异步编程方式 CompletableFuture(二)</a>
+    </h1>
+  
+
+        
+        <a href="/2019/05/14/Java8新的异步编程方式CompletableFuture(2)/" class="archive-article-date">
+  	<time datetime="2019-05-14T03:46:06.006Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2019-05-14</time>
+</a>
+        
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <blockquote>
+<p>本文转载自 <a href="https://juejin.im/post/59eae6e4f265da430e4e4cb5" target="_blank" rel="noopener">https://juejin.im/post/59eae6e4f265da430e4e4cb5</a> </p>
+</blockquote>
+<p><a href="https://juejin.im/post/59eae61b51882549fc512b34" target="_blank" rel="noopener">上一篇文章</a>，讲述了Future模式的机制、缺点，CompletableFuture产生的由来、静态工厂方法、complete()方法等等。</p>
+<p>本文将继续整理CompletableFuture的特性。</p>
+<h2 id="3-3-转换"><a href="#3-3-转换" class="headerlink" title="3.3 转换"></a>3.3 转换</h2><p>我们可以通过CompletableFuture来异步获取一组数据，并对数据进行一些转换，类似RxJava、Scala的map、flatMap操作。</p>
+<h3 id="3-3-1-map"><a href="#3-3-1-map" class="headerlink" title="3.3.1 map"></a>3.3.1 map</h3><table>
+<thead>
+<tr>
+<th align="center">方法名</th>
+<th align="center">描述</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center">thenApply(Function&lt;? super T,? extends U&gt; fn)</td>
+<td align="center">接受一个Function&lt;? super T,? extends U&gt;参数用来转换CompletableFuture</td>
+</tr>
+<tr>
+<td align="center">thenApplyAsync(Function&lt;? super T,? extends U&gt; fn)</td>
+<td align="center">接受一个Function&lt;? super T,? extends U&gt;参数用来转换CompletableFuture，使用ForkJoinPool</td>
+</tr>
+<tr>
+<td align="center">thenApplyAsync(Function&lt;? super T,? extends U&gt; fn, Executor executor)</td>
+<td align="center">接受一个Function&lt;? super T,? extends U&gt;参数用来转换CompletableFuture，使用指定的线程池</td>
+</tr>
+</tbody></table>
+<p>thenApply的功能相当于将CompletableFuture<t>转换成CompletableFuture<u>。
+`CompletableFuture<string> future = CompletableFuture.supplyAsync(() -&gt; );</string></u></t></p>
+<pre><code>future = future.thenApply( Function&lt;String, String&gt;() {
+
+
+    {
+
+         s + ;
+    }
+}).thenApply( Function&lt;String, String&gt;() {
+
+    {
+
+         s.toUpperCase();
+    }
+});
+
+ {
+    System.out.println(future.get());
+}  (InterruptedException e) {
+    e.printStackTrace();
+}  (ExecutionException e) {
+    e.printStackTrace();
+}`</code></pre><p>再用lambda表达式简化一下</p>
+<p>`CompletableFuture<string> future = CompletableFuture.supplyAsync(() -&gt; )<br>                .thenApply(s -&gt; s + ).thenApply(String::toUpperCase);</string></p>
+<pre><code> {
+    System.out.println(future.get());
+}  (InterruptedException e) {
+    e.printStackTrace();
+}  (ExecutionException e) {
+    e.printStackTrace();
+}`</code></pre><p>执行结果：</p>
+<p><code>HELLO WORLD</code></p>
+<p>下面的例子，展示了数据流的类型经历了如下的转换：String -&gt; Integer -&gt; Double。</p>
+<p>`CompletableFuture<double> future = CompletableFuture.supplyAsync(() -&gt; )<br>                .thenApply(Integer::parseInt)<br>                .thenApply(i-&gt;i*);</double></p>
+<pre><code> {
+    System.out.println(future.get());
+}  (InterruptedException e) {
+    e.printStackTrace();
+}  (ExecutionException e) {
+    e.printStackTrace();
+}`</code></pre><p>执行结果：</p>
+<p>``</p>
+<h3 id="3-3-2-flatMap"><a href="#3-3-2-flatMap" class="headerlink" title="3.3.2 flatMap"></a>3.3.2 flatMap</h3><table>
+<thead>
+<tr>
+<th align="center">方法名</th>
+<th align="center">描述</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center">thenCompose(Function&lt;? super T, ? extends CompletionStage<u>&gt; fn)</u></td>
+<td align="center">在异步操作完成的时候对异步操作的结果进行一些操作，并且仍然返回CompletableFuture类型。</td>
+</tr>
+<tr>
+<td align="center">thenComposeAsync(Function&lt;? super T, ? extends CompletionStage<u>&gt; fn)</u></td>
+<td align="center">在异步操作完成的时候对异步操作的结果进行一些操作，并且仍然返回CompletableFuture类型。使用ForkJoinPool。</td>
+</tr>
+<tr>
+<td align="center">thenComposeAsync(Function&lt;? super T, ? extends CompletionStage<u>&gt; fn,Executor executor)</u></td>
+<td align="center">在异步操作完成的时候对异步操作的结果进行一些操作，并且仍然返回CompletableFuture类型。使用指定的线程池。</td>
+</tr>
+</tbody></table>
+<p>thenCompose可以用于组合多个CompletableFuture，将前一个结果作为下一个计算的参数，它们之间存在着先后顺序。<br>`CompletableFuture<string> future = CompletableFuture.supplyAsync(() -&gt; )<br>                .thenCompose(s -&gt; CompletableFuture.supplyAsync(() -&gt; s + ));</string></p>
+<pre><code> {
+    System.out.println(future.get());
+}  (InterruptedException e) {
+    e.printStackTrace();
+}  (ExecutionException e) {
+    e.printStackTrace();
+}`</code></pre><p>执行结果：</p>
+<p><code>Hello World</code></p>
+<p>下面的例子展示了多次调用thenCompose()</p>
+<p>`CompletableFuture<double> future = CompletableFuture.supplyAsync(() -&gt; )<br>                .thenCompose(s -&gt; CompletableFuture.supplyAsync(() -&gt; s + ))<br>                .thenCompose(s -&gt; CompletableFuture.supplyAsync(() -&gt; Double.parseDouble(s)));</double></p>
+<pre><code> {
+    System.out.println(future.get());
+}  (InterruptedException e) {
+    e.printStackTrace();
+}  (ExecutionException e) {
+    e.printStackTrace();
+}`</code></pre><p>执行结果：</p>
+<p>``</p>
+<h2 id="3-4-组合"><a href="#3-4-组合" class="headerlink" title="3.4 组合"></a>3.4 组合</h2><table>
+<thead>
+<tr>
+<th align="center">方法名</th>
+<th align="center">描述</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center">thenCombine(CompletionStage&lt;? extends U&gt; other, BiFunction&lt;? super T,? super U,? extends V&gt; fn)</td>
+<td align="center">当两个CompletableFuture都正常完成后，执行提供的fn，用它来组合另外一个CompletableFuture的结果。</td>
+</tr>
+<tr>
+<td align="center">thenCombineAsync(CompletionStage&lt;? extends U&gt; other, BiFunction&lt;? super T,? super U,? extends V&gt; fn)</td>
+<td align="center">当两个CompletableFuture都正常完成后，执行提供的fn，用它来组合另外一个CompletableFuture的结果。使用ForkJoinPool。</td>
+</tr>
+<tr>
+<td align="center">thenCombineAsync(CompletionStage&lt;? extends U&gt; other, BiFunction&lt;? super T,? super U,? extends V&gt; fn, Executor executor)</td>
+<td align="center">当两个CompletableFuture都正常完成后，执行提供的fn，用它来组合另外一个CompletableFuture的结果。使用指定的线程池。</td>
+</tr>
+</tbody></table>
+<p>现在有CompletableFuture<t>、CompletableFuture<u>和一个函数(T,U)-&gt;V，thenCompose就是将CompletableFuture<t>和CompletableFuture<u>变为CompletableFuture<v>。
+`CompletableFuture<string> future1 = CompletableFuture.supplyAsync(() -&gt; );<br>        CompletableFuture<integer> future2 = CompletableFuture.supplyAsync(() -&gt; );</integer></string></v></u></t></u></t></p>
+<pre><code>CompletableFuture&lt;Double&gt; future = future1.thenCombine(future2, (s, i) -&gt; Double.parseDouble(s + i));
+
+ {
+    System.out.println(future.get());
+}  (InterruptedException e) {
+    e.printStackTrace();
+}  (ExecutionException e) {
+    e.printStackTrace();
+}`</code></pre><p>执行结果：</p>
+<p>``
+使用thenCombine()之后future1、future2之间是并行执行的，最后再将结果汇总。这一点跟thenCompose()不同。</p>
+<p>thenAcceptBoth跟thenCombine类似，但是返回CompletableFuture类型。</p>
+<table>
+<thead>
+<tr>
+<th align="center">方法名</th>
+<th align="center">描述</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center">thenAcceptBoth(CompletionStage&lt;? extends U&gt; other, BiConsumer&lt;? super T,? super U&gt; action)</td>
+<td align="center">当两个CompletableFuture都正常完成后，执行提供的action，用它来组合另外一个CompletableFuture的结果。</td>
+</tr>
+<tr>
+<td align="center">thenAcceptBothAsync(CompletionStage&lt;? extends U&gt; other, BiConsumer&lt;? super T,? super U&gt; action)</td>
+<td align="center">当两个CompletableFuture都正常完成后，执行提供的action，用它来组合另外一个CompletableFuture的结果。使用ForkJoinPool。</td>
+</tr>
+<tr>
+<td align="center">thenAcceptBothAsync(CompletionStage&lt;? extends U&gt; other, BiConsumer&lt;? super T,? super U&gt; action, Executor executor)</td>
+<td align="center">当两个CompletableFuture都正常完成后，执行提供的action，用它来组合另外一个CompletableFuture的结果。使用指定的线程池。</td>
+</tr>
+<tr>
+<td align="center">`CompletableFuture<string> future1 = CompletableFuture.supplyAsync(() -&gt; );</string></td>
+<td align="center"></td>
+</tr>
+<tr>
+<td align="center">CompletableFuture<integer> future2 = CompletableFuture.supplyAsync(() -&gt; );</integer></td>
+<td align="center"></td>
+</tr>
+</tbody></table>
+<pre><code>CompletableFuture&lt;Void&gt; future = future1.thenAcceptBoth(future2, (s, i) -&gt; System.out.println(Double.parseDouble(s + i)));
+
+ {
+    future.get();
+}  (InterruptedException e) {
+    e.printStackTrace();
+}  (ExecutionException e) {
+    e.printStackTrace();
+}`</code></pre><p>执行结果：</p>
+<p>``</p>
+<h2 id="3-5-计算结果完成时的处理"><a href="#3-5-计算结果完成时的处理" class="headerlink" title="3.5 计算结果完成时的处理"></a>3.5 计算结果完成时的处理</h2><p>当CompletableFuture完成计算结果后，我们可能需要对结果进行一些处理。</p>
+<p>/#/#/#3.5.1 执行特定的Action</p>
+<table>
+<thead>
+<tr>
+<th align="center">方法名</th>
+<th align="center">描述</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center">whenComplete(BiConsumer&lt;? super T,? super Throwable&gt; action)</td>
+<td align="center">当CompletableFuture完成计算结果时对结果进行处理，或者当CompletableFuture产生异常的时候对异常进行处理。</td>
+</tr>
+<tr>
+<td align="center">whenCompleteAsync(BiConsumer&lt;? super T,? super Throwable&gt; action)</td>
+<td align="center">当CompletableFuture完成计算结果时对结果进行处理，或者当CompletableFuture产生异常的时候对异常进行处理。使用ForkJoinPool。</td>
+</tr>
+<tr>
+<td align="center">whenCompleteAsync(BiConsumer&lt;? super T,? super Throwable&gt; action, Executor executor)</td>
+<td align="center">当CompletableFuture完成计算结果时对结果进行处理，或者当CompletableFuture产生异常的时候对异常进行处理。使用指定的线程池。</td>
+</tr>
+<tr>
+<td align="center">`CompletableFuture.supplyAsync(() -&gt; )</td>
+<td align="center"></td>
+</tr>
+<tr>
+<td align="center">.thenApply(s-&gt;s+)</td>
+<td align="center"></td>
+</tr>
+<tr>
+<td align="center">.thenApply(s-&gt;s+ )</td>
+<td align="center"></td>
+</tr>
+<tr>
+<td align="center">.thenApply(String::toLowerCase)</td>
+<td align="center"></td>
+</tr>
+<tr>
+<td align="center">.whenComplete((result, throwable) -&gt; System.out.println(result));`</td>
+<td align="center"></td>
+</tr>
+</tbody></table>
+<p>执行结果：</p>
+<p><code>hello world
+ is completablefuture demo</code></p>
+<p>/#/#/#3.5.2 执行完Action可以做转换</p>
+<table>
+<thead>
+<tr>
+<th align="center">方法名</th>
+<th align="center">描述</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center">handle(BiFunction&lt;? super T, Throwable, ? extends U&gt; fn)</td>
+<td align="center">当CompletableFuture完成计算结果或者抛出异常的时候，执行提供的fn</td>
+</tr>
+<tr>
+<td align="center">handleAsync(BiFunction&lt;? super T, Throwable, ? extends U&gt; fn)</td>
+<td align="center">当CompletableFuture完成计算结果或者抛出异常的时候，执行提供的fn，使用ForkJoinPool。</td>
+</tr>
+<tr>
+<td align="center">handleAsync(BiFunction&lt;? super T, Throwable, ? extends U&gt; fn, Executor executor)</td>
+<td align="center">当CompletableFuture完成计算结果或者抛出异常的时候，执行提供的fn，使用指定的线程池。</td>
+</tr>
+<tr>
+<td align="center">`CompletableFuture<double> future = CompletableFuture.supplyAsync(() -&gt; )</double></td>
+<td align="center"></td>
+</tr>
+<tr>
+<td align="center">.thenApply(s-&gt;s+)</td>
+<td align="center"></td>
+</tr>
+<tr>
+<td align="center">.handle((s, t) -&gt; s !=  ? Double.parseDouble(s) : );</td>
+<td align="center"></td>
+</tr>
+</tbody></table>
+<pre><code> {
+    System.out.println(future.get());
+}  (InterruptedException e) {
+    e.printStackTrace();
+}  (ExecutionException e) {
+    e.printStackTrace();
+}`</code></pre><p>执行结果：</p>
+<p>``</p>
+<p>在这里，handle()的参数是BiFunction，apply()方法返回R，相当于转换的操作。</p>
+<p>`{</p>
+<pre><code>;
+
+
+ &lt;V&gt; {
+    Objects.requireNonNull(after);
+     (T t, U u) -&gt; after.apply(apply(t, u));
+}</code></pre><p>}`</p>
+<p>而whenComplete()的参数是BiConsumer，accept()方法返回void。</p>
+<p>`{</p>
+<pre><code>;
+
+
+{
+    Objects.requireNonNull(after);
+
+     (l, r) -&gt; {
+        accept(l, r);
+        after.accept(l, r);
+    };
+}</code></pre><p>}`
+所以，handle()相当于whenComplete()+转换。</p>
+<p>/#/#/#3.5.3 纯消费(执行Action)</p>
+<table>
+<thead>
+<tr>
+<th align="center">方法名</th>
+<th align="center">描述</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center">thenAccept(Consumer&lt;? super T&gt; action)</td>
+<td align="center">当CompletableFuture完成计算结果，只对结果执行Action，而不返回新的计算值</td>
+</tr>
+<tr>
+<td align="center">thenAcceptAsync(Consumer&lt;? super T&gt; action)</td>
+<td align="center">当CompletableFuture完成计算结果，只对结果执行Action，而不返回新的计算值，使用ForkJoinPool。</td>
+</tr>
+<tr>
+<td align="center">thenAcceptAsync(Consumer&lt;? super T&gt; action, Executor executor)</td>
+<td align="center">当CompletableFuture完成计算结果，只对结果执行Action，而不返回新的计算值</td>
+</tr>
+</tbody></table>
+<p>thenAccept()是只会对计算结果进行消费而不会返回任何结果的方法。<br><code>CompletableFuture.supplyAsync(() -&gt; )
+                .thenApply(s-&gt;s+)
+                .thenApply(s-&gt;s+ )
+                .thenApply(String::toLowerCase)
+                .thenAccept(System.out::print);</code></p>
+<p>执行结果：</p>
+<p><code>hello world
+ is completablefuture demo</code></p>
+
+      
+
+      
+    </div>
+    <div class="article-info article-info-index">
+      
+      
+	<div class="article-tag tagcloud">
+		<i class="icon-price-tags icon"></i>
+		<ul class="article-tag-list">
+			 
+        		<li class="article-tag-list-item">
+        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color5">Java</a>
+        		</li>
+      		
+		</ul>
+	</div>
+
+      
+
+      
+        <p class="article-more-link">
+          <a class="article-more-a" href="/2019/05/14/Java8新的异步编程方式CompletableFuture(2)/">展开全文 >></a>
+        </p>
+      
+
+      
+      <div class="clearfix"></div>
+    </div>
+  </div>
+</article>
+
+<aside class="wrap-side-operation">
+    <div class="mod-side-operation">
+        
+        <div class="jump-container" id="js-jump-container" style="display:none;">
+            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
+                <i class="icon-font icon-back"></i>
+            </a>
+            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
+                <i class="icon-font icon-plane jump-plane"></i>
+            </div>
+        </div>
+        
+        
+    </div>
+</aside>
+
+
+
+
+  
     <article id="post-Java8新的异步编程方式CompletableFuture(1)" class="article article-type-post  article-index" itemscope itemprop="blogPost">
   <div class="article-inner">
     
@@ -1614,147 +2005,9 @@ future.complete();
 
 
   
-    <article id="post-PK光明顶？江湖上流传的几大【消息队列】门派，到底有什么本质的区别？" class="article article-type-post  article-index" itemscope itemprop="blogPost">
-  <div class="article-inner">
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2019/05/07/PK光明顶？江湖上流传的几大【消息队列】门派，到底有什么本质的区别？/">PK光明顶？江湖上流传的几大【消息队列】门派，到底有什么本质的区别？</a>
-    </h1>
-  
-
-        
-        <a href="/2019/05/07/PK光明顶？江湖上流传的几大【消息队列】门派，到底有什么本质的区别？/" class="archive-article-date">
-  	<time datetime="2019-05-07T07:02:08.008Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2019-05-07</time>
-</a>
-        
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <blockquote>
-<p>本文转载自 <a href="https://juejin.im/post/5ccffb0551882540ab16802b" target="_blank" rel="noopener">https://juejin.im/post/5ccffb0551882540ab16802b</a><br>公众号：狸猫技术窝</p>
-</blockquote>
-<p>作者：爱钓鱼的桌子哥，阿里巴巴高级技术专家</p>
-<p><strong>目录</strong></p>
-<p>（1）流派1：有Broker的暴力路由</p>
-<p>（2）流派2：有Broker的复杂路由</p>
-<p>（3）流派3：无Broker的通信流派</p>
-<p>（4）总结</p>
-<p>作者：爱钓鱼的桌子哥，资深架构师</p>
-<p>平时经常会看到很多人写文章分析Kafka、RabbitMQ、RocketMQ等各种MQ之间的性能比较，功能比较，但是实际上从MQ消息队列的门派上来说，这些MQ其实是分属不同的门派的。<br>那么这不同的门派之间，到底有什么区别呢？</p>
-<h3 id="（1）流派1：有Broker的暴力路由"><a href="#（1）流派1：有Broker的暴力路由" class="headerlink" title="（1）流派1：有Broker的暴力路由"></a>（1）流派1：有Broker的暴力路由</h3><p>这个流派最典型的就是Kafka了，Kafka实际上为了提升性能，简化了MQ功能模型，仅仅提供了一些最基础的MQ相关的功能，但是大幅度优化和提升了吞吐量。</p>
-<p>首先，这个流派一定是有一个Broker角色的，也就是说，Kafka需要部署一套服务器集群，每台机器上都有一个Kafka Broker进程，这个进程就负责接收请求，存储数据，发送数据。</p>
-<p>Kafka的生产消费模型做的相对是比较暴力简单的，就是简单的数据流模型。</p>
-<p>简单来说，他有一个概念，叫做“<strong>Topic</strong>”，你可以往这个“Topic”里写数据，然后让别人从这里来消费。</p>
-<p>这个Topic可以划分为多个Partition，每个Partition放一台机器上，存储一部分数据。</p>
-<p>在写消息到Topic的时候，会自动把你这个消息给分发到某一个Partition上去。</p>
-<p>然后消费消息的时候，有一个<strong>Consumer Group</strong>的概念，你部署在多台机器上的Consumer可以组成一个Group，一个Partition只能给一个Consumer消费，一个Cosumer可以消费多个Partition，这是最最核心的一点。</p>
-<p>通过这个模型，保证一个Topic里的每条消息，只会交给Consumer Group里的一个Consumer来消费，形成了一个Queue（队列）的效果。</p>
-<p>假如你想要有一个Queue的效果，也就是希望不停的往Queue里写数据，然后多个消费者消费，每条消息就只能给一个消费者，那么通过Kafka来实现，其实就是生产者写多个Partition，每个Partition只能给Consumer Group中的一个Consumer来消费。如下图所示：</p>
-<p><img src="https://user-gold-cdn.xitu.io/2019/5/6/16a8ca53a6eaad0e?imageView2/0/w/1280/h/960/ignore-error/1" alt></p>
-<p>如果要实现Publish/Subscribe的模型呢？就是说生产者发送的每条消息，都要让所有消费都消费到，怎么实现？</p>
-<p>那就让每个消费者都是一个独立的消费组，这样每条消息都会发送给所有的消费组，每个消费组里那唯一的一个消费者一定会消费到所有的消息。</p>
-<p><img src="https://user-gold-cdn.xitu.io/2019/5/6/16a8ca538b2c77fa?imageView2/0/w/1280/h/960/ignore-error/1" alt></p>
-<p>但是除此之外，Kafka就没有任何其他的消费功能了，就是如此简单，所以属于一种比较暴力直接的流派。</p>
-<p>它就是简单的消费模型，实现最基础的Queue和Pub/Sub两种消费模型，但是内核中大幅度优化和提升了性能以及吞吐量。</p>
-<p>所以Kafka天生适合的场景，就是大数据领域的实时数据计算的场景。</p>
-<p>因为在大数据的场景下，通常是弱业务的场景，没有太多复杂的业务系统交互，而主要是大量的数据流入Kafka，然后进行实时计算。</p>
-<p>所以就是需要简单的消费模型，但是必须在内核中对吞吐量和性能进行大幅度的优化。</p>
-<p>因此Kafka技术通常是在大数据的实时数据计算领域中使用的，比如说每秒处理几十万条消息，甚至每秒处理上百万条消息。</p>
-<h3 id="（2）流派2：有Broker的复杂路由"><a href="#（2）流派2：有Broker的复杂路由" class="headerlink" title="（2）流派2：有Broker的复杂路由"></a>（2）流派2：有Broker的复杂路由</h3><p>第二个流派，就是<strong>RabbitMQ</strong>为代表的流派，他强调的不是说如何提升性能和吞吐量，关注的是说要提供非常强大、复杂而且完善的消息路由功能。</p>
-<p>所以对于RabbitMQ而言，他就不是那么简单的Topic-Partition的消费模型了。</p>
-<p>在RabbitMQ中引入了一个非常核心的概念，叫做<strong>Exchange</strong>，这个Exchange就是负责根据复杂的业务规则把消息路由到内部的不同的Queue里去。</p>
-<p>举个例子，如果要实现最简单的队列功能，就是让exchange往一个queue里写数据，然后多个消费者来消费这个queue里的数据，每条消息只能给一个消费者，那么可以是类似下面的方式。</p>
-<p><img src="https://user-gold-cdn.xitu.io/2019/5/6/16a8ca53a6c4d47c?imageView2/0/w/1280/h/960/ignore-error/1" alt></p>
-<p>如果想要实现Pub/Sub的模型，就是一条消息要被所有的消费者给消费到，那么就可以让每个消费者都有一个自己的Queue，然后绑定到一个Exchange上去。</p>
-<p>接着，这个Exchange就设定把消息路由给所有的Queue即可，如下面这样。</p>
-<p>此时Exchange可以把每条消息都路由给所有的Queue，每个Consumer都可以从自己的Queue里拿到所有的消息。</p>
-<p><img src="https://user-gold-cdn.xitu.io/2019/5/6/16a8ca53a6b7de77?imageView2/0/w/1280/h/960/ignore-error/1" alt></p>
-<p>RabbitMQ这种流派，其实最核心的是，基于Exchange这个概念，他可以做很多复杂的事情。</p>
-<p>比如：如果你想要某个Consumer只能消费到<strong>某一类数据</strong>，那么Exchange可以把消息里比如带“XXX”前缀的消息路由给某个Queue。或者你可以限定某个Consumer就只能消费<strong>某一部分数据</strong>。总之在这里你可以做很多的限制，设置复杂的路由规则。</p>
-<p>但是也正是因为引入了这种复杂的消费模型，支持复杂的路由功能，导致RabbitMQ在内核以及架构设计上没法像Kafka做的那么的轻量级、高性能、可扩展、高吞吐，所以RabbitMQ在吞吐量上要比Kafka低一个数量级。</p>
-<p>所以这种流派的MQ，往往适合用在Java业务系统中，不同的业务系统需要进行复杂的消息路由。</p>
-<p>比如说业务系统A发送了10条消息，其中3条消息是给业务系统B的，7条消息是给业务系统C的，要实现这种复杂的路由模型，就必须依靠RabbitMQ来实现。</p>
-<p>当然，对于这种业务系统之间的消息流转而言，可能不需要那么高的吞吐量，可能每秒业务系统之间也就转发几十条或者几百条消息，那么就完全适合采用RabbitMQ来实现。</p>
-<h3 id="（3）流派3：无Broker的通信流派"><a href="#（3）流派3：无Broker的通信流派" class="headerlink" title="（3）流派3：无Broker的通信流派"></a>（3）流派3：无Broker的通信流派</h3><p>ZeroMQ代表的是第三种MQ。说白了，他是不需要在服务器上部署的，就是一个客户端的库而已。</p>
-<p>也就是说，他主要是封装了底层的Socket网络通讯，然后一个系统要发送一条消息给另外一个消息消费 。</p>
-<p>通过ZeroMQ，本质就是底层ZeroMQ发送一条消息到另外一个系统上去。</p>
-<p>所以ZeroMQ是<strong>去中心化</strong>的，不需要跟Kafka、RabbitMQ一样在服务器上部署的。</p>
-<p>他主要是用来进行业务系统之间的网络通信的，有点类似于比如你是一个分布式系统架构，那么此时分布式架构中的各个子系统互相之间要通信，你是基于Dubbo RPC？还是Spring Cloud HTTP？</p>
-<p>可能上述两种你都不想要，就是要基于原始的Socket进行网络通信，简单的收发消息而已。</p>
-<p>此时就可以使用ZeroMQ作为分布式系统之间的消息通信，如下面那样。</p>
-<p><img src="https://user-gold-cdn.xitu.io/2019/5/6/16a8ca53a6d187c4?imageView2/0/w/1280/h/960/ignore-error/1" alt></p>
-<h3 id="（4）总结"><a href="#（4）总结" class="headerlink" title="（4）总结"></a>（4）总结</h3><p>其实现在基本上MQ主要就是这三个流派，很多小众的MQ一般很少有人会用。</p>
-<p>而且用MQ的场景主要就是两大类：</p>
-<pre><code>1. </code></pre><p>业务系统之间异步通信<br>    1.<br>大数据领域的实时数据计算</p>
-<p>所以一般业务系统之间通信就是会采用RabbitMQ/RocketMQ，需要复杂的消息路由功能的支撑。</p>
-<p>大数据的实时计算场景会采用Kafka，需要简单的消费模型，但是超高的吞吐量。</p>
-<p>至于ZeroMQ，一般来说，少数分布式系统中子系统之间的分布式通信时会采用，作为轻量级的异步化的通信组件。</p>
-<p>作者简介：</p>
-<p><strong>爱钓鱼的桌子哥，资深架构师</strong></p>
-<p>作者先后工作于滴滴、百度、字节跳动等国内一线互联网大厂，从事基础架构相关工作。带领团队设计与构建了大规模的分布式存储系统、分布式消息中间件、分布式数据库，对分布式架构设计、系统高可用体系构建、基础中间件架构都有丰富的经验。</p>
-<p><strong>END</strong></p>
-<p>长按下图二维码，即刻关注【狸猫技术窝】 阿里、京东、美团、字节跳动 顶尖技术专家坐镇 为IT人打造一个 “有温度” 的技术窝！</p>
-<p><img src="https://user-gold-cdn.xitu.io/2019/4/23/16a4aea4c6855bb5?imageView2/0/w/1280/h/960/ignore-error/1" alt></p>
-
-      
-
-      
-    </div>
-    <div class="article-info article-info-index">
-      
-      
-	<div class="article-tag tagcloud">
-		<i class="icon-price-tags icon"></i>
-		<ul class="article-tag-list">
-			 
-        		<li class="article-tag-list-item">
-        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color5">Java</a>
-        		</li>
-      		
-		</ul>
-	</div>
-
-      
-
-      
-        <p class="article-more-link">
-          <a class="article-more-a" href="/2019/05/07/PK光明顶？江湖上流传的几大【消息队列】门派，到底有什么本质的区别？/">展开全文 >></a>
-        </p>
-      
-
-      
-      <div class="clearfix"></div>
-    </div>
-  </div>
-</article>
-
-<aside class="wrap-side-operation">
-    <div class="mod-side-operation">
-        
-        <div class="jump-container" id="js-jump-container" style="display:none;">
-            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
-                <i class="icon-font icon-back"></i>
-            </a>
-            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
-                <i class="icon-font icon-plane jump-plane"></i>
-            </div>
-        </div>
-        
-        
-    </div>
-</aside>
-
-
-
-
-  
   
     <nav id="page-nav">
-      <a class="extend prev" rel="prev" href="/page/2/">&laquo; Prev</a><a class="page-number" href="/">1</a><a class="page-number" href="/page/2/">2</a><span class="page-number current">3</span><a class="page-number" href="/page/4/">4</a><a class="extend next" rel="next" href="/page/4/">Next &raquo;</a>
+      <a class="extend prev" rel="prev" href="/page/2/">&laquo; Prev</a><a class="page-number" href="/">1</a><a class="page-number" href="/page/2/">2</a><span class="page-number current">3</span><a class="page-number" href="/page/4/">4</a><a class="page-number" href="/page/5/">5</a><a class="extend next" rel="next" href="/page/4/">Next &raquo;</a>
     </nav>
   
 
@@ -1861,10 +2114,6 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
               </li>
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color4">数据库</a>
-              </li>
-             
-              <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color1">Linux</a>
               </li>
              
@@ -1889,11 +2138,7 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
               </li>
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color3">Reactor</a>
-              </li>
-             
-              <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color5">java</a>
+                <a href="javascript:void(0)" class="js-tag color4">数据库</a>
               </li>
              
               <li class="article-tag-list-item">
@@ -1910,6 +2155,14 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
              
               <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color4">服务器</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color3">Reactor</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color5">java</a>
               </li>
              
               <li class="article-tag-list-item">
