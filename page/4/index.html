@@ -152,6 +152,200 @@
           <div id="js-content" class="content-ll">
             
   
+    <article id="post-Java开发必须要掌握的20个核心技术" class="article article-type-post  article-index" itemscope itemprop="blogPost">
+  <div class="article-inner">
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2019/05/08/Java开发必须要掌握的20个核心技术/">Java开发必须要掌握的20个核心技术</a>
+    </h1>
+  
+
+        
+        <a href="/2019/05/08/Java开发必须要掌握的20个核心技术/" class="archive-article-date">
+  	<time datetime="2019-05-08T10:25:05.005Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2019-05-08</time>
+</a>
+        
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <blockquote>
+<p>本文转载自 <a href="https://juejin.im/post/5ccfe60de51d453a59418b7b" target="_blank" rel="noopener">https://juejin.im/post/5ccfe60de51d453a59418b7b</a> </p>
+</blockquote>
+<p>这次介绍的主要内容是和J2SE相关的部分</p>
+<h2 id="1-JVM相关-重点"><a href="#1-JVM相关-重点" class="headerlink" title="1. JVM相关(重点)"></a>1. JVM相关(<code>重点</code>)</h2><p>对于刚刚接触Java的人来说，JVM相关的知识不一定需要理解很深，对此里面的概念有一些简单的了解即可。</p>
+<p>不过对于一个有着<code>3年以上Java经验的资深开发者</code>来说，不会JVM几乎是不可接受的。</p>
+<p>JVM作为java运行的<code>基础</code>，很难相信对于JVM一点都不了解的人可以把java语言吃得很透。</p>
+<p>我在面试有超过3年Java经验的开发者的时候， <code>JVM几乎就是一个必问的问题了</code>。</p>
+<p>当然JVM不是唯一决定技术能力好坏的面试问题，但是可以佐证java开发能力的高低。</p>
+<h3 id="在JVM这个大类中，我认为需要掌握的知识有："><a href="#在JVM这个大类中，我认为需要掌握的知识有：" class="headerlink" title="在JVM这个大类中，我认为需要掌握的知识有："></a>在JVM这个大类中，我认为需要掌握的知识有：</h3><p>JVM内存模型和结构</p>
+<p>GC原理，性能调优</p>
+<p>调优：Thread Dump， 分析内存结构</p>
+<p>class 二进制字节码结构， class loader 体系 ， class加载过程 ， 实例创建过程</p>
+<p>方法执行过程</p>
+<p>Java各个大版本更新提供的新特性(需要简单了解)</p>
+<h2 id="2-Java的运行"><a href="#2-Java的运行" class="headerlink" title="2. Java的运行"></a>2. Java的运行</h2><p>这条可能出看很简单，java程序的运行谁不会呢？</p>
+<p>不过很多时候， 我们只是单纯通过IDE去执行java程序，底层IDE又是如何执行java程序呢？很多人并不了解。</p>
+<p>这个知识点是最最基本的java开发者需要掌握的，第一个肯定是教你如何在命令行中执行java程序，但是很多人一旦把java学完了，IDE用上了，就把这个都忘了。</p>
+<p>为什么强调要知道这个呢，知道了java最纯粹的启动方式之后，你才能在启动出问题的时候，去分析当时启动的目录多少，执行命名如何，参数如何，是否有缺失等。</p>
+<p>这样有利于你真正开发中去解决那些奇奇怪怪的可能和环境相关的问题。</p>
+<h3 id="在这里需要掌握的知识有："><a href="#在这里需要掌握的知识有：" class="headerlink" title="在这里需要掌握的知识有："></a>在这里需要掌握的知识有：</h3><p>javac 编译java文件为 <code>class</code> 文件</p>
+<p>java 命令的使用， 带package的java类如何在命令行中启动</p>
+<p>java程序涉及到的各个路径(classpath， java。library。path， java运行的主目录等)</p>
+<h2 id="3-数据类型-重点"><a href="#3-数据类型-重点" class="headerlink" title="3. 数据类型(重点)"></a>3. 数据类型(<code>重点</code>)</h2><p>这条没有什么好多说的，无非就是Java中的基本类型和对象类型的掌握。</p>
+<p>可以再了解一些JDK如何自动转换方面的知识，包括装箱拆箱等，还要注意避免装箱之后的类型相等的判断。</p>
+<h3 id="主要知识点："><a href="#主要知识点：" class="headerlink" title="主要知识点："></a>主要知识点：</h3><p>基本类型： int， long， float， double， boolean 。。。</p>
+<p>对应的对象类型： Integer 等类型到基本类型的转换， 装箱和拆箱</p>
+<p>Object类型： equals， hashcode</p>
+<p>String 类型的特点</p>
+<h2 id="4-对象和实例"><a href="#4-对象和实例" class="headerlink" title="4. 对象和实例"></a>4. 对象和实例</h2><p>在这方面，开发者需要了解class和instance的概念以及之间的差别， 这是java面向对象特性的一个基础。</p>
+<h3 id="主要知识点有："><a href="#主要知识点有：" class="headerlink" title="主要知识点有："></a>主要知识点有：</h3><p>Class和 Instance 的概念</p>
+<p>Instance 创建的过程：</p>
+<p>无继承：分配内存空间， 初始化变量， 调用构造函数</p>
+<p>有继承：处理静态动作， 分配内存空间， 变量定义为初始值 ， 从基类-&gt;子类， 处理定义处的初始化， 执行构造方法</p>
+<h3 id="需要注意的点："><a href="#需要注意的点：" class="headerlink" title="需要注意的点："></a>需要注意的点：</h3><p>静态属性等从基类-&gt;子类进行初始化</p>
+<p>默认无参构造方法相关的特性</p>
+<h2 id="5-访问控制"><a href="#5-访问控制" class="headerlink" title="5. 访问控制"></a>5. 访问控制</h2><p>这也是java封装特性的一个基础，需要掌握的有：public protected default private 对于class， method， field 的修饰作用。</p>
+<h2 id="6-流程控制"><a href="#6-流程控制" class="headerlink" title="6. 流程控制"></a>6. 流程控制</h2><p>Java 流程控制的基础， 虽然有些语法不一定很常用，但是都需要了解，并且在合适的地方使用它们。</p>
+<p>需要掌握的有：if， switch， loop， for， while 等流程控制的语法。</p>
+<h2 id="7-面向对象编程的概念-重点"><a href="#7-面向对象编程的概念-重点" class="headerlink" title="7. 面向对象编程的概念(重点)"></a>7. 面向对象编程的概念(<code>重点</code>)</h2><p>这是一个java的核心概念，对于任何java开发者都需要熟练掌握。</p>
+<p>Java中很多特性或者说知识点都是和java面向对象编程概念相关的。</p>
+<p>在我的理解，一个好的开发者不仅仅需要了解这些特性（知识点）本身。</p>
+<p>也更需要知道这些对象在java的面向对象编程概念中是如何体现出来的，这样更有利于开发者掌握java这门开发语言，以及其他面向对象编程的语言。</p>
+<h3 id="在这里只是简单罗列了一下，主要的知识点包括有："><a href="#在这里只是简单罗列了一下，主要的知识点包括有：" class="headerlink" title="在这里只是简单罗列了一下，主要的知识点包括有："></a>在这里只是简单罗列了一下，主要的知识点包括有：</h3><p>面向对象三大特性：封装，继承，多态;</p>
+<p>各自的定义概念，有哪些特性体现出来，各自的使用场景</p>
+<p>静态多分派，动态单分派的概念</p>
+<p>重载的概念和使用</p>
+<p>继承：接口多实现，基类单继承</p>
+<p>抽象，抽象类，接口</p>
+<p>多态：方法覆盖的概念和使用</p>
+<p>接口回调</p>
+<h2 id="8-static"><a href="#8-static" class="headerlink" title="8. static"></a>8. static</h2><p>静态属性在java日常开发中也是经常使用，需要了解和 static 关键字相关的用法，还有和其他关键字的配合使用， 如是否可以和 abstract， final 等关键字联合使用。</p>
+<h3 id="主要需要掌握的有："><a href="#主要需要掌握的有：" class="headerlink" title="主要需要掌握的有："></a>主要需要掌握的有：</h3><p>静态属性的定义，使用，以及类加载时如何初始化</p>
+<p>静态方法的定义和使用</p>
+<p>静态类的定义和使用</p>
+<p>静态代码块的定义和初始化时机</p>
+<p>基础知识点 这里主要罗列一些散落的，没有系统归类的一些java知识点。</p>
+<p>在日常的开发中用到也不少。 这块内容其实还有很多，目前只是暂时归纳了这几个在这里：</p>
+<p>包括有：</p>
+<p>equals</p>
+<p>hashcode</p>
+<p>tring/stringbuffer</p>
+<p>final</p>
+<p>finally</p>
+<p>finalize</p>
+<h2 id="9-集合框架-重点"><a href="#9-集合框架-重点" class="headerlink" title="9.集合框架(重点)"></a>9.集合框架(<code>重点</code>)</h2><p>这个是一个需要多加掌握的部分，做java开发，可以说没有不用到集合框架的，这很重要，这里整理的Java集合面试题及答案你必须都要清楚。</p>
+<p>但是这里的知识点并不难，但是对于集合最好要了解内部的实现方式，因为这样有助于你在各个不同的场景选择适合的框架来解决问题，比如有1W个元素的集合，经常要进行contains判断操作，知道了集合的特性或者内部实现，就很容易做出正确的选择。</p>
+<h3 id="这里包括了如下内容-并发相关不包含在内-："><a href="#这里包括了如下内容-并发相关不包含在内-：" class="headerlink" title="这里包括了如下内容(并发相关不包含在内)："></a>这里包括了如下内容(并发相关不包含在内)：</h3><p>集合框架的体系： 基础Collection ，Map</p>
+<p>具体集合实现的内容， List ，Set ，Map 具体的实现，内部结构， 特殊的方法， 适用场景等</p>
+<p>集合相关的工具类 Collections 等的用法</p>
+<h2 id="10-异常框架"><a href="#10-异常框架" class="headerlink" title="10.异常框架"></a>10.异常框架</h2><p>异常在java的开发中可能没有那么被重视，异常处理的最佳实战详细说明了。</p>
+<p>一般遇到异常，直接上抛，或者随便catch一下处理之后对于程序整体运行也没有什么大的影响。不过在企业级设计开发中， 异常的设计与处理的好坏，往往就关系着这个系统整体的健壮性。</p>
+<p>一个好的系统的异常对于开发者来说，处理应该统一，避免各处散落很多异常处理逻辑；对于系统来说，异常应该是可控的，并且是易于运维的，某些异常出现后，应该有应对的方法，知道如何运维处理，所以虽然异常框架很简单，但是对于整个企业级应用开发来说，异常处理是很重要的，处理好异常就需要了解Java中的异常体系。</p>
+<h3 id="这部分需要掌握的知识点不多，主要就是："><a href="#这部分需要掌握的知识点不多，主要就是：" class="headerlink" title="这部分需要掌握的知识点不多，主要就是："></a>这部分需要掌握的知识点不多，主要就是：</h3><p>异常的体系：</p>
+<p>Throwable</p>
+<p>Exception</p>
+<p>RuntimeException</p>
+<p>Error</p>
+<p>RuntimeException 和 一般 Exception 的区别， 具体处理方法等</p>
+<h2 id="10-Java-IO"><a href="#10-Java-IO" class="headerlink" title="10. Java IO"></a>10. Java IO</h2><p>IO 在java中不仅仅是文件读写那么简单，也包括了 socket 网络的读写等等一切的输入输出操作。比如说 标准HTTP请求中Post的内容的读取也是一个输出的过程，等等…</p>
+<p>对于IO，Java不仅提供了基本Input、Output相关的api，也提供了一些简化操作的Reader、Writer等api，在某些开发（涉及大量IO操作的项目）中也很重要，一般日常的开发中也会涉及（日志，临时文件的读写等）。</p>
+<h3 id="在这中的知识点主要有："><a href="#在这中的知识点主要有：" class="headerlink" title="在这中的知识点主要有："></a>在这中的知识点主要有：</h3><p>基本IO的体系包括有InputStream ， OutputStream， Reader/Writer， 文件读取，各种流读取等，NIO 的概念， 具体使用方式和使用场景。</p>
+<h2 id="11-多线程并发-重点"><a href="#11-多线程并发-重点" class="headerlink" title="11.多线程并发(重点)"></a>11.多线程并发(<code>重点</code>)</h2><p>多线程是Java中普遍认为比较难的一块。</p>
+<p>多线程用好了可以有效提高cpu使用率， 提升整体系统效率， 特别是在有大量IO操作阻塞的情况下；这里整理的Java多线程面试题及答案你必须都要清楚。</p>
+<p>但是它也是一柄双刃剑， 如果用不好，系统非但提升不大，或者没有提升，而且还会带来多线程之间的调试时等问题。</p>
+<p>在多线程中内容有很多，只是简单说明一下Java中初步使用多线程需要掌握的知识点，以后有机会单独再详细介绍一些高级特性的使用场景。在Java技术栈公众号回复”多线程”可获取多线程系列教程。</p>
+<h3 id="多线程的实现和启动-重点"><a href="#多线程的实现和启动-重点" class="headerlink" title="多线程的实现和启动(重点)"></a>多线程的实现和启动(<code>重点</code>)</h3><p>callable 与 runable 区别</p>
+<p>syncrhoized ，reentrantLock 各自特点和比对</p>
+<h2 id="12-线程池-重点"><a href="#12-线程池-重点" class="headerlink" title="12.线程池(重点)"></a>12.线程池(<code>重点</code>)</h2><p>future 异步方式获取执行结果</p>
+<p>concurrent 包</p>
+<p>lock</p>
+<h2 id="13-网络"><a href="#13-网络" class="headerlink" title="13.网络"></a>13.网络</h2><p>Java中也是提供了可以直接操作 TCP协议、UDP协议的API。</p>
+<p>在需要强调网络性能的情况下，可以直接使用TCP/UDP 进行通讯。</p>
+<p>在查看Tomcat等的源码中，就可以看到这些相关API的使用情况。</p>
+<p>不过一般也比较少会直接使用TCP，会使用诸如MINA、Netty这样的框架来进行处理，因为这个方面的开发涉及不多，所以就不再详细罗列了。</p>
+<h2 id="14-时间日期处理-重点"><a href="#14-时间日期处理-重点" class="headerlink" title="14.时间日期处理(重点)"></a>14.时间日期处理(<code>重点</code>)</h2><p>几乎对于每个应用来说，时间日期的处理也是绕不过去的，但是JDK8 之前的时间相关API用法并不友好。</p>
+<p>在那个时代，可以选择Joda等时间框架。到了JDK8 发布之后，全新的时间API基本融合了其他框架的优点，已经可以很好的直接使用了。</p>
+<p>对于Java开发者来说，需要熟练地使用API来对时间和日期做相关的处理。</p>
+<p>具体知识点不再罗列，会在以后再写个专门的文章来总结一下JDK8中时间日期API的用法。</p>
+<h2 id="15-XML解析-JSON解析-重点"><a href="#15-XML解析-JSON解析-重点" class="headerlink" title="15. XML解析/JSON解析(重点)"></a>15. XML解析/JSON解析(<code>重点</code>)</h2><p>其实这两块内容都不是J2SE里面的内容，但是在日常开发中，和其他程序交互，和配置文件交互，越来越离不开这两种格式的解析。</p>
+<p>不过对于一个开发者来说，能够了解一些XML/JSON具体解析的原理和方法，有助于你在各个具体的场景中更好的选择合适你的方式来使得你的程序更有效率和更加健壮。</p>
+<p>XML： 需要了解 DOM解析和 SAX解析的基本原理和各自的适用场景</p>
+<p>JSON： 需要了解一些常用JSON框架的用法， 如 Jackson， FastJson， Gson 等。</p>
+<h2 id="16-Maven使用"><a href="#16-Maven使用" class="headerlink" title="16. Maven使用"></a>16. Maven使用</h2><p>Maven也不是Java里面的内容，但是maven是革命性的，给java开发带来了巨大的便利，这30个Maven命令你必须熟悉。</p>
+<p>从依赖的引入和管理，开发流程的更新和发布产出，乃至版本的更新，使用maven可以大大简化开发过程中的复杂度，从而节省大量时间。</p>
+<p>可以说，maven已经成为java开发者的标配了。所以我把maven也作为一个java开发者对于基础必备的知识点。</p>
+<p>在Java技术栈公众号回复”Maven”可获取Maven系列教程，以后会再放上一些我的一些对于maven使用的经验和技巧等，这里就不再细说了。</p>
+<h2 id="17-泛型"><a href="#17-泛型" class="headerlink" title="17.泛型"></a>17.泛型</h2><p>这是JDK5开始引入的新概念，其实是个语法糖。</p>
+<p>在编写java代码时会有些许便利， 一般的应用或者是业务的开发，只需要简单使用，不一定会用到定义泛型这样的操作。</p>
+<p>但是开发一些基础公共组件会使用到，可以在需要的时候再细看这个部分，一般情况下只要会简单使用即可。</p>
+<h2 id="18-注解"><a href="#18-注解" class="headerlink" title="18.注解"></a>18.注解</h2><p>也是jdk5 之后引入的，元注解你必须了解。</p>
+<p>spring是个优秀的框架，最开始就以xml作为标准的配置文件。</p>
+<p>不过到了Spring3 之后，尤其是 spring-boot 兴起之后，越来越推崇使用标注来简化xml配置文件了，对于开发者来说，可以节省不少xml配置的时间。</p>
+<p>但是劣势是在于标注散落在各个类中，不像xml，可以对所有配置有个全局性的理解和管理，所以还没有办法说完全就取代所有的xml。</p>
+<p>对于一般开发者，会使用标注即可，一些公共组建的开发者可能会需要了解标注的定义和实现，可以在具体需要的时候再细看。</p>
+<h2 id="19-RMI"><a href="#19-RMI" class="headerlink" title="19.RMI"></a>19.RMI</h2><p>RemoteMethodInvocation ，Java语言特有的远程调用接口，使用还是比较简单方便。</p>
+<p>不过需要跨语言的情况下，就需要使用 webservice 等其他方式来支持。</p>
+<p>一般来说，程序都不需要使用RMI，不过可以在特定的情况下使用，我就在一个项目中，使用RMI来进行程序远程启动停止的控制。</p>
+<h2 id="20-JNI"><a href="#20-JNI" class="headerlink" title="20.JNI"></a>20.JNI</h2><p>Java Native Interface，可以允许Java中调用本地接口方法，一般用于C/C++代码的调用。</p>
+<p>需要注意的是在java中加载so/dll文件的路径问题，本身调用接口并不复杂，但是经常在是否加载了所需的本地接口库中花费较多时间。</p>
+<p>以上也只是简单介绍了下我对于这些java基本知识点和技术点的一些看法和介绍，有想法的可以留言。</p>
+
+      
+
+      
+    </div>
+    <div class="article-info article-info-index">
+      
+      
+	<div class="article-tag tagcloud">
+		<i class="icon-price-tags icon"></i>
+		<ul class="article-tag-list">
+			 
+        		<li class="article-tag-list-item">
+        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color3">后端</a>
+        		</li>
+      		
+		</ul>
+	</div>
+
+      
+
+      
+        <p class="article-more-link">
+          <a class="article-more-a" href="/2019/05/08/Java开发必须要掌握的20个核心技术/">展开全文 >></a>
+        </p>
+      
+
+      
+      <div class="clearfix"></div>
+    </div>
+  </div>
+</article>
+
+<aside class="wrap-side-operation">
+    <div class="mod-side-operation">
+        
+        <div class="jump-container" id="js-jump-container" style="display:none;">
+            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
+                <i class="icon-font icon-back"></i>
+            </a>
+            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
+                <i class="icon-font icon-plane jump-plane"></i>
+            </div>
+        </div>
+        
+        
+    </div>
+</aside>
+
+
+
+
+  
     <article id="post-PK光明顶？江湖上流传的几大【消息队列】门派，到底有什么本质的区别？" class="article article-type-post  article-index" itemscope itemprop="blogPost">
   <div class="article-inner">
     
@@ -1488,286 +1682,6 @@
 
 
   
-    <article id="post-高并发架构的CDN知识介绍" class="article article-type-post  article-index" itemscope itemprop="blogPost">
-  <div class="article-inner">
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2019/04/30/高并发架构的CDN知识介绍/">高并发架构的CDN知识介绍</a>
-    </h1>
-  
-
-        
-        <a href="/2019/04/30/高并发架构的CDN知识介绍/" class="archive-article-date">
-  	<time datetime="2019-04-29T16:00:00.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2019-04-30</time>
-</a>
-        
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <p>对一次网络请求过程的了解程度，一是展现你的专业知识；二是深刻的理解，让你在大型网站架构中做出更适合、可靠的架构。而DNS是这一切的出发点，本文结合一张常用架构图，来描述一下这个过程。</p>
-        
-          <a class="article-more-a" href="/2019/04/30/高并发架构的CDN知识介绍/#more">more >></a>
-        
-      
-
-      
-    </div>
-    <div class="article-info article-info-index">
-      
-      
-	<div class="article-tag tagcloud">
-		<i class="icon-price-tags icon"></i>
-		<ul class="article-tag-list">
-			 
-        		<li class="article-tag-list-item">
-        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color3">架构</a>
-        		</li>
-      		
-		</ul>
-	</div>
-
-      
-
-      
-        <p class="article-more-link">
-          <a class="article-more-a" href="/2019/04/30/高并发架构的CDN知识介绍/">展开全文 >></a>
-        </p>
-      
-
-      
-      <div class="clearfix"></div>
-    </div>
-  </div>
-</article>
-
-<aside class="wrap-side-operation">
-    <div class="mod-side-operation">
-        
-        <div class="jump-container" id="js-jump-container" style="display:none;">
-            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
-                <i class="icon-font icon-back"></i>
-            </a>
-            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
-                <i class="icon-font icon-plane jump-plane"></i>
-            </div>
-        </div>
-        
-        
-    </div>
-</aside>
-
-
-
-
-  
-    <article id="post-【面试】吃透了这些Redis知识点，面试官一定觉得你很NB" class="article article-type-post  article-index" itemscope itemprop="blogPost">
-  <div class="article-inner">
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2019/04/30/【面试】吃透了这些Redis知识点，面试官一定觉得你很NB/">【面试】吃透了这些Redis知识点，面试官一定觉得你很NB</a>
-    </h1>
-  
-
-        
-        <a href="/2019/04/30/【面试】吃透了这些Redis知识点，面试官一定觉得你很NB/" class="archive-article-date">
-  	<time datetime="2019-04-29T16:00:00.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2019-04-30</time>
-</a>
-        
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <blockquote>
-<p>本文来自于 <a href="https://juejin.im/post/5cc6bb975188252e8925f0c8" target="_blank" rel="noopener">https://juejin.im/post/5cc6bb975188252e8925f0c8</a> </p>
-</blockquote>
-<h1 id="是数据结构而非类型"><a href="#是数据结构而非类型" class="headerlink" title="是数据结构而非类型"></a>是数据结构而非类型</h1><p>很多文章都会说，redis支持5种常用的数据类型，这其实是存在很大的歧义。redis里存的都是二进制数据，其实就是字节数组（byte[]），这些字节数据是没有数据类型的，只有把它们按照合理的格式解码后，可以变成一个字符串，整数或对象，此时才具有数据类型。</p>
-<ul>
-<li>这一点必须要记住。所以任何东西只要能转化成字节数组（byte[]）的，都可以存到redis里。管你是字符串、数字、对象、图片、声音、视频、还是文件，只要变成byte数组。</li>
-<li>因此redis里的String指的并不是字符串，它其实表示的是一种最简单的数据结构，即一个key只能对应一个value。这里的key和value都是byte数组，只不过key一般是由一个字符串转换成的byte数组，value则根据实际需要而定。</li>
-<li>在特定情况下，对value也会有一些要求，比如要进行自增或自减操作，那value对应的byte数组必须要能被解码成一个数字才行，否则会报错。</li>
-<li>那么List这种数据结构，其实表示一个key可以对应多个value，且value之间是有先后顺序的，value值可以重复。</li>
-<li>Set这种数据结构，表示一个key可以对应多个value，且value之间是没有先后顺序的，value值也不可以重复。</li>
-<li>Hash这种数据结构，表示一个key可以对应多个key-value对，此时这些key-value对之间的先后顺序一般意义不大，这是一个按照名称语义来访问的数据结构，而非位置语义。</li>
-<li>Sorted Set这种数据结构，表示一个key可以对应多个value，value之间是有大小排序的，value值不可以重复。每个value都和一个浮点数相关联，该浮点数叫score。元素排序规则是：先按score排序，再按value排序。</li>
-<li>相信现在你对这5种数据结构有了更清晰的认识，那它们的对应命令对你来说就是小case了。</li>
-</ul>
-<h1 id="集群带来的问题与解决思路"><a href="#集群带来的问题与解决思路" class="headerlink" title="集群带来的问题与解决思路"></a>集群带来的问题与解决思路</h1><ul>
-<li>集群带来的好处是显而易见的，比如容量增加、处理能力增强，还可以按需要进行动态的扩容、缩容。但同时也会引入一些新的问题，至少会有下面这两个。</li>
-<li><strong>一是数据分配</strong>：存数据时应该放到哪个节点上，取数据时应该去哪个节点上找。 <strong>二是数据移动</strong>：集群扩容，新增加节点时，该节点上的数据从何处来；集群缩容，要剔除节点时，该节点上的数据往何处去。</li>
-<li>上面这两个问题有一个<strong>共同点</strong>就是，<strong>如何去描述和存储数据与节点的映射关系</strong>。又因为数据的位置是由key决定的，所以问题就演变为如何建立起各个key和集群所有节点的关联关系。</li>
-<li>集群的节点是相对固定和少数的，虽然有增加节点和剔除节点。但集群里存储的key，则是完全随机、没有规律、不可预测、数量庞多，还非常琐碎。</li>
-<li>这就好比一所大学和它的所有学生之间的关系。如果大学和学生直接挂钩的话，一定会比较混乱。现实是它们之间又加入了好几层，首先有院系，其次有专业，再者有年级，最后还有班级。经过这四层映射之后，关系就清爽很多了。</li>
-<li>这其实是一个非常重要的结论，这个世界上没有什么问题是不能通过加入一层来解决的。如果有，那就再加入一层。计算机里也是这样的。</li>
-<li>redis在数据和节点之间又加入了一层，把这层称为槽（slot），因该槽主要和哈希有关，又叫哈希槽。</li>
-<li>最后变成了，节点上放的是槽，槽里放的是数据。槽解决的是粒度问题，相当于把粒度变大了，这样便于数据移动。哈希解决的是映射问题，使用key的哈希值来计算所在的槽，便于数据分配。</li>
-<li>可以这样来理解，你的学习桌子上堆满了书，乱的很，想找到某本书非常困难。于是你买了几个大的收纳箱，把这些书按照书名的长度放入不同的收纳箱，然后把这些收纳箱放到桌子上。</li>
-<li>这样就变成了，桌子上是收纳箱，收纳箱里是书籍。这样书籍移动很方便，搬起一个箱子就走了。寻找书籍也很方便，只要数一数书名的长度，去对应的箱子里找就行了。</li>
-<li>其实我们也没做什么，只是买了几个箱子，按照某种规则把书装入箱子。就这么简单的举动，就彻底改变了原来一盘散沙的状况。是不是有点小小的神奇呢。</li>
-<li>一个集群只能有16384个槽，编号0-16383。这些槽会分配给集群中的所有主节点，分配策略没有要求。可以指定哪些编号的槽分配给哪个主节点。集群会记录节点和槽的对应关系。</li>
-<li>接下来就需要对key求哈希值，然后对16384取余，余数是几key就落入对应的槽里。slot = CRC16(key) % 16384。</li>
-<li>以槽为单位移动数据，因为槽的数目是固定的，处理起来比较容易，这样数据移动问题就解决了。</li>
-<li>使用哈希函数计算出key的哈希值，这样就可以算出它对应的槽，然后利用集群存储的槽和节点的映射关系查询出槽所在的节点，于是数据和节点就映射起来了，这样数据分配问题就解决了。</li>
-<li>我想说的是，一般的人只会去学习各种技术，高手更在乎如何跳出技术，寻求一种解决方案或思路方向，顺着这个方向走下去，八九不离十能找到你想要的答案。</li>
-</ul>
-<h1 id="集群对命令操作的取舍"><a href="#集群对命令操作的取舍" class="headerlink" title="集群对命令操作的取舍"></a>集群对命令操作的取舍</h1><ul>
-<li><p>客户端只要和集群中的一个节点建立链接后，就可以获取到整个集群的所有节点信息。此外还会获取所有哈希槽和节点的对应关系信息，这些信息数据都会在客户端缓存起来，因为这些信息相当有用。</p>
-</li>
-<li><p>客户端可以向任何节点发送请求，那么拿到一个key后到底该向哪个节点发请求呢？其实就是把集群里的那套key和节点的映射关系理论搬到客户端来就行了。</p>
-</li>
-<li><p>所以客户端需要实现一个和集群端一样的哈希函数，先计算出key的哈希值，然后再对16384取余，这样就找到了该key对应的哈希槽，利用客户端缓存的槽和节点的对应关系信息，就可以找到该key对应的节点了。</p>
-</li>
-<li><p>接下来发送请求就可以了。还可以把key和节点的映射关系缓存起来，下次再请求该key时，直接就拿到了它对应的节点，不用再计算一遍了。</p>
-</li>
-<li><p>理论和现实总是有差距的，集群已经发生了变化，客户端的缓存还没来得及更新。肯定会出现拿到一个key向对应的节点发请求，其实这个key已经不在那个节点上了。此时这个节点应该怎么办？</p>
-</li>
-<li><p>这个节点可以去key实际所在的节点上拿到数据再返回给客户端，也可以直接告诉客户端key已经不在我这里了，同时附上key现在所在的节点信息，让客户端再去请求一次，类似于HTTP的302重定向。</p>
-</li>
-<li><p>这其实是个选择问题，也是个哲学问题。结果就是redis集群选择了后者。因此，节点只处理自己拥有的key，对于不拥有的key将返回重定向错误，即-MOVED key 127.0.0.1:6381，客户端重新向这个新节点发送请求。</p>
-</li>
-<li><p>所以说选择是一种哲学，也是个智慧。稍后再谈这个问题。先来看看另一个情况，和这个问题有些相同点。</p>
-</li>
-<li><p>redis有一种命令可以一次带多个key，如MGET，我把这些称为多key命令。这个多key命令的请求被发送到一个节点上，这里有一个潜在的问题，不知道大家有没有想到，就是这个命令里的多个key一定都位于那同一个节点上吗？</p>
-</li>
-<li><p>就分为两种情况了，如果多个key不在同一个节点上，此时节点只能返回重定向错误了，但是多个key完全可能位于多个不同的节点上，此时返回的重定向错误就会非常乱，所以redis集群选择不支持此种情况。</p>
-</li>
-<li><p>如果多个key位于同一个节点上呢，理论上是没有问题的，redis集群是否支持就和redis的版本有关系了，具体使用时自己测试一下就行了。</p>
-</li>
-<li><p>在这个过程中我们发现了一件颇有意义的事情，就是让一组相关的key映射到同一个节点上是非常有必要的，这样可以提高效率，通过多key命令一次获取多个值。</p>
-</li>
-<li><p>那么问题来了，如何给这些key起名字才能让他们落到同一个节点上，难不成都要先计算个哈希值，再取个余数，太麻烦了吧。当然不是这样了，redis已经帮我们想好了。</p>
-</li>
-<li><p>可以来简单推理下，要想让两个key位于同一个节点上，它们的哈希值必须要一样。要想哈希值一样，传入哈希函数的字符串必须一样。那我们只能传进去两个一模一样的字符串了，那不就变成同一个key了，后面的会覆盖前面的数据。</p>
-</li>
-<li><p>这里的问题是我们都是拿整个key去计算哈希值，这就导致key和参与计算哈希值的字符串耦合了，需要将它们解耦才行，就是key和参与计算哈希值的字符串有关但是又不一样。</p>
-</li>
-<li><p>redis基于这个原理为我们提供了方案，叫做key哈希标签。先看例子，{user1000}.following，{user1000}.followers，相信你已经看出了门道，就是仅使用Key中的位于{和}间的字符串参与计算哈希值。</p>
-</li>
-<li><p>这样可以保证哈希值相同，落到相同的节点上。但是key又是不同的，不会互相覆盖。使用哈希标签把一组相关的key关联了起来，问题就这样被轻松愉快地解决了。</p>
-</li>
-<li><p>相信你已经发现了，要解决问题靠的是巧妙的奇思妙想，而不是非要用牛逼的技术牛逼的算法。这就是小强，小而强大。</p>
-</li>
-<li><p>最后再来谈选择的哲学。redis的核心就是以最快的速度进行常用数据结构的key/value存取，以及围绕这些数据结构的运算。对于与核心无关的或会拖累核心的都选择弱化处理或不处理，这样做是为了保证核心的简单、快速和稳定。</p>
-</li>
-<li><p>其实就是在广度和深度面前，redis选择了深度。所以节点不去处理自己不拥有的key，集群不去支持多key命令。这样一方面可以快速地响应客户端，另一方面可以避免在集群内部有大量的数据传输与合并。</p>
-</li>
-</ul>
-<h1 id="单线程模型"><a href="#单线程模型" class="headerlink" title="单线程模型"></a>单线程模型</h1><ul>
-<li>redis集群的每个节点里只有一个线程负责接受和执行所有客户端发送的请求。技术上使用多路复用I/O，使用Linux的epoll函数，这样一个线程就可以管理很多socket连接。</li>
-</ul>
-<p>除此之外，选择单线程还有以下这些原因：</p>
-<p>1、redis都是对内存的操作，速度极快（10W+QPS）</p>
-<p>2、整体的时间主要都是消耗在了网络的传输上</p>
-<p>3、如果使用了多线程，则需要多线程同步，这样实现起来会变的复杂</p>
-<p>4、线程的加锁时间甚至都超过了对内存操作的时间</p>
-<p>5、多线程上下文频繁的切换需要消耗更多的CPU时间</p>
-<p>6、还有就是单线程天然支持原子操作，而且单线程的代码写起来更简单</p>
-<h1 id="事务"><a href="#事务" class="headerlink" title="事务"></a>事务</h1><p>事务大家都知道，就是把多个操作捆绑在一起，要么都执行（成功了），要么一个也不执行（回滚了）。redis也是支持事务的，但可能和你想要的不太一样，一起来看看吧。</p>
-<ul>
-<li>redis的事务可以分为两步，<strong>定义事务和执行事务</strong>。使用multi命令开启一个事务，然后把要执行的所有命令都依次排上去。这就定义好了一个事务。此时使用exec命令来执行这个事务，或使用discard命令来放弃这个事务。</li>
-<li>你可能希望在你的事务开始前，你关心的key不想被别人操作，那么可以使用watch命令来监视这些key，如果开始执行前这些key被其它命令操作了则会取消事务的。也可以使用unwatch命令来取消对这些key的监视。</li>
-</ul>
-<p>redis事务具有以下特点：</p>
-<p>1、如果开始执行事务前出错，则所有命令都不执行</p>
-<p>2、一旦开始，则保证所有命令一次性按顺序执行完而不被打断</p>
-<p>3、如果执行过程中遇到错误，会继续执行下去，不会停止的</p>
-<p>4、对于执行过程中遇到错误，是不会进行回滚的</p>
-<p><strong>看完这些，真想问一句话，你这能叫事务吗？很显然，这并不是我们通常认为的事务，因为它连原子性都保证不了。保证不了原子性是因为redis不支持回滚，不过它也给出了不支持的理由。</strong></p>
-<p>不支持回滚的理由：</p>
-<p>1、redis认为，失败都是由命令使用不当造成</p>
-<p>2、redis这样做，是为了保持内部实现简单快速</p>
-<p>3、redis还认为，回滚并不能解决所有问题</p>
-<p>哈哈，这就是霸王条款，因此，好像使用redis事务的不太多</p>
-<h1 id="管道"><a href="#管道" class="headerlink" title="管道"></a>管道</h1><ul>
-<li>客户端和集群的交互过程是串行化阻塞式的，即客户端发送了一个命令后必须等到响应回来后才能发第二个命令，这一来一回就是一个往返时间。如果你有很多的命令，都这样一个一个的来进行，会变得很慢。</li>
-<li>redis提供了一种管道技术，可以让客户端一次发送多个命令，期间不需要等待服务器端的响应，等所有的命令都发完了，再依次接收这些命令的全部响应。这就极大地节省了许多时间，提升了效率。</li>
-<li>聪明的你是不是意识到了另外一个问题，多个命令就是多个key啊，这不就是上面提到的多key操作嘛，那么问题来了，你如何保证这多个key都是同一个节点上的啊，哈哈，redis集群又放弃了对管道的支持。</li>
-<li>不过可以在客户端模拟实现，就是使用多个连接往多个节点同时发送命令，然后等待所有的节点都返回了响应，再把它们按照发送命令的顺序整理好，返回给用户代码。哎呀，好麻烦呀。</li>
-</ul>
-<h1 id="协议"><a href="#协议" class="headerlink" title="协议"></a>协议</h1><p>简单了解下redis的协议，知道redis的数据传输格式。</p>
-<p>发送请求的协议：</p>
-<ul>
-<li>参数个数CRLF<img src="https://juejin.im/equation?tex=%E5%8F%82%E6%95%B01%E7%9A%84%E5%AD%97%E8%8A%82%E6%95%B0CRLF%E5%8F%82%E6%95%B01%E7%9A%84%E6%95%B0%E6%8D%AECRLF..." alt="参数1的字节数CRLF参数1的数据CRLF...">参数N的字节数CRLF参数N的数据CRLF</li>
-</ul>
-<p>例如，SET name lixinjie，实际发送的数据是：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">*3\r\n$3\r\nSET\r\n$4\r\nname\r\n$8\r\nlixinjie\r\n</span><br></pre></td></tr></table></figure>
-
-<p><strong>接受响应的协议</strong>：</p>
-<ul>
-<li>单行回复，第一个字节是+</li>
-<li>错误消息，第一个字节是-</li>
-<li>整型数字，第一个字节是:</li>
-<li>批量回复，第一个字节是$</li>
-<li>多个批量回复，第一个字节是/*</li>
-</ul>
-<p>例如，</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">+OK\r\n</span><br><span class="line"></span><br><span class="line">-ERR Operation against\r\n</span><br><span class="line"></span><br><span class="line">:1000\r\n</span><br><span class="line"></span><br><span class="line">$6\r\nfoobar\r\n</span><br><span class="line"></span><br><span class="line">*2\r\n$3\r\nfoo\r\n$3\r\nbar\r\n</span><br></pre></td></tr></table></figure>
-
-<p>可见redis的协议设计的非常简单。</p>
-<hr>
-<p><strong>本文的重点是你有没有收获与成长，其余的都不重要，希望读者们能谨记这一点。同时我经过多年的收藏目前也算收集到了一套完整的学习资料，包括但不限于：分布式架构、高可扩展、高性能、高并发、Jvm性能调优、Spring，MyBatis，Nginx源码分析，Redis，ActiveMQ、、Mycat、Netty、Kafka、Mysql、Zookeeper、Tomcat、Docker、Dubbo、Nginx等多个知识点高级进阶干货，希望对想成为架构师的朋友有一定的参考和帮助</strong></p>
-<p><strong>需要更详细思维导图和以下资料的可以加一下技术交流分享群：“708 701 457”免费获取</strong></p>
-<p><img src="https://user-gold-cdn.xitu.io/2019/4/30/16a6a90239d4db4a?imageView2/0/w/1280/h/960/ignore-error/1" alt></p>
-<p><img src="https://user-gold-cdn.xitu.io/2019/4/30/16a6a905f7393bc9?imageView2/0/w/1280/h/960/ignore-error/1" alt></p>
-
-      
-
-      
-    </div>
-    <div class="article-info article-info-index">
-      
-      
-	<div class="article-tag tagcloud">
-		<i class="icon-price-tags icon"></i>
-		<ul class="article-tag-list">
-			 
-        		<li class="article-tag-list-item">
-        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color5">Java</a>
-        		</li>
-      		
-		</ul>
-	</div>
-
-      
-
-      
-        <p class="article-more-link">
-          <a class="article-more-a" href="/2019/04/30/【面试】吃透了这些Redis知识点，面试官一定觉得你很NB/">展开全文 >></a>
-        </p>
-      
-
-      
-      <div class="clearfix"></div>
-    </div>
-  </div>
-</article>
-
-<aside class="wrap-side-operation">
-    <div class="mod-side-operation">
-        
-        <div class="jump-container" id="js-jump-container" style="display:none;">
-            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
-                <i class="icon-font icon-back"></i>
-            </a>
-            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
-                <i class="icon-font icon-plane jump-plane"></i>
-            </div>
-        </div>
-        
-        
-    </div>
-</aside>
-
-
-
-
-  
     <article id="post-一个简单的基于 Redis 的分布式任务调度器 —— Java 语言实现" class="article article-type-post  article-index" itemscope itemprop="blogPost">
   <div class="article-inner">
     
@@ -1873,6 +1787,82 @@
       
         <p class="article-more-link">
           <a class="article-more-a" href="/2019/04/30/一个简单的基于 Redis 的分布式任务调度器 —— Java 语言实现/">展开全文 >></a>
+        </p>
+      
+
+      
+      <div class="clearfix"></div>
+    </div>
+  </div>
+</article>
+
+<aside class="wrap-side-operation">
+    <div class="mod-side-operation">
+        
+        <div class="jump-container" id="js-jump-container" style="display:none;">
+            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
+                <i class="icon-font icon-back"></i>
+            </a>
+            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
+                <i class="icon-font icon-plane jump-plane"></i>
+            </div>
+        </div>
+        
+        
+    </div>
+</aside>
+
+
+
+
+  
+    <article id="post-高并发架构的CDN知识介绍" class="article article-type-post  article-index" itemscope itemprop="blogPost">
+  <div class="article-inner">
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2019/04/30/高并发架构的CDN知识介绍/">高并发架构的CDN知识介绍</a>
+    </h1>
+  
+
+        
+        <a href="/2019/04/30/高并发架构的CDN知识介绍/" class="archive-article-date">
+  	<time datetime="2019-04-29T16:00:00.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2019-04-30</time>
+</a>
+        
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>对一次网络请求过程的了解程度，一是展现你的专业知识；二是深刻的理解，让你在大型网站架构中做出更适合、可靠的架构。而DNS是这一切的出发点，本文结合一张常用架构图，来描述一下这个过程。</p>
+        
+          <a class="article-more-a" href="/2019/04/30/高并发架构的CDN知识介绍/#more">more >></a>
+        
+      
+
+      
+    </div>
+    <div class="article-info article-info-index">
+      
+      
+	<div class="article-tag tagcloud">
+		<i class="icon-price-tags icon"></i>
+		<ul class="article-tag-list">
+			 
+        		<li class="article-tag-list-item">
+        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color3">架构</a>
+        		</li>
+      		
+		</ul>
+	</div>
+
+      
+
+      
+        <p class="article-more-link">
+          <a class="article-more-a" href="/2019/04/30/高并发架构的CDN知识介绍/">展开全文 >></a>
         </p>
       
 
@@ -2019,6 +2009,10 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
               </li>
              
               <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color4">数据库</a>
+              </li>
+             
+              <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color2">Vue.js</a>
               </li>
              
@@ -2027,19 +2021,19 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
               </li>
              
               <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color3">算法</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color5">ZooKeeper</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color4">服务器</a>
+              </li>
+             
+              <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color4">分布式</a>
-              </li>
-             
-              <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color4">JVM</a>
-              </li>
-             
-              <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color4">数据库</a>
-              </li>
-             
-              <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color1">MySQL</a>
               </li>
              
               <li class="article-tag-list-item">
@@ -2051,10 +2045,6 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
               </li>
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color4">服务器</a>
-              </li>
-             
-              <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color3">Reactor</a>
               </li>
              
@@ -2063,11 +2053,19 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
               </li>
              
               <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color1">MySQL</a>
+              </li>
+             
+              <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color5">HDFS</a>
               </li>
              
               <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color2">Hadoop</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color4">JVM</a>
               </li>
              
               <li class="article-tag-list-item">

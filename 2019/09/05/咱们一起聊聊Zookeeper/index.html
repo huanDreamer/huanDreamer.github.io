@@ -6,25 +6,31 @@
   <meta name="renderer" content="webkit">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <link rel="dns-prefetch" href="http://sillyfan.top">
-  <title>高并发架构的CDN知识介绍 | HUAN</title>
+  <title>咱们一起聊聊Zookeeper | HUAN</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-  <meta name="description" content="对一次网络请求过程的了解程度，一是展现你的专业知识；二是深刻的理解，让你在大型网站架构中做出更适合、可靠的架构。而DNS是这一切的出发点，本文结合一张常用架构图，来描述一下这个过程。">
-<meta name="keywords" content="架构">
+  <meta name="description" content="本文转载自 https://juejin.im/post/5b03d58a6fb9a07a9e4d8f01Google的三篇论文影响了很多很多人，也影响了很多很多系统。这三篇论文一直是分布式领域传阅的经典。根据MapReduce，于是我们有了Hadoop；根据GFS，于是我们有了HDFS；根据BigTable，于是我们有了HBase。而在这三篇论文里都提及Google的一个Lock Servic">
+<meta name="keywords" content="后端,算法,ZooKeeper,服务器">
 <meta property="og:type" content="article">
-<meta property="og:title" content="高并发架构的CDN知识介绍">
-<meta property="og:url" content="http://sillyfan.top/2019/04/30/高并发架构的CDN知识介绍/index.html">
+<meta property="og:title" content="咱们一起聊聊Zookeeper">
+<meta property="og:url" content="http://sillyfan.top/2019/09/05/咱们一起聊聊Zookeeper/index.html">
 <meta property="og:site_name" content="HUAN">
-<meta property="og:description" content="对一次网络请求过程的了解程度，一是展现你的专业知识；二是深刻的理解，让你在大型网站架构中做出更适合、可靠的架构。而DNS是这一切的出发点，本文结合一张常用架构图，来描述一下这个过程。">
+<meta property="og:description" content="本文转载自 https://juejin.im/post/5b03d58a6fb9a07a9e4d8f01Google的三篇论文影响了很多很多人，也影响了很多很多系统。这三篇论文一直是分布式领域传阅的经典。根据MapReduce，于是我们有了Hadoop；根据GFS，于是我们有了HDFS；根据BigTable，于是我们有了HBase。而在这三篇论文里都提及Google的一个Lock Servic">
 <meta property="og:locale" content="default">
-<meta property="og:image" content="https://user-gold-cdn.xitu.io/2019/4/29/16a676b8dec824bc?imageView2/0/w/1280/h/960/ignore-error/1">
-<meta property="og:image" content="https://user-gold-cdn.xitu.io/2019/4/29/16a676b8f5f67a0a?imageView2/0/w/1280/h/960/ignore-error/1">
-<meta property="og:image" content="https://user-gold-cdn.xitu.io/2019/4/29/16a676b8ef1312d6?imageView2/0/w/1280/h/960/ignore-error/1">
-<meta property="og:image" content="https://user-gold-cdn.xitu.io/2019/4/29/16a6798413fb12b1?imageView2/0/w/1280/h/960/ignore-error/1">
-<meta property="og:updated_time" content="2019-05-30T00:52:25.436Z">
+<meta property="og:image" content="https://user-gold-cdn.xitu.io/2018/5/22/16386fa1da44453e?imageView2/0/w/1280/h/960/ignore-error/1">
+<meta property="og:image" content="https://user-gold-cdn.xitu.io/2018/5/22/16386fa1db2c2136?imageView2/0/w/1280/h/960/ignore-error/1">
+<meta property="og:image" content="https://user-gold-cdn.xitu.io/2018/5/22/16386fa1da16f271?imageView2/0/w/1280/h/960/ignore-error/1">
+<meta property="og:image" content="https://user-gold-cdn.xitu.io/2018/5/22/16386fa1da9a4935?imageView2/0/w/1280/h/960/ignore-error/1">
+<meta property="og:image" content="https://user-gold-cdn.xitu.io/2018/5/22/16386fa1db32fbba?imageView2/0/w/1280/h/960/ignore-error/1">
+<meta property="og:image" content="https://user-gold-cdn.xitu.io/2018/5/22/16386fa1da601d9c?imageView2/0/w/1280/h/960/ignore-error/1">
+<meta property="og:image" content="https://user-gold-cdn.xitu.io/2018/5/22/16386fa1f2b207b3?imageView2/0/w/1280/h/960/ignore-error/1">
+<meta property="og:image" content="https://user-gold-cdn.xitu.io/2018/5/22/16386fa1f3c90913?imageView2/0/w/1280/h/960/ignore-error/1">
+<meta property="og:image" content="https://user-gold-cdn.xitu.io/2018/5/22/16386fa1fca8bc8b?imageView2/0/w/1280/h/960/ignore-error/1">
+<meta property="og:image" content="https://user-gold-cdn.xitu.io/2018/5/22/16385b747668bf9f?imageView2/0/w/1280/h/960/ignore-error/1">
+<meta property="og:updated_time" content="2019-09-05T02:32:20.163Z">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="高并发架构的CDN知识介绍">
-<meta name="twitter:description" content="对一次网络请求过程的了解程度，一是展现你的专业知识；二是深刻的理解，让你在大型网站架构中做出更适合、可靠的架构。而DNS是这一切的出发点，本文结合一张常用架构图，来描述一下这个过程。">
-<meta name="twitter:image" content="https://user-gold-cdn.xitu.io/2019/4/29/16a676b8dec824bc?imageView2/0/w/1280/h/960/ignore-error/1">
+<meta name="twitter:title" content="咱们一起聊聊Zookeeper">
+<meta name="twitter:description" content="本文转载自 https://juejin.im/post/5b03d58a6fb9a07a9e4d8f01Google的三篇论文影响了很多很多人，也影响了很多很多系统。这三篇论文一直是分布式领域传阅的经典。根据MapReduce，于是我们有了Hadoop；根据GFS，于是我们有了HDFS；根据BigTable，于是我们有了HBase。而在这三篇论文里都提及Google的一个Lock Servic">
+<meta name="twitter:image" content="https://user-gold-cdn.xitu.io/2018/5/22/16386fa1da44453e?imageView2/0/w/1280/h/960/ignore-error/1">
   
     <link rel="alternative" href="/atom.xml" title="HUAN" type="application/atom+xml">
   
@@ -160,91 +166,116 @@
             <canvas data-colors="#eaeaea" data-sectionHeight="100" data-contentId="js-content" id="myCanvas1" class="anm-canvas"></canvas>
           </div>
           <div id="js-content" class="content-ll">
-            <article id="post-高并发架构的CDN知识介绍" class="article article-type-post " itemscope itemprop="blogPost">
+            <article id="post-咱们一起聊聊Zookeeper" class="article article-type-post " itemscope itemprop="blogPost">
   <div class="article-inner">
     
       <header class="article-header">
         
   
     <h1 class="article-title" itemprop="name">
-      高并发架构的CDN知识介绍
+      咱们一起聊聊Zookeeper
     </h1>
   
 
         
-        <a href="/2019/04/30/高并发架构的CDN知识介绍/" class="archive-article-date">
-  	<time datetime="2019-04-29T16:00:00.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2019-04-30</time>
+        <a href="/2019/09/05/咱们一起聊聊Zookeeper/" class="archive-article-date">
+  	<time datetime="2019-09-05T02:32:20.020Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2019-09-05</time>
 </a>
         
       </header>
     
     <div class="article-entry" itemprop="articleBody">
       
-        <p>对一次网络请求过程的了解程度，一是展现你的专业知识；二是深刻的理解，让你在大型网站架构中做出更适合、可靠的架构。而DNS是这一切的出发点，本文结合一张常用架构图，来描述一下这个过程。</p>
- <a id="more"></a> 
-
-<blockquote>
-<p>本文来自于 <a href="https://juejin.im/post/5cc681fc6fb9a0320e73e31e" target="_blank" rel="noopener">https://juejin.im/post/5cc681fc6fb9a0320e73e31e</a> </p>
+        <blockquote>
+<p>本文转载自 <a href="https://juejin.im/post/5b03d58a6fb9a07a9e4d8f01" target="_blank" rel="noopener">https://juejin.im/post/5b03d58a6fb9a07a9e4d8f01</a><br>Google的三篇论文影响了很多很多人，也影响了很多很多系统。这三篇论文一直是分布式领域传阅的经典。根据MapReduce，于是我们有了Hadoop；根据GFS，于是我们有了HDFS；根据BigTable，于是我们有了HBase。而在这三篇论文里都提及Google的一个Lock Service —— Chubby，哦，于是我们有了Zookeeper。</p>
 </blockquote>
-<p>对一次网络请求过程的了解程度，一是展现你的专业知识；二是深刻的理解，让你在大型网站架构中做出更适合、可靠的架构。而DNS是这一切的出发点，本文结合一张常用架构图，来描述一下这个过程。</p>
-<h1 id="部署架构"><a href="#部署架构" class="headerlink" title="部署架构"></a>部署架构</h1><p>大型的web服务，我们的部署架构一般如下图。先上图再解释。<br><img src="https://user-gold-cdn.xitu.io/2019/4/29/16a676b8dec824bc?imageView2/0/w/1280/h/960/ignore-error/1" alt="大流量架构图"></p>
-<p>这里来解释下，为什么要这样架构。 首先客户端的请求会通过 <code>DNS</code> 获取到对应的服务器IP（实际上是LB的ip地址），这一层会有 <strong>DNS的负载均衡</strong>，并且如果是静态站资源会进入到CDN，这里DNS与CDN如何完成接棒的过程，后面会详细解释。 当请求到达LB层的时候（应用层协议是HTTP协议），这一层又会做一次负载均衡（可能用LVS或者Nginx做）。这里我们有两种不同的处理方式，一条路径会进入到代理集群，一条路径直接进入到应用集群。这是为什么？</p>
-<h2 id="LB到代理集群"><a href="#LB到代理集群" class="headerlink" title="LB到代理集群"></a>LB到代理集群</h2><p>通过最顶层的LB负责均衡后到达代理机器，这里不直接进入到应用集群，还要搞一层代理的目的主要是方便我们在代理集群进行各种高级（骚）操作。</p>
-<p>比如：请求日志收集，自定义缓存，自定义的负载均衡，自定义的路由规则制定（跨机房，路由分组）</p>
-<h2 id="LB到应用集群"><a href="#LB到应用集群" class="headerlink" title="LB到应用集群"></a>LB到应用集群</h2><p>上面到代理层有那么多好处，为什么还有绕过代理层这条路径存在呢？这主要是针对大流量服务。因为代理层因为有很多额外的操作，导致响应会变长，路径增加，到下一个集群多了一次网络传输往返。</p>
-<p>所以，一般针对大流量服务，为了防止代理被打满，响应更快，会直接在外网LB上进行负载到应用集群。</p>
-<p>通过上面的分割后，最终都会到达应用集群，每一台机器上我们会部署一台 <code>Nginx</code> 来按照域名转到对应服务，当然这里完全也可以不是 <code>Nginx</code> ，比如微服务，这里可能是一个 <code>SideCard</code> 代理。这里主要是为了便于说明我们后面全部都是当成Nginx。服务调用 <code>DB</code> <code>Cache</code> 等，都是通过域名，这是为了负载均衡，请求时，会通过内网DNS服务，完成域名解析，然后拿到内网的 <code>LB</code> 的IP。然后再这里进行内网的负载均衡，会根据域名的端口来检查你是写操作、还是读操作返回IP。常规一点会保证是单点写入，多点读取。来完成数据一致性的保障。</p>
-<p>整个大体过程如此，接下来我们详细说一下 <code>DNS</code> 与 <code>CDN</code> 相关的工作原理。</p>
-<h1 id="DNS如何实现IP查找"><a href="#DNS如何实现IP查找" class="headerlink" title="DNS如何实现IP查找"></a>DNS如何实现IP查找</h1><p>为了后面说清楚CDN，这里先介绍DNS的解析过程。当然此类文章网络上已经极多。但是我还是想按照我的理解来说一下DNS是如何工作的。</p>
-<p>在整个DNS过程中有四个重要概念，下面解释下。</p>
-<p><strong>DNS Resolver</strong> - 递归解析器，主要是接收客户端发出的域名解析请求，并发送 DNS query 查询请求。对于客户端来说它不需要任何操劳，等待 DNS Resolver 告诉自己域名转IP的结果就好。</p>
-<p><strong>Root Server</strong> - 这是转换IP执行的第一步查询，根服务器并不会保存具体的域名IP映射信息。它就像一个索引服务器，会告诉你下一步该去那台 <strong>TLD Server</strong> 查询。</p>
-<p><strong>TLD Server</strong> - 这是顶级域名服务器，是执行IP查询的第二步，这里会告诉 <strong>DNS Resolver</strong> 权威域名服务器的地址。</p>
-<p><strong>Authoriative Server</strong> - 权威域名服务器就是包含了完整的机器名的域名，例如：<a href="http://www.example.com" target="_blank" rel="noopener">www.example.com</a> ，在这台机器上保存了这个具体域名对应的IP地址。</p>
-<p><img src="https://user-gold-cdn.xitu.io/2019/4/29/16a676b8f5f67a0a?imageView2/0/w/1280/h/960/ignore-error/1" alt="dns-lookup-diagram"></p>
-<p>下面根据图中的十个步骤说一下每一步都在干嘛。</p>
-<ol>
-<li>一个用户在浏览器输入了：example.com，这时会产生一个 DNS 查询，从而进入到 DNS Resolver中；</li>
-<li>Resolver 会进入到 root server 进行查询；</li>
-<li>root server 返回了 TLD server 的地址，查询请求转向顶级域名服务，这里是 .com 服务器。</li>
-<li>递归解析器向 .com 服务器发送一个请求；</li>
-<li>TLD server 收到请求后会返回 example.com 权威服务器的地址；</li>
-<li>递归解析器又发了一个向权威服务器查询的请求，至此权威服务器查询自己的映射表拿到IP；</li>
-<li>返回查询到的IP给了 DNS Resolver；</li>
-<li>DNS Resolver返回IP给浏览器，浏览器将会用这个IP来建立连接，发起请求;</li>
-<li>客户端通过这个IP地址，发起一个 HTTP 请求；</li>
-<li>服务器解析请求，并返回数据到浏览器。</li>
-</ol>
-<p>这里需要补充一点是，上面每一步其实都有DNS缓存的设计。比如：</p>
-<ul>
-<li>浏览器会缓存DNS的结果，（chrome://net-internals//#dns）</li>
-<li>操作系统的DNS模块会缓存</li>
-<li>后面的每一层级也都有缓存</li>
-</ul>
-<p>所以很多时候，我们的解析过程并不是要顺序执行完这8个步骤。这就跟我们自己开发的应用服务一样，层层缓存，有缓存就读取缓存结果，缓存实现就执行完整流程。</p>
-<h2 id="DNS的解析分类"><a href="#DNS的解析分类" class="headerlink" title="DNS的解析分类"></a>DNS的解析分类</h2><p>DNS有多种解析记录可以设置，我这里介绍三个很常用的设计。</p>
-<p><strong>A记录</strong> - 被称为IP指向，用户设置自域名指到对应的IP主机上。如果想要利用A记录实现 <strong>负载均衡</strong> 需要主机商的支持。 <strong>CNAME记录</strong> - 它相当于为一个主机名设置一个别名，而且该记录不能直接使用IP，只能是另一个主机的别名。CDN主要就是利用该记录来完成的。如果有A记录与CNAME记录同时存在，A记录会被优先使用，换句话说CNAME记录不会生效。 <strong>NS记录</strong> - 用来设置一个域名的权威服务器路径，该记录只会对子域名生效。这个地方可以设置IP也可以设置另外一个权威服务器的域名。需要重点指出的是它的优先级高于A记录，并且它在DNS解析过程中，会跳过2，3，4，5步。</p>
-<p>了解完了DNS的步骤，接下来就进入到CDN部分的分析。</p>
-<h1 id="CDN访问加速度"><a href="#CDN访问加速度" class="headerlink" title="CDN访问加速度"></a>CDN访问加速度</h1><p>什么是CDN呢？中文翻译过来就是内容分发网络。看张图。<br><img src="https://user-gold-cdn.xitu.io/2019/4/29/16a676b8ef1312d6?imageView2/0/w/1280/h/960/ignore-error/1" alt="2circles"></p>
-<p>没有CDN的时候，不管哪里的用户访问我们的站点，都需要到我们数据中心来获取数据(单纯的DNS过程)。而有了CDN之后，用户根据自己的地理位置会选择距离自己最近的缓存数据中心来获取数据。不会每次都到源站（应用服务器）来获取数据。为了理解这个过程，我们是如果在完整的DNS过程中，实现CDN的呢？</p>
-<p>接下来我们需要回答两个问题。</p>
-<ol>
-<li>CDN带来了什么好处。</li>
-<li>如何解析到CDN。</li>
-</ol>
-<h2 id="CDN带来的好处"><a href="#CDN带来的好处" class="headerlink" title="CDN带来的好处"></a>CDN带来的好处</h2><p>了解一个东西之前最好知道它能干什么，带来的好处是什么。然后我们再去看它的运行原理。对于CDN有以下几个方面的好处。</p>
-<h3 id="提高页面加载速度"><a href="#提高页面加载速度" class="headerlink" title="提高页面加载速度"></a>提高页面加载速度</h3><p>这是最显而易见的一个优势，通过上面的图，大家也可以直观感受下，用户访问距离自己最近的机器，速度肯定是最快的。并且网站的加载速度越快那么用户体验越优秀，你的网站更会受到对应用户的喜爱。至于如何实现就近访问的，后面原理部分介绍。</p>
-<h3 id="增加内容的冗余"><a href="#增加内容的冗余" class="headerlink" title="增加内容的冗余"></a>增加内容的冗余</h3><p>CDN是一个典型的分布式架构，它通过增加数据的冗余，一方面保障在大流量面前有多台服务器能够提供相同的数据；另一方面当部分机器出现故障时，可以进行自动转移。</p>
-<h3 id="节省带宽"><a href="#节省带宽" class="headerlink" title="节省带宽"></a>节省带宽</h3><p>如果大家自己买过云服务就知道，带宽每增加一点价格就飙升。使用CDN后，由于流量被分流了，那么原机器带宽要求自然就降低了。当然带宽费用降低了，你还需要为CDN付费。</p>
-<h3 id="保障服务安全"><a href="#保障服务安全" class="headerlink" title="保障服务安全"></a>保障服务安全</h3><p>CDN可防止的攻击：<code>DDOS攻击</code>，该攻击就是通过巨大流量打满你的带宽，让你丧失服务能力。那么由于CDN的存在，它将巨大的流量进行了分流。那么源站压力自然小了。这其实也是高并发需要考虑的。</p>
-<p>CDN目前不仅仅是只能缓存静态的HTML、CSS、JS、VIDEO，现在还有能够缓存动态接口内容的CDN，这为我们在架构高并发的服务时，提供了更多的手段进行选择。</p>
-<h2 id="CDN工作原理"><a href="#CDN工作原理" class="headerlink" title="CDN工作原理"></a>CDN工作原理</h2><p>在介绍DNS的时候，介绍了客户端是如何获取到IP地址的。那么有了CDN之后，这个过程该怎么处理呢？</p>
-<p>CDN其实更像是放在应用服务器与用户之间的一层缓存。所以如果DNS的时候，返回给客户端的是CDN机器的IP而不是应用的IP，那么自然就走到了CDN机器上。</p>
-<p>为了实现上述目的，我们会为该域名配置一个 <code>CNAME</code>（大家注意上面提到的CNAME与A记录的优先级），那么这个CNAME是最终如何解析到对应的CDN机器呢？其实流程与DNS解析是一样的。当发现一个域名设置了CNAME时，DNS解析器会继续解析这个CNAME别名（其实就是另一个域名）。对这个CNAME解析的时候会用到全局负载DNS解析，它会根据访问者的地理位置信息返回对应的IP（CDN机器的IP）。因此客户端实际上得到的是距离它最近的CDN机器的IP地址。</p>
-<p>如果说用户访问CDN，但是CDN上没有对应内容会怎么办？此时CDN机器其实会根据自身专用的DNS解析服务，根据域名得到源站的IP，然后向源站发送请求获取数据，并把这些数据缓存到本地，方便后续使用；同时返回本次结果，完成本次请求的访问。</p>
-<p>需要说一下的是，CDN其实也是分层的。距离用户最近的称之为边缘节点。而CDN的中心服务器集群被称为二级缓存。在上面就是应用部署的源站。一般边缘节点没数据就去找二级缓存，二级缓存没数据就去找源站（被称为回源）。</p>
-<h1 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h1><p>关于 <code>DNS</code> 的过程，文中是以流程介绍为主，至于更细节的依赖协议、传输过程都忽略了。 关于CDN也是我们经常用到的性能提升手段，后续要写的秒杀相关文章，就会用到它来提升性能。特别是CDN的分布式设计、解析过程在我们平常设计应用架构时非常有参考意义。<br><img src="https://user-gold-cdn.xitu.io/2019/4/29/16a6798413fb12b1?imageView2/0/w/1280/h/960/ignore-error/1" alt></p>
-<p>个人公众号：<strong>dayuTalk</strong></p>
+<p>随着大数据的火热，Hxx们已经变得耳熟能详，现在作为一个开发人员如果都不知道这几个名词出门都好像不好意思跟人打招呼。但实际上对我们这些非大数据开发人员而言，Zookeeper是比Hxx们可能接触到更多的一个基础服务。但是，无奈的是它一直默默的位于二线，从来没有Hxx们那么耀眼。那么到底什么是Zookeeper呢？Zookeeper可以用来干什么？我们将如何使用Zookeeper？Zookeeper又是怎么实现的？</p>
+<h2 id="什么是Zookeeper"><a href="#什么是Zookeeper" class="headerlink" title="什么是Zookeeper"></a>什么是Zookeeper</h2><p>在Zookeeper的官网上有这么一句话：ZooKeeper is a centralized service for maintaining configuration information, naming, providing distributed synchronization, and providing group services。</p>
+<p>这大概描述了Zookeeper主要是一个分布式服务协调框架，实现同步服务，配置维护和命名服务等分布式应用。是一个高性能的分布式数据一致性解决方案。</p>
+<p>通俗地讲，ZooKeeper是动物园管理员，它是拿来管大象 Hadoop、鲸鱼 HBase、Kafka等的管理员。</p>
+<h2 id="Zookeeper和CAP的关系"><a href="#Zookeeper和CAP的关系" class="headerlink" title="Zookeeper和CAP的关系"></a>Zookeeper和CAP的关系</h2><p>作为一个分布式系统，分区容错性是一个必须要考虑的关键点。一个分布式系统一旦丧失了分区容错性，也就表示放弃了扩展性。因为在分布式系统中，网络故障是经常出现的，一旦出现在这种问题就会导致整个系统不可用是绝对不能容忍的。所以，大部分分布式系统都会在保证分区容错性的前提下在一致性和可用性之间做权衡。<br><img src="https://user-gold-cdn.xitu.io/2018/5/22/16386fa1da44453e?imageView2/0/w/1280/h/960/ignore-error/1" alt></p>
+<p>CAP关系</p>
+<p>ZooKeeper是个CP（一致性+分区容错性）的，即任何时刻对ZooKeeper的访问请求能得到一致的数据结果，同时系统对网络分割具备容错性；但是它不能保证每次服务请求的可用性。也就是在极端环境下，ZooKeeper可能会丢弃一些请求，消费者程序需要重新请求才能获得结果。</p>
+<p>ZooKeeper是分布式协调服务，它的职责是保证数据在其管辖下的所有服务之间保持同步、一致；所以就不难理解为什么ZooKeeper被设计成CP而不是AP特性的了。而且， 作为ZooKeeper的核心实现算法Zab，就是解决了分布式系统下数据如何在多个服务之间保持同步问题的。</p>
+<h2 id="Zookeeper节点特性及节点属性分析"><a href="#Zookeeper节点特性及节点属性分析" class="headerlink" title="Zookeeper节点特性及节点属性分析"></a>Zookeeper节点特性及节点属性分析</h2><p>Zookeeper提供基于类似于文件系统的目录节点树方式的数据存储，但是Zookeeper并不是用来专门存储数据的，它的作用主要是用来维护和监控你存储的数据的状态变化。通过监控这些数据状态的变化，从而可以达到基于数据的集群管理。</p>
+<h3 id="数据模型"><a href="#数据模型" class="headerlink" title="数据模型"></a>数据模型</h3><p>与Linux文件系统不同的是，Linux文件系统有目录和文件的区别，而Zookeeper的数据节点称为ZNode，ZNode是Zookeeper中数据的最小单元，每个ZNode都可以保存数据，同时还可以挂载子节点，因此构成了一个层次化的命名空间，称为树。<br><img src="https://user-gold-cdn.xitu.io/2018/5/22/16386fa1db2c2136?imageView2/0/w/1280/h/960/ignore-error/1" alt></p>
+<p>znode树形结构图</p>
+<p>Zookeeper中ZNode的节点创建时候是可以指定类型的，主要有下面几种类型。</p>
+<p>PERSISTENT：持久化ZNode节点，一旦创建这个ZNode点存储的数据不会主动消失，除非是客户端主动的delete。</p>
+<p>EPHEMERAL：临时ZNode节点，Client连接到Zookeeper Service的时候会建立一个Session，之后用这个Zookeeper连接实例创建该类型的znode，一旦Client关闭了Zookeeper的连接，服务器就会清除Session，然后这个Session建立的ZNode节点都会从命名空间消失。总结就是，这个类型的znode的生命周期是和Client建立的连接一样的。</p>
+<p>PERSISTENT_SEQUENTIAL：顺序自动编号的ZNode节点，这种znoe节点会根据当前已近存在的ZNode节点编号自动加 1，而且不会随Session断开而消失。</p>
+<p>EPEMERAL_SEQUENTIAL：临时自动编号节点，ZNode节点编号会自动增加，但是会随Session消失而消失</p>
+<h3 id="Watcher数据变更通知"><a href="#Watcher数据变更通知" class="headerlink" title="Watcher数据变更通知"></a>Watcher数据变更通知</h3><p>Zookeeper使用Watcher机制实现分布式数据的发布/订阅功能。<br><img src="https://user-gold-cdn.xitu.io/2018/5/22/16386fa1da16f271?imageView2/0/w/1280/h/960/ignore-error/1" alt></p>
+<p>Watcher机制</p>
+<p>Zookeeper的Watcher机制主要包括客户端线程、客户端WatcherManager、Zookeeper服务器三部分。客户端在向Zookeeper服务器注册的同时，会将Watcher对象存储在客户端的WatcherManager当中。当Zookeeper服务器触发Watcher事件后，会向客户端发送通知，客户端线程从WatcherManager中取出对应的Watcher对象来执行回调逻辑。</p>
+<h3 id="ACL保障数据的安全"><a href="#ACL保障数据的安全" class="headerlink" title="ACL保障数据的安全"></a>ACL保障数据的安全</h3><p>Zookeeper内部存储了分布式系统运行时状态的元数据，这些元数据会直接影响基于Zookeeper进行构造的分布式系统的运行状态，如何保障系统中数据的安全，从而避免因误操作而带来的数据随意变更而导致的数据库异常十分重要，Zookeeper提供了一套完善的ACL权限控制机制来保障数据的安全。</p>
+<p>我们可以从三个方面来理解ACL机制：权限模式 Scheme、授权对象 ID、权限 Permission，通常使用”scheme:id:permission”来标识一个有效的ACL信息。</p>
+<h3 id="内存数据"><a href="#内存数据" class="headerlink" title="内存数据"></a>内存数据</h3><p>Zookeeper的数据模型是树结构，在内存数据库中，存储了整棵树的内容，包括所有的节点路径、节点数据、ACL信息，Zookeeper会定时将这个数据存储到磁盘上。</p>
+<p>DataTree：DataTree是内存数据存储的核心，是一个树结构，代表了内存中一份完整的数据。DataTree不包含任何与网络、客户端连接及请求处理相关的业务逻辑，是一个独立的组件。</p>
+<p>DataNode：DataNode是数据存储的最小单元，其内部除了保存了结点的数据内容、ACL列表、节点状态之外，还记录了父节点的引用和子节点列表两个属性，其也提供了对子节点列表进行操作的接口。</p>
+<p>ZKDatabase：Zookeeper的内存数据库，管理Zookeeper的所有会话、DataTree存储和事务日志。ZKDatabase会定时向磁盘dump快照数据，同时在Zookeeper启动时，会通过磁盘的事务日志和快照文件恢复成一个完整的内存数据库。</p>
+<h2 id="Zookeeper的实现原理分析"><a href="#Zookeeper的实现原理分析" class="headerlink" title="Zookeeper的实现原理分析"></a>Zookeeper的实现原理分析</h2><h3 id="1-Zookeeper-Service网络结构"><a href="#1-Zookeeper-Service网络结构" class="headerlink" title="1. Zookeeper Service网络结构"></a>1. Zookeeper Service网络结构</h3><p>Zookeeper的工作集群可以简单分成两类，一个是Leader，唯一一个，其余的都是follower，如何确定Leader是通过内部选举确定的。<br><img src="https://user-gold-cdn.xitu.io/2018/5/22/16386fa1da9a4935?imageView2/0/w/1280/h/960/ignore-error/1" alt></p>
+<p>Zookeeper架构图</p>
+<p>Leader和各个follower是互相通信的，对于Zookeeper系统的数据都是保存在内存里面的，同样也会备份一份在磁盘上。</p>
+<p>如果Leader挂了，Zookeeper集群会重新选举，在毫秒级别就会重新选举出一个Leader。</p>
+<p>集群中除非有一半以上的Zookeeper节点挂了，Zookeeper Service才不可用。</p>
+<h3 id="2-Zookeeper读写数据"><a href="#2-Zookeeper读写数据" class="headerlink" title="2. Zookeeper读写数据"></a>2. Zookeeper读写数据</h3><p><img src="https://user-gold-cdn.xitu.io/2018/5/22/16386fa1db32fbba?imageView2/0/w/1280/h/960/ignore-error/1" alt></p>
+<p>zk读取数据流程</p>
+<p>写数据，一个客户端进行写数据请求时，如果是follower接收到写请求，就会把请求转发给Leader，Leader通过内部的Zab协议进行原子广播，直到所有Zookeeper节点都成功写了数据后（内存同步以及磁盘更新），这次写请求算是完成，然后Zookeeper Service就会给Client发回响应。</p>
+<p>读数据，因为集群中所有的Zookeeper节点都呈现一个同样的命名空间视图（就是结构数据），上面的写请求已经保证了写一次数据必须保证集群所有的Zookeeper节点都是同步命名空间的，所以读的时候可以在任意一台Zookeeper节点上。</p>
+<h3 id="3-Zookeeper工作原理"><a href="#3-Zookeeper工作原理" class="headerlink" title="3. Zookeeper工作原理"></a>3. Zookeeper工作原理</h3><p>Zab协议</p>
+<p>Zookeeper的核心是广播，这个机制保证了各个Server之间的同步。实现这个机制的协议叫做Zab协议。</p>
+<p>Zab（ZooKeeper Atomic Broadcast）原子消息广播协议作为数据一致性的核心算法，Zab协议是专为Zookeeper设计的支持崩溃恢复原子消息广播算法。</p>
+<p>Zab协议核心如下：</p>
+<p>所有的事务请求必须一个全局唯一的服务器（Leader）来协调处理，集群其余的服务器称为follower服务器。Leader服务器负责将一个客户端请求转化为事务提议（Proposal），并将该proposal分发给集群所有的follower服务器。之后Leader服务器需要等待所有的follower服务器的反馈，一旦超过了半数的follower服务器进行了正确反馈后，那么Leader服务器就会再次向所有的follower服务器分发commit消息，要求其将前一个proposal进行提交。</p>
+<p>Zab模式</p>
+<p>Zab协议包括两种基本的模式：崩溃恢复和消息广播。</p>
+<p>当整个服务框架启动过程中或Leader服务器出现网络中断、崩溃退出与重启等异常情况时，Zab协议就会进入恢复模式并选举产生新的Leader服务器。</p>
+<p>当选举产生了新的Leader服务器，同时集群中已经有过半的机器与该Leader服务器完成了状态同步之后，Zab协议就会退出恢复模式，状态同步是指数据同步，用来保证集群在过半的机器能够和Leader服务器的数据状态保持一致。</p>
+<p>当集群中已经有过半的Follower服务器完成了和Leader服务器的状态同步，那么整个服务框架就可以进入消息广播模式。</p>
+<p>当一台同样遵守Zab协议的服务器启动后加入到集群中，如果此时集群中已经存在一个Leader服务器在负责进行消息广播，那么加入的服务器就会自觉地进入数据恢复模式：找到Leader所在的服务器，并与其进行数据同步，然后一起参与到消息广播流程中去。</p>
+<p>Zookeeper只允许唯一的一个Leader服务器来进行事务请求的处理，Leader服务器在接收到客户端的事务请求后，会生成对应的事务提议并发起一轮广播协议，而如果集群中的其他机器收到客户端的事务请求后，那么这些非Leader服务器会首先将这个事务请求转发给Leader服务器。</p>
+<p>消息广播<br><img src="https://user-gold-cdn.xitu.io/2018/5/22/16386fa1da601d9c?imageView2/0/w/1280/h/960/ignore-error/1" alt></p>
+<p>消息广播</p>
+<p>Zab协议的消息广播过程使用是一个原子广播协议，类似一个2PC提交过程。具体的：</p>
+<p>ZooKeeper使用单一主进程Leader用于处理客户端所有事务请求，并采用Zab的原子广播协议，将服务器数据状态变更以事务Proposal的形式广播Follower上，因此能很好的处理客户端的大量并发请求。</p>
+<p>另一方面，由于事务间可能存在着依赖关系，Zab协议保证Leader广播的变更序列被顺序的处理，有些状态的变更必须依赖于比它早生成的那些状态变更。</p>
+<p>最后，考虑到主进程Leader在任何时候可能崩溃或者异常退出， 因此Zab协议还要Leader进程崩溃的时候可以重新选出Leader并且保证数据的完整性；Follower收到Proposal后，写到磁盘，返回Ack。Leader收到大多数ACK后，广播Commit消息，自己也提交该消息。Follower收到Commit之后，提交该消息。</p>
+<p>Zab协议简化了2PC事务提交：</p>
+<p>去除中断逻辑移除，follower要么ack，要么抛弃Leader。</p>
+<p>Leader不需要所有的Follower都响应成功，只要一个多数派Ack即可。</p>
+<p>崩溃恢复</p>
+<p>上面我们讲了Zab协议在正常情况下的消息广播过程，那么一旦Leader服务器出现崩溃或者与过半的follower服务器失去联系，就进入崩溃恢复模式。</p>
+<p>恢复模式需要重新选举出一个新的Leader，让所有的Server都恢复到一个正确的状态。</p>
+<h2 id="Zookeeper实践，共享锁，Leader选举"><a href="#Zookeeper实践，共享锁，Leader选举" class="headerlink" title="Zookeeper实践，共享锁，Leader选举"></a>Zookeeper实践，共享锁，Leader选举</h2><p>分布式锁用于控制分布式系统之间同步访问共享资源的一种方式，可以保证不同系统访问一个或一组资源时的一致性，主要分为排它锁和共享锁。</p>
+<p>排它锁又称为写锁或独占锁，若事务T1对数据对象O1加上了排它锁，那么在整个加锁期间，只允许事务T1对O1进行读取和更新操作，其他任何事务都不能再对这个数据对象进行任何类型的操作，直到T1释放了排它锁。<br><img src="https://user-gold-cdn.xitu.io/2018/5/22/16386fa1f2b207b3?imageView2/0/w/1280/h/960/ignore-error/1" alt></p>
+<p>独占锁</p>
+<p>共享锁又称为读锁，若事务T1对数据对象O1加上共享锁，那么当前事务只能对O1进行读取操作，其他事务也只能对这个数据对象加共享锁，直到该数据对象上的所有共享锁都被释放。</p>
+<p><img src="https://user-gold-cdn.xitu.io/2018/5/22/16386fa1f3c90913?imageView2/0/w/1280/h/960/ignore-error/1" alt></p>
+<p>共享锁</p>
+<h2 id="Leader选举"><a href="#Leader选举" class="headerlink" title="Leader选举"></a>Leader选举</h2><p>Leader选举是保证分布式数据一致性的关键所在。当Zookeeper集群中的一台服务器出现以下两种情况之一时，需要进入Leader选举。</p>
+<p>服务器初始化启动。</p>
+<p>服务器运行期间无法和Leader保持连接。</p>
+<p>Zookeeper在3.4.0版本后只保留了TCP版本的 FastLeaderElection 选举算法。当一台机器进入Leader选举时，当前集群可能会处于以下两种状态：</p>
+<p>集群中已存在Leader。</p>
+<p>集群中不存在Leader。</p>
+<p>对于集群中已经存在Leader而言，此种情况一般都是某台机器启动得较晚，在其启动之前，集群已经在正常工作，对这种情况，该机器试图去选举Leader时，会被告知当前服务器的Leader信息，对于该机器而言，仅仅需要和Leader机器建立起连接，并进行状态同步即可。</p>
+<p>而在集群中不存在Leader情况下则会相对复杂，其步骤如下：</p>
+<p>(1) 第一次投票。无论哪种导致进行Leader选举，集群的所有机器都处于试图选举出一个Leader的状态，即LOOKING状态，LOOKING机器会向所有其他机器发送消息，该消息称为投票。投票中包含了SID（服务器的唯一标识）和ZXID（事务ID），(SID, ZXID)形式来标识一次投票信息。假定Zookeeper由5台机器组成，SID分别为1、2、3、4、5，ZXID分别为9、9、9、8、8，并且此时SID为2的机器是Leader机器，某一时刻，1、2所在机器出现故障，因此集群开始进行Leader选举。在第一次投票时，每台机器都会将自己作为投票对象，于是SID为3、4、5的机器投票情况分别为(3, 9)，(4, 8)， (5, 8)。</p>
+<p>(2) 变更投票。每台机器发出投票后，也会收到其他机器的投票，每台机器会根据一定规则来处理收到的其他机器的投票，并以此来决定是否需要变更自己的投票，这个规则也是整个Leader选举算法的核心所在，其中术语描述如下</p>
+<p>vote_sid：接收到的投票中所推举Leader服务器的SID。</p>
+<p>vote_zxid：接收到的投票中所推举Leader服务器的ZXID。</p>
+<p>self_sid：当前服务器自己的SID。</p>
+<p>self_zxid：当前服务器自己的ZXID。</p>
+<p>每次对收到的投票的处理，都是对(vote_sid, vote_zxid)和(self_sid, self_zxid)对比的过程。</p>
+<p>规则一：如果vote_zxid大于self_zxid，就认可当前收到的投票，并再次将该投票发送出去。</p>
+<p>规则二：如果vote_zxid小于self_zxid，那么坚持自己的投票，不做任何变更。</p>
+<p>规则三：如果vote_zxid等于self_zxid，那么就对比两者的SID，如果vote_sid大于self_sid，那么就认可当前收到的投票，并再次将该投票发送出去。</p>
+<p>规则四：如果vote_zxid等于self_zxid，并且vote_sid小于self_sid，那么坚持自己的投票，不做任何变更。</p>
+<p>结合上面规则，给出下面的集群变更过程。<br><img src="https://user-gold-cdn.xitu.io/2018/5/22/16386fa1fca8bc8b?imageView2/0/w/1280/h/960/ignore-error/1" alt></p>
+<p>Leader选举</p>
+<p>(3) 确定Leader。经过第二轮投票后，集群中的每台机器都会再次接收到其他机器的投票，然后开始统计投票，如果一台机器收到了超过半数的相同投票，那么这个投票对应的SID机器即为Leader。此时Server3将成为Leader。</p>
+<p>由上面规则可知，通常那台服务器上的数据越新（ZXID会越大），其成为Leader的可能性越大，也就越能够保证数据的恢复。如果ZXID相同，则SID越大机会越大。<br><img src="https://user-gold-cdn.xitu.io/2018/5/22/16385b747668bf9f?imageView2/0/w/1280/h/960/ignore-error/1" alt></p>
 
       
 
@@ -279,7 +310,19 @@
 		<ul class="article-tag-list">
 			 
         		<li class="article-tag-list-item">
-        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color3">架构</a>
+        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color3">后端</a>
+        		</li>
+      		 
+        		<li class="article-tag-list-item">
+        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color3">算法</a>
+        		</li>
+      		 
+        		<li class="article-tag-list-item">
+        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color5">ZooKeeper</a>
+        		</li>
+      		 
+        		<li class="article-tag-list-item">
+        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color4">服务器</a>
         		</li>
       		
 		</ul>
@@ -335,7 +378,7 @@
     <a class="close js-modal-close" href="javascript:;"><i class="icon icon-close"></i></a>
     <p>扫一扫，分享到微信</p>
     <div class="wx-qrcode">
-      <img src="//pan.baidu.com/share/qrcode?url=http://sillyfan.top/2019/04/30/高并发架构的CDN知识介绍/" alt="微信分享二维码">
+      <img src="//pan.baidu.com/share/qrcode?url=http://sillyfan.top/2019/09/05/咱们一起聊聊Zookeeper/" alt="微信分享二维码">
     </div>
 </div>
 
@@ -349,18 +392,9 @@
   
 <nav id="article-nav">
   
-    <a href="/2019/04/30/一个简单的基于 Redis 的分布式任务调度器 —— Java 语言实现/" id="article-nav-newer" class="article-nav-link-wrap">
-      <i class="icon-circle-left"></i>
-      <div class="article-nav-title">
-        
-          一个简单的基于 Redis 的分布式任务调度器 —— Java 语言实现
-        
-      </div>
-    </a>
   
-  
-    <a href="/2019/04/30/【面试】吃透了这些Redis知识点，面试官一定觉得你很NB/" id="article-nav-older" class="article-nav-link-wrap">
-      <div class="article-nav-title">【面试】吃透了这些Redis知识点，面试官一定觉得你很NB</div>
+    <a href="/2019/09/03/35个Java代码优化的细节，你知道几个？/" id="article-nav-older" class="article-nav-link-wrap">
+      <div class="article-nav-title">35个Java代码优化的细节，你知道几个？</div>
       <i class="icon-circle-right"></i>
     </a>
   
