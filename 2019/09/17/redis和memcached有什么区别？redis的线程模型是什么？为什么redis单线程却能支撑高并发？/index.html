@@ -6,15 +6,22 @@
   <meta name="renderer" content="webkit">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <link rel="dns-prefetch" href="http://sillyfan.top">
-  <title>Tag: Spring | HUAN</title>
+  <title>redis 和 memcached 有什么区别？redis 的线程模型是什么？为什么 redis 单线程却能支撑高并发？ | HUAN</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-  <meta property="og:type" content="website">
-<meta property="og:title" content="HUAN">
-<meta property="og:url" content="http://sillyfan.top/tags/Spring/index.html">
+  <meta name="description" content="本文转载自 https://juejin.im/post/5d79ca19e51d4561f40ade02   面试题redis 和 memcached 有什么区别？redis 的线程模型是什么？为什么 redis 单线程却能支撑高并发？ 面试官心理分析这个是问 redis 的时候，最基本的问题吧，redis 最基本的一个内部原理和特点，就是 redis 实际上是个单线程工作模型，你要是这个都不">
+<meta name="keywords" content="Redis">
+<meta property="og:type" content="article">
+<meta property="og:title" content="redis 和 memcached 有什么区别？redis 的线程模型是什么？为什么 redis 单线程却能支撑高并发？">
+<meta property="og:url" content="http://sillyfan.top/2019/09/17/redis和memcached有什么区别？redis的线程模型是什么？为什么redis单线程却能支撑高并发？/index.html">
 <meta property="og:site_name" content="HUAN">
+<meta property="og:description" content="本文转载自 https://juejin.im/post/5d79ca19e51d4561f40ade02   面试题redis 和 memcached 有什么区别？redis 的线程模型是什么？为什么 redis 单线程却能支撑高并发？ 面试官心理分析这个是问 redis 的时候，最基本的问题吧，redis 最基本的一个内部原理和特点，就是 redis 实际上是个单线程工作模型，你要是这个都不">
 <meta property="og:locale" content="default">
+<meta property="og:image" content="https://user-gold-cdn.xitu.io/2019/9/17/16d3d7baed36f2e2?imageView2/0/w/1280/h/960/ignore-error/1">
+<meta property="og:updated_time" content="2019-09-17T13:23:37.315Z">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="HUAN">
+<meta name="twitter:title" content="redis 和 memcached 有什么区别？redis 的线程模型是什么？为什么 redis 单线程却能支撑高并发？">
+<meta name="twitter:description" content="本文转载自 https://juejin.im/post/5d79ca19e51d4561f40ade02   面试题redis 和 memcached 有什么区别？redis 的线程模型是什么？为什么 redis 单线程却能支撑高并发？ 面试官心理分析这个是问 redis 的时候，最基本的问题吧，redis 最基本的一个内部原理和特点，就是 redis 实际上是个单线程工作模型，你要是这个都不">
+<meta name="twitter:image" content="https://user-gold-cdn.xitu.io/2019/9/17/16d3d7baed36f2e2?imageView2/0/w/1280/h/960/ignore-error/1">
   
     <link rel="alternative" href="/atom.xml" title="HUAN" type="application/atom+xml">
   
@@ -150,114 +157,191 @@
             <canvas data-colors="#eaeaea" data-sectionHeight="100" data-contentId="js-content" id="myCanvas1" class="anm-canvas"></canvas>
           </div>
           <div id="js-content" class="content-ll">
-            
-  
-  
+            <article id="post-redis和memcached有什么区别？redis的线程模型是什么？为什么redis单线程却能支撑高并发？" class="article article-type-post " itemscope itemprop="blogPost">
+  <div class="article-inner">
     
-    
-      
-      
-      <section class="archives-wrap">
-        <div class="archive-year-wrap">
-          <a href="/archives/2019" class="archive-year">2019</a>
-        </div>
-        <div class="archives">
-    
-    <article class="archive-article archive-type-post">
-  <div class="archive-article-inner">
-    <header class="archive-article-header">
-      	<div class="article-meta">
-	      	<a href="/2019/05/21/拜托！面试请不要再问我SpringCloud底层原理/" class="archive-article-date">
-  	<time datetime="2019-05-21T02:50:09.009Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2019-05-21</time>
-</a>
-        </div>
-    	 
+      <header class="article-header">
+        
   
-    <h1 itemprop="name">
-      <a class="archive-article-title" href="/2019/05/21/拜托！面试请不要再问我SpringCloud底层原理/">拜托！面试请不要再问我Spring Cloud底层原理</a>
+    <h1 class="article-title" itemprop="name">
+      redis 和 memcached 有什么区别？redis 的线程模型是什么？为什么 redis 单线程却能支撑高并发？
     </h1>
   
 
-        <div class="article-info info-on-right">
-          
+        
+        <a href="/2019/09/17/redis和memcached有什么区别？redis的线程模型是什么？为什么redis单线程却能支撑高并发？/" class="archive-article-date">
+  	<time datetime="2019-09-17T13:23:52.052Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2019-09-17</time>
+</a>
+        
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <blockquote>
+<p>本文转载自 <a href="https://juejin.im/post/5d79ca19e51d4561f40ade02" target="_blank" rel="noopener">https://juejin.im/post/5d79ca19e51d4561f40ade02</a> </p>
+</blockquote>
+<h2 id="面试题"><a href="#面试题" class="headerlink" title="面试题"></a>面试题</h2><p>redis 和 memcached 有什么区别？redis 的线程模型是什么？为什么 redis 单线程却能支撑高并发？</p>
+<h2 id="面试官心理分析"><a href="#面试官心理分析" class="headerlink" title="面试官心理分析"></a>面试官心理分析</h2><p>这个是问 redis 的时候，最基本的问题吧，redis 最基本的一个内部原理和特点，就是 redis 实际上是个<strong>单线程工作模型</strong>，你要是这个都不知道，那后面玩儿 redis 的时候，出了问题岂不是什么都不知道？</p>
+<p>还有可能面试官会问问你 redis 和 memcached 的区别，但是 memcached 是早些年各大互联网公司常用的缓存方案，但是现在近几年基本都是 redis，没什么公司用 memcached 了。</p>
+<h2 id="面试题剖析"><a href="#面试题剖析" class="headerlink" title="面试题剖析"></a>面试题剖析</h2><h3 id="redis-和-memcached-有啥区别？"><a href="#redis-和-memcached-有啥区别？" class="headerlink" title="redis 和 memcached 有啥区别？"></a>redis 和 memcached 有啥区别？</h3><h3 id="redis-支持复杂的数据结构"><a href="#redis-支持复杂的数据结构" class="headerlink" title="redis 支持复杂的数据结构"></a>redis 支持复杂的数据结构</h3><p>redis 相比 memcached 来说，拥有更多的数据结构，能支持更丰富的数据操作。如果需要缓存能够支持更复杂的结构和操作， redis 会是不错的选择。</p>
+<h3 id="redis-原生支持集群模式"><a href="#redis-原生支持集群模式" class="headerlink" title="redis 原生支持集群模式"></a>redis 原生支持集群模式</h3><p>在 redis3.x 版本中，便能支持 cluster 模式，而 memcached 没有原生的集群模式，需要依靠客户端来实现往集群中分片写入数据。</p>
+<h3 id="性能对比"><a href="#性能对比" class="headerlink" title="性能对比"></a>性能对比</h3><p>由于 redis 只使用<strong>单核</strong>，而 memcached 可以使用<strong>多核</strong>，所以平均每一个核上 redis 在存储小数据时比 memcached 性能更高。而在 100k 以上的数据中，memcached 性能要高于 redis。虽然 redis 最近也在存储大数据的性能上进行优化，但是比起 memcached，还是稍有逊色。</p>
+<h3 id="redis-的线程模型"><a href="#redis-的线程模型" class="headerlink" title="redis 的线程模型"></a>redis 的线程模型</h3><p>redis 内部使用文件事件处理器 <code>file event handler</code>，这个文件事件处理器是单线程的，所以 redis 才叫做单线程的模型。它采用 IO 多路复用机制同时监听多个 socket，将产生事件的 socket 压入内存队列中，事件分派器根据 socket 上的事件类型来选择对应的事件处理器进行处理。</p>
+<p>文件事件处理器的结构包含 4 个部分：</p>
+<pre><code>* 多个 socket
+* IO 多路复用程序
+* 文件事件分派器
+* 事件处理器（连接应答处理器、命令请求处理器、命令回复处理器）</code></pre><p>多个 socket 可能会并发产生不同的操作，每个操作对应不同的文件事件，但是 IO 多路复用程序会监听多个 socket，会将产生事件的 socket 放入队列中排队，事件分派器每次从队列中取出一个 socket，根据 socket 的事件类型交给对应的事件处理器进行处理。</p>
+<p>来看客户端与 redis 的一次通信过程：</p>
+<p><img src="https://user-gold-cdn.xitu.io/2019/9/17/16d3d7baed36f2e2?imageView2/0/w/1280/h/960/ignore-error/1" alt></p>
+<p>要明白，通信是通过 socket 来完成的，不懂的同学可以先去看一看 socket 网络编程。</p>
+<p>首先，redis 服务端进程初始化的时候，会将 server socket 的 <code>AE_READABLE</code> 事件与连接应答处理器关联。</p>
+<p>客户端 socket01 向 redis 进程的 server socket 请求建立连接，此时 server socket 会产生一个 <code>AE_READABLE</code> 事件，IO 多路复用程序监听到 server socket 产生的事件后，将该 socket 压入队列中。文件事件分派器从队列中获取 socket，交给<strong>连接应答处理器</strong>。连接应答处理器会创建一个能与客户端通信的 socket01，并将该 socket01 的 <code>AE_READABLE</code> 事件与命令请求处理器关联。</p>
+<p>假设此时客户端发送了一个 <code>set key value</code> 请求，此时 redis 中的 socket01 会产生 <code>AE_READABLE</code> 事件，IO 多路复用程序将 socket01 压入队列，此时事件分派器从队列中获取到 socket01 产生的 <code>AE_READABLE</code> 事件，由于前面 socket01 的 <code>AE_READABLE</code> 事件已经与命令请求处理器关联，因此事件分派器将事件交给命令请求处理器来处理。命令请求处理器读取 socket01 的 <code>key value</code> 并在自己内存中完成 <code>key value</code> 的设置。操作完成后，它会将 socket01 的 <code>AE_WRITABLE</code> 事件与命令回复处理器关联。</p>
+<p>如果此时客户端准备好接收返回结果了，那么 redis 中的 socket01 会产生一个 <code>AE_WRITABLE</code> 事件，同样压入队列中，事件分派器找到相关联的命令回复处理器，由命令回复处理器对 socket01 输入本次操作的一个结果，比如 <code>ok</code>，之后解除 socket01 的 <code>AE_WRITABLE</code> 事件与命令回复处理器的关联。</p>
+<p>这样便完成了一次通信。</p>
+<h3 id="为啥-redis-单线程模型也能效率这么高？"><a href="#为啥-redis-单线程模型也能效率这么高？" class="headerlink" title="为啥 redis 单线程模型也能效率这么高？"></a>为啥 redis 单线程模型也能效率这么高？</h3><pre><code>* 纯内存操作
+* 核心是基于非阻塞的 IO 多路复用机制
+* 单线程反而避免了多线程的频繁上下文切换问题</code></pre>
+      
+
+      
+        <div class="page-reward">
+          <a href="javascript:;" class="page-reward-btn tooltip-top">
+            <div class="tooltip tooltip-east">
+            <span class="tooltip-item">
+              赏
+            </span>
+            <span class="tooltip-content">
+              <span class="tooltip-text">
+                <span class="tooltip-inner">
+                  <p class="reward-p"><i class="icon icon-quo-left"></i>谢谢你请我吃糖果<i class="icon icon-quo-right"></i></p>
+                  <div class="reward-box">
+                    
+                    
+                  </div>
+                </span>
+              </span>
+            </span>
+          </div>
+          </a>
+        </div>
+      
+    </div>
+    <div class="article-info article-info-index">
+      
+      
 	<div class="article-tag tagcloud">
 		<i class="icon-price-tags icon"></i>
 		<ul class="article-tag-list">
 			 
         		<li class="article-tag-list-item">
-        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color2">Spring</a>
-        		</li>
-      		 
-        		<li class="article-tag-list-item">
-        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color4">服务器</a>
-        		</li>
-      		 
-        		<li class="article-tag-list-item">
-        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color3">架构</a>
-        		</li>
-      		 
-        		<li class="article-tag-list-item">
-        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color4">微服务</a>
+        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color1">Redis</a>
         		</li>
       		
 		</ul>
 	</div>
 
-          
+      
 
+      
+
+      
+        
+<div class="share-btn share-icons tooltip-left">
+  <div class="tooltip tooltip-east">
+    <span class="tooltip-item">
+      <a href="javascript:;" class="share-sns share-outer">
+        <i class="icon icon-share"></i>
+      </a>
+    </span>
+    <span class="tooltip-content">
+      <div class="share-wrap">
+        <div class="share-icons">
+          <a class="weibo share-sns" href="javascript:;" data-type="weibo">
+            <i class="icon icon-weibo"></i>
+          </a>
+          <a class="weixin share-sns wxFab" href="javascript:;" data-type="weixin">
+            <i class="icon icon-weixin"></i>
+          </a>
+          <a class="qq share-sns" href="javascript:;" data-type="qq">
+            <i class="icon icon-qq"></i>
+          </a>
+          <a class="douban share-sns" href="javascript:;" data-type="douban">
+            <i class="icon icon-douban"></i>
+          </a>
+          <a class="qzone share-sns" href="javascript:;" data-type="qzone">
+            <i class="icon icon-qzone"></i>
+          </a>
+          <a class="facebook share-sns" href="javascript:;" data-type="facebook">
+            <i class="icon icon-facebook"></i>
+          </a>
+          <a class="twitter share-sns" href="javascript:;" data-type="twitter">
+            <i class="icon icon-twitter"></i>
+          </a>
+          <a class="google share-sns" href="javascript:;" data-type="google">
+            <i class="icon icon-google"></i>
+          </a>
         </div>
-        <div class="clearfix"></div>
-    </header>
+      </div>
+    </span>
+  </div>
+</div>
+
+<div class="page-modal wx-share js-wx-box">
+    <a class="close js-modal-close" href="javascript:;"><i class="icon icon-close"></i></a>
+    <p>扫一扫，分享到微信</p>
+    <div class="wx-qrcode">
+      <img src="//pan.baidu.com/share/qrcode?url=http://sillyfan.top/2019/09/17/redis和memcached有什么区别？redis的线程模型是什么？为什么redis单线程却能支撑高并发？/" alt="微信分享二维码">
+    </div>
+</div>
+
+<div class="mask js-mask"></div>
+      
+      <div class="clearfix"></div>
+    </div>
   </div>
 </article>
+
   
-    
-    
-    <article class="archive-article archive-type-post">
-  <div class="archive-article-inner">
-    <header class="archive-article-header">
-      	<div class="article-meta">
-	      	<a href="/2019/05/17/【Spring】Autowired原理及与Resource注解区别/" class="archive-article-date">
-  	<time datetime="2019-05-17T07:03:08.008Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2019-05-17</time>
-</a>
+<nav id="article-nav">
+  
+  
+    <a href="/2019/09/05/Setting Principals Outside of a Realm/" id="article-nav-older" class="article-nav-link-wrap">
+      <div class="article-nav-title">Setting Principals Outside of a Realm</div>
+      <i class="icon-circle-right"></i>
+    </a>
+  
+</nav>
+
+
+<aside class="wrap-side-operation">
+    <div class="mod-side-operation">
+        
+        <div class="jump-container" id="js-jump-container" style="display:none;">
+            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
+                <i class="icon-font icon-back"></i>
+            </a>
+            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
+                <i class="icon-font icon-plane jump-plane"></i>
+            </div>
         </div>
-    	 
+        
+        
+    </div>
+</aside>
+
+
+
   
-    <h1 itemprop="name">
-      <a class="archive-article-title" href="/2019/05/17/【Spring】Autowired原理及与Resource注解区别/">【Spring】Autowired原理及与Resource注解区别</a>
-    </h1>
+  
   
 
-        <div class="article-info info-on-right">
-          
-	<div class="article-tag tagcloud">
-		<i class="icon-price-tags icon"></i>
-		<ul class="article-tag-list">
-			 
-        		<li class="article-tag-list-item">
-        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color5">Java</a>
-        		</li>
-      		 
-        		<li class="article-tag-list-item">
-        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color2">Spring</a>
-        		</li>
-      		
-		</ul>
-	</div>
-
-          
-
-        </div>
-        <div class="clearfix"></div>
-    </header>
-  </div>
-</article>
-  
-  
-    </div></section>
   
 
-    
+  
+
+  
 
 
           </div>
@@ -280,9 +364,9 @@
 	var yiliaConfig = {
 		mathjax: false,
 		isHome: false,
-		isPost: false,
+		isPost: true,
 		isArchive: false,
-		isTag: true,
+		isTag: false,
 		isCategory: false,
 		open_in_new: false,
 		toc_hide_index: true,

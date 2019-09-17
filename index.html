@@ -152,6 +152,180 @@
           <div id="js-content" class="content-ll">
             
   
+    <article id="post-redis和memcached有什么区别？redis的线程模型是什么？为什么redis单线程却能支撑高并发？" class="article article-type-post  article-index" itemscope itemprop="blogPost">
+  <div class="article-inner">
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2019/09/17/redis和memcached有什么区别？redis的线程模型是什么？为什么redis单线程却能支撑高并发？/">redis 和 memcached 有什么区别？redis 的线程模型是什么？为什么 redis 单线程却能支撑高并发？</a>
+    </h1>
+  
+
+        
+        <a href="/2019/09/17/redis和memcached有什么区别？redis的线程模型是什么？为什么redis单线程却能支撑高并发？/" class="archive-article-date">
+  	<time datetime="2019-09-17T13:23:52.052Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2019-09-17</time>
+</a>
+        
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <blockquote>
+<p>本文转载自 <a href="https://juejin.im/post/5d79ca19e51d4561f40ade02" target="_blank" rel="noopener">https://juejin.im/post/5d79ca19e51d4561f40ade02</a> </p>
+</blockquote>
+<h2 id="面试题"><a href="#面试题" class="headerlink" title="面试题"></a>面试题</h2><p>redis 和 memcached 有什么区别？redis 的线程模型是什么？为什么 redis 单线程却能支撑高并发？</p>
+<h2 id="面试官心理分析"><a href="#面试官心理分析" class="headerlink" title="面试官心理分析"></a>面试官心理分析</h2><p>这个是问 redis 的时候，最基本的问题吧，redis 最基本的一个内部原理和特点，就是 redis 实际上是个<strong>单线程工作模型</strong>，你要是这个都不知道，那后面玩儿 redis 的时候，出了问题岂不是什么都不知道？</p>
+<p>还有可能面试官会问问你 redis 和 memcached 的区别，但是 memcached 是早些年各大互联网公司常用的缓存方案，但是现在近几年基本都是 redis，没什么公司用 memcached 了。</p>
+<h2 id="面试题剖析"><a href="#面试题剖析" class="headerlink" title="面试题剖析"></a>面试题剖析</h2><h3 id="redis-和-memcached-有啥区别？"><a href="#redis-和-memcached-有啥区别？" class="headerlink" title="redis 和 memcached 有啥区别？"></a>redis 和 memcached 有啥区别？</h3><h3 id="redis-支持复杂的数据结构"><a href="#redis-支持复杂的数据结构" class="headerlink" title="redis 支持复杂的数据结构"></a>redis 支持复杂的数据结构</h3><p>redis 相比 memcached 来说，拥有更多的数据结构，能支持更丰富的数据操作。如果需要缓存能够支持更复杂的结构和操作， redis 会是不错的选择。</p>
+<h3 id="redis-原生支持集群模式"><a href="#redis-原生支持集群模式" class="headerlink" title="redis 原生支持集群模式"></a>redis 原生支持集群模式</h3><p>在 redis3.x 版本中，便能支持 cluster 模式，而 memcached 没有原生的集群模式，需要依靠客户端来实现往集群中分片写入数据。</p>
+<h3 id="性能对比"><a href="#性能对比" class="headerlink" title="性能对比"></a>性能对比</h3><p>由于 redis 只使用<strong>单核</strong>，而 memcached 可以使用<strong>多核</strong>，所以平均每一个核上 redis 在存储小数据时比 memcached 性能更高。而在 100k 以上的数据中，memcached 性能要高于 redis。虽然 redis 最近也在存储大数据的性能上进行优化，但是比起 memcached，还是稍有逊色。</p>
+<h3 id="redis-的线程模型"><a href="#redis-的线程模型" class="headerlink" title="redis 的线程模型"></a>redis 的线程模型</h3><p>redis 内部使用文件事件处理器 <code>file event handler</code>，这个文件事件处理器是单线程的，所以 redis 才叫做单线程的模型。它采用 IO 多路复用机制同时监听多个 socket，将产生事件的 socket 压入内存队列中，事件分派器根据 socket 上的事件类型来选择对应的事件处理器进行处理。</p>
+<p>文件事件处理器的结构包含 4 个部分：</p>
+<pre><code>* 多个 socket
+* IO 多路复用程序
+* 文件事件分派器
+* 事件处理器（连接应答处理器、命令请求处理器、命令回复处理器）</code></pre><p>多个 socket 可能会并发产生不同的操作，每个操作对应不同的文件事件，但是 IO 多路复用程序会监听多个 socket，会将产生事件的 socket 放入队列中排队，事件分派器每次从队列中取出一个 socket，根据 socket 的事件类型交给对应的事件处理器进行处理。</p>
+<p>来看客户端与 redis 的一次通信过程：</p>
+<p><img src="https://user-gold-cdn.xitu.io/2019/9/17/16d3d7baed36f2e2?imageView2/0/w/1280/h/960/ignore-error/1" alt></p>
+<p>要明白，通信是通过 socket 来完成的，不懂的同学可以先去看一看 socket 网络编程。</p>
+<p>首先，redis 服务端进程初始化的时候，会将 server socket 的 <code>AE_READABLE</code> 事件与连接应答处理器关联。</p>
+<p>客户端 socket01 向 redis 进程的 server socket 请求建立连接，此时 server socket 会产生一个 <code>AE_READABLE</code> 事件，IO 多路复用程序监听到 server socket 产生的事件后，将该 socket 压入队列中。文件事件分派器从队列中获取 socket，交给<strong>连接应答处理器</strong>。连接应答处理器会创建一个能与客户端通信的 socket01，并将该 socket01 的 <code>AE_READABLE</code> 事件与命令请求处理器关联。</p>
+<p>假设此时客户端发送了一个 <code>set key value</code> 请求，此时 redis 中的 socket01 会产生 <code>AE_READABLE</code> 事件，IO 多路复用程序将 socket01 压入队列，此时事件分派器从队列中获取到 socket01 产生的 <code>AE_READABLE</code> 事件，由于前面 socket01 的 <code>AE_READABLE</code> 事件已经与命令请求处理器关联，因此事件分派器将事件交给命令请求处理器来处理。命令请求处理器读取 socket01 的 <code>key value</code> 并在自己内存中完成 <code>key value</code> 的设置。操作完成后，它会将 socket01 的 <code>AE_WRITABLE</code> 事件与命令回复处理器关联。</p>
+<p>如果此时客户端准备好接收返回结果了，那么 redis 中的 socket01 会产生一个 <code>AE_WRITABLE</code> 事件，同样压入队列中，事件分派器找到相关联的命令回复处理器，由命令回复处理器对 socket01 输入本次操作的一个结果，比如 <code>ok</code>，之后解除 socket01 的 <code>AE_WRITABLE</code> 事件与命令回复处理器的关联。</p>
+<p>这样便完成了一次通信。</p>
+<h3 id="为啥-redis-单线程模型也能效率这么高？"><a href="#为啥-redis-单线程模型也能效率这么高？" class="headerlink" title="为啥 redis 单线程模型也能效率这么高？"></a>为啥 redis 单线程模型也能效率这么高？</h3><pre><code>* 纯内存操作
+* 核心是基于非阻塞的 IO 多路复用机制
+* 单线程反而避免了多线程的频繁上下文切换问题</code></pre>
+      
+
+      
+    </div>
+    <div class="article-info article-info-index">
+      
+      
+	<div class="article-tag tagcloud">
+		<i class="icon-price-tags icon"></i>
+		<ul class="article-tag-list">
+			 
+        		<li class="article-tag-list-item">
+        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color1">Redis</a>
+        		</li>
+      		
+		</ul>
+	</div>
+
+      
+
+      
+        <p class="article-more-link">
+          <a class="article-more-a" href="/2019/09/17/redis和memcached有什么区别？redis的线程模型是什么？为什么redis单线程却能支撑高并发？/">展开全文 >></a>
+        </p>
+      
+
+      
+      <div class="clearfix"></div>
+    </div>
+  </div>
+</article>
+
+<aside class="wrap-side-operation">
+    <div class="mod-side-operation">
+        
+        <div class="jump-container" id="js-jump-container" style="display:none;">
+            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
+                <i class="icon-font icon-back"></i>
+            </a>
+            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
+                <i class="icon-font icon-plane jump-plane"></i>
+            </div>
+        </div>
+        
+        
+    </div>
+</aside>
+
+
+
+
+  
+    <article id="post-Setting Principals Outside of a Realm" class="article article-type-post  article-index" itemscope itemprop="blogPost">
+  <div class="article-inner">
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2019/09/05/Setting Principals Outside of a Realm/">Setting Principals Outside of a Realm</a>
+    </h1>
+  
+
+        
+        <a href="/2019/09/05/Setting Principals Outside of a Realm/" class="archive-article-date">
+  	<time datetime="2019-09-05T02:32:20.020Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2019-09-05</time>
+</a>
+        
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <blockquote>
+<p><a href="http://shiro-user.582556.n2.nabble.com/Setting-Principals-Outside-of-a-Realm-td7579653.html" target="_blank" rel="noopener">http://shiro-user.582556.n2.nabble.com/Setting-Principals-Outside-of-a-Realm-td7579653.html</a></p>
+</blockquote>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">PrincipalCollection principals = <span class="keyword">new</span> SimplePrincipalCollection(principal, <span class="string">"UUID-Realm"</span>); </span><br><span class="line">WebSubject.Builder builder = <span class="keyword">new</span> WebSubject.Builder(request, response); </span><br><span class="line">builder.principals(principals).authenticated(<span class="keyword">true</span>); </span><br><span class="line">WebSubject webSubject = builder.buildWebSubject(); </span><br><span class="line">ThreadContext.bind(webSubject);</span><br></pre></td></tr></table></figure>
+      
+
+      
+    </div>
+    <div class="article-info article-info-index">
+      
+      
+	<div class="article-tag tagcloud">
+		<i class="icon-price-tags icon"></i>
+		<ul class="article-tag-list">
+			 
+        		<li class="article-tag-list-item">
+        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color1">shiro</a>
+        		</li>
+      		
+		</ul>
+	</div>
+
+      
+
+      
+        <p class="article-more-link">
+          <a class="article-more-a" href="/2019/09/05/Setting Principals Outside of a Realm/">展开全文 >></a>
+        </p>
+      
+
+      
+      <div class="clearfix"></div>
+    </div>
+  </div>
+</article>
+
+<aside class="wrap-side-operation">
+    <div class="mod-side-operation">
+        
+        <div class="jump-container" id="js-jump-container" style="display:none;">
+            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
+                <i class="icon-font icon-back"></i>
+            </a>
+            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
+                <i class="icon-font icon-plane jump-plane"></i>
+            </div>
+        </div>
+        
+        
+    </div>
+</aside>
+
+
+
+
+  
     <article id="post-咱们一起聊聊Zookeeper" class="article article-type-post  article-index" itemscope itemprop="blogPost">
   <div class="article-inner">
     
@@ -298,82 +472,6 @@
       
         <p class="article-more-link">
           <a class="article-more-a" href="/2019/09/05/咱们一起聊聊Zookeeper/">展开全文 >></a>
-        </p>
-      
-
-      
-      <div class="clearfix"></div>
-    </div>
-  </div>
-</article>
-
-<aside class="wrap-side-operation">
-    <div class="mod-side-operation">
-        
-        <div class="jump-container" id="js-jump-container" style="display:none;">
-            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
-                <i class="icon-font icon-back"></i>
-            </a>
-            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
-                <i class="icon-font icon-plane jump-plane"></i>
-            </div>
-        </div>
-        
-        
-    </div>
-</aside>
-
-
-
-
-  
-    <article id="post-Setting Principals Outside of a Realm" class="article article-type-post  article-index" itemscope itemprop="blogPost">
-  <div class="article-inner">
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2019/09/05/Setting Principals Outside of a Realm/">Setting Principals Outside of a Realm</a>
-    </h1>
-  
-
-        
-        <a href="/2019/09/05/Setting Principals Outside of a Realm/" class="archive-article-date">
-  	<time datetime="2019-09-05T02:32:20.020Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2019-09-05</time>
-</a>
-        
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <blockquote>
-<p><a href="http://shiro-user.582556.n2.nabble.com/Setting-Principals-Outside-of-a-Realm-td7579653.html" target="_blank" rel="noopener">http://shiro-user.582556.n2.nabble.com/Setting-Principals-Outside-of-a-Realm-td7579653.html</a></p>
-</blockquote>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">PrincipalCollection principals = <span class="keyword">new</span> SimplePrincipalCollection(principal, <span class="string">"UUID-Realm"</span>); </span><br><span class="line">WebSubject.Builder builder = <span class="keyword">new</span> WebSubject.Builder(request, response); </span><br><span class="line">builder.principals(principals).authenticated(<span class="keyword">true</span>); </span><br><span class="line">WebSubject webSubject = builder.buildWebSubject(); </span><br><span class="line">ThreadContext.bind(webSubject);</span><br></pre></td></tr></table></figure>
-      
-
-      
-    </div>
-    <div class="article-info article-info-index">
-      
-      
-	<div class="article-tag tagcloud">
-		<i class="icon-price-tags icon"></i>
-		<ul class="article-tag-list">
-			 
-        		<li class="article-tag-list-item">
-        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color1">shiro</a>
-        		</li>
-      		
-		</ul>
-	</div>
-
-      
-
-      
-        <p class="article-more-link">
-          <a class="article-more-a" href="/2019/09/05/Setting Principals Outside of a Realm/">展开全文 >></a>
         </p>
       
 
@@ -1642,100 +1740,6 @@ User user = constructor.newInstance();</code></p>
 
 
   
-    <article id="post-SpringBoot实现动态控制定时任务-支持多参数" class="article article-type-post  article-index" itemscope itemprop="blogPost">
-  <div class="article-inner">
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2019/06/01/SpringBoot实现动态控制定时任务-支持多参数/">SpringBoot实现动态控制定时任务-支持多参数</a>
-    </h1>
-  
-
-        
-        <a href="/2019/06/01/SpringBoot实现动态控制定时任务-支持多参数/" class="archive-article-date">
-  	<time datetime="2019-06-01T15:51:17.017Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2019-06-01</time>
-</a>
-        
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <blockquote>
-<p>本文转载自 <a href="https://juejin.im/post/5cf099556fb9a07ef2010716" target="_blank" rel="noopener">https://juejin.im/post/5cf099556fb9a07ef2010716</a><br>由于工作上的原因，需要进行定时任务的动态增删改查，网上大部分资料都是整合quertz框架实现的。本人查阅了一些资料，发现springBoot本身就支持实现定时任务的动态控制。并进行改进，现支持任意多参数定时任务配置</p>
-</blockquote>
-<p>实现结果如下图所示：</p>
-<p><img src="https://user-gold-cdn.xitu.io/2019/5/31/16b0be286b6a031a?imageView2/0/w/1280/h/960/ignore-error/1" alt> 后台测试显示如下：</p>
-<p><img src="https://user-gold-cdn.xitu.io/2019/5/31/16b0bf1a0e118b4b?imageView2/0/w/1280/h/960/ignore-error/1" alt></p>
-<p>github 简单demo地址如下： <a href="https://link.juejin.im?target=https%3A%2F%2Fgithub.com%2Fcaotinging%2Fsimple-demo%2Ftree%2Fmaster%2Fspringboot-dynamic-task" target="_blank" rel="noopener">springboot-dynamic-task</a></p>
-<h3 id="1-定时任务的配置类：SchedulingConfig"><a href="#1-定时任务的配置类：SchedulingConfig" class="headerlink" title="1.定时任务的配置类：SchedulingConfig"></a>1.定时任务的配置类：SchedulingConfig</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line">import org.springframework.context.annotation.Bean;</span><br><span class="line">import org.springframework.context.annotation.Configuration;</span><br><span class="line">import org.springframework.scheduling.TaskScheduler;</span><br><span class="line">import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;</span><br><span class="line"></span><br><span class="line">/**</span><br><span class="line"> * @program: simple-demo</span><br><span class="line"> * @description: 定时任务配置类</span><br><span class="line"> * @author: CaoTing</span><br><span class="line"> * @date: 2019/5/23</span><br><span class="line"> **/</span><br><span class="line">@Configuration</span><br><span class="line">public class SchedulingConfig &#123;</span><br><span class="line">    @Bean</span><br><span class="line">    public TaskScheduler taskScheduler() &#123;</span><br><span class="line">        ThreadPoolTaskScheduler taskScheduler = new ThreadPoolTaskScheduler();</span><br><span class="line">        // 定时任务执行线程池核心线程数</span><br><span class="line">        taskScheduler.setPoolSize(4);</span><br><span class="line">        taskScheduler.setRemoveOnCancelPolicy(true);</span><br><span class="line">        taskScheduler.setThreadNamePrefix(&quot;TaskSchedulerThreadPool-&quot;);</span><br><span class="line">        return taskScheduler;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<h3 id="2-定时任务注册类：CronTaskRegistrar"><a href="#2-定时任务注册类：CronTaskRegistrar" class="headerlink" title="2.定时任务注册类：CronTaskRegistrar"></a>2.定时任务注册类：CronTaskRegistrar</h3><p>这个类包含了新增定时任务，移除定时任务等等核心功能方法<br> <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br></pre></td><td class="code"><pre><span class="line">import com.caotinging.demo.task.ScheduledTask;</span><br><span class="line">import org.springframework.beans.factory.DisposableBean;</span><br><span class="line">import org.springframework.beans.factory.annotation.Autowired;</span><br><span class="line">import org.springframework.scheduling.TaskScheduler;</span><br><span class="line">import org.springframework.scheduling.config.CronTask;</span><br><span class="line">import org.springframework.stereotype.Component;</span><br><span class="line"></span><br><span class="line">import java.util.Map;</span><br><span class="line">import java.util.concurrent.ConcurrentHashMap;</span><br><span class="line"></span><br><span class="line">/**</span><br><span class="line"> * @program: simple-demo</span><br><span class="line"> * @description: 添加定时任务注册类，用来增加、删除定时任务。</span><br><span class="line"> * @author: CaoTing</span><br><span class="line"> * @date: 2019/5/23</span><br><span class="line"> **/</span><br><span class="line">@Component</span><br><span class="line">public class CronTaskRegistrar implements DisposableBean &#123;</span><br><span class="line"></span><br><span class="line">    private final Map&lt;Runnable, ScheduledTask&gt; scheduledTasks = new ConcurrentHashMap&lt;&gt;(16);</span><br><span class="line"></span><br><span class="line">    @Autowired</span><br><span class="line">    private TaskScheduler taskScheduler;</span><br><span class="line"></span><br><span class="line">    public TaskScheduler getScheduler() &#123;</span><br><span class="line">        return this.taskScheduler;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    /**</span><br><span class="line">     * 新增定时任务</span><br><span class="line">     * @param task</span><br><span class="line">     * @param cronExpression</span><br><span class="line">     */</span><br><span class="line">    public void addCronTask(Runnable task, String cronExpression) &#123;</span><br><span class="line">        addCronTask(new CronTask(task, cronExpression));</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    public void addCronTask(CronTask cronTask) &#123;</span><br><span class="line">        if (cronTask != null) &#123;</span><br><span class="line">            Runnable task = cronTask.getRunnable();</span><br><span class="line">            if (this.scheduledTasks.containsKey(task)) &#123;</span><br><span class="line">                removeCronTask(task);</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            this.scheduledTasks.put(task, scheduleCronTask(cronTask));</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    /**</span><br><span class="line">     * 移除定时任务</span><br><span class="line">     * @param task</span><br><span class="line">     */</span><br><span class="line">    public void removeCronTask(Runnable task) &#123;</span><br><span class="line">        ScheduledTask scheduledTask = this.scheduledTasks.remove(task);</span><br><span class="line">        if (scheduledTask != null)</span><br><span class="line">            scheduledTask.cancel();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    public ScheduledTask scheduleCronTask(CronTask cronTask) &#123;</span><br><span class="line">        ScheduledTask scheduledTask = new ScheduledTask();</span><br><span class="line">        scheduledTask.future = this.taskScheduler.schedule(cronTask.getRunnable(), cronTask.getTrigger());</span><br><span class="line"></span><br><span class="line">        return scheduledTask;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    @Override</span><br><span class="line">    public void destroy() &#123;</span><br><span class="line">        for (ScheduledTask task : this.scheduledTasks.values()) &#123;</span><br><span class="line">            task.cancel();</span><br><span class="line">        &#125;</span><br><span class="line">        this.scheduledTasks.clear();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
-<h3 id="3-定时任务执行类：SchedulingRunnable"><a href="#3-定时任务执行类：SchedulingRunnable" class="headerlink" title="3.定时任务执行类：SchedulingRunnable"></a>3.定时任务执行类：SchedulingRunnable</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br></pre></td><td class="code"><pre><span class="line">import com.caotinging.demo.utils.SpringContextUtils;</span><br><span class="line">import org.slf4j.Logger;</span><br><span class="line">import org.slf4j.LoggerFactory;</span><br><span class="line">import org.springframework.util.ReflectionUtils;</span><br><span class="line"></span><br><span class="line">import java.lang.reflect.Method;</span><br><span class="line">import java.util.Objects;</span><br><span class="line"></span><br><span class="line">/**</span><br><span class="line"> * @program: simple-demo</span><br><span class="line"> * @description: 定时任务运行类</span><br><span class="line"> * @author: CaoTing</span><br><span class="line"> * @date: 2019/5/23</span><br><span class="line"> **/</span><br><span class="line">public class SchedulingRunnable implements Runnable &#123;</span><br><span class="line"></span><br><span class="line">    private static final Logger logger = LoggerFactory.getLogger(SchedulingRunnable.class);</span><br><span class="line"></span><br><span class="line">    private String beanName;</span><br><span class="line"></span><br><span class="line">    private String methodName;</span><br><span class="line"></span><br><span class="line">    private Object[] params;</span><br><span class="line"></span><br><span class="line">    public SchedulingRunnable(String beanName, String methodName) &#123;</span><br><span class="line">        this(beanName, methodName, null);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    public SchedulingRunnable(String beanName, String methodName, Object...params ) &#123;</span><br><span class="line">        this.beanName = beanName;</span><br><span class="line">        this.methodName = methodName;</span><br><span class="line">        this.params = params;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    @Override</span><br><span class="line">    public void run() &#123;</span><br><span class="line">        logger.info(&quot;定时任务开始执行 - bean：&#123;&#125;，方法：&#123;&#125;，参数：&#123;&#125;&quot;, beanName, methodName, params);</span><br><span class="line">        long startTime = System.currentTimeMillis();</span><br><span class="line"></span><br><span class="line">        try &#123;</span><br><span class="line">            Object target = SpringContextUtils.getBean(beanName);</span><br><span class="line"></span><br><span class="line">            Method method = null;</span><br><span class="line">            if (null != params &amp;amp;&amp;amp; params.length &gt; 0) &#123;</span><br><span class="line">                Class&lt;?&gt;[] paramCls = new Class[params.length];</span><br><span class="line">                for (int i = 0; i &lt; params.length; i++) &#123;</span><br><span class="line">                    paramCls[i] = params[i].getClass();</span><br><span class="line">                &#125;</span><br><span class="line">                method = target.getClass().getDeclaredMethod(methodName, paramCls);</span><br><span class="line">            &#125; else &#123;</span><br><span class="line">                method = target.getClass().getDeclaredMethod(methodName);</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            ReflectionUtils.makeAccessible(method);</span><br><span class="line">            if (null != params &amp;amp;&amp;amp; params.length &gt; 0) &#123;</span><br><span class="line">                method.invoke(target, params);</span><br><span class="line">            &#125; else &#123;</span><br><span class="line">                method.invoke(target);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125; catch (Exception ex) &#123;</span><br><span class="line">            logger.error(String.format(&quot;定时任务执行异常 - bean：%s，方法：%s，参数：%s &quot;, beanName, methodName, params), ex);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        long times = System.currentTimeMillis() - startTime;</span><br><span class="line">        logger.info(&quot;定时任务执行结束 - bean：&#123;&#125;，方法：&#123;&#125;，参数：&#123;&#125;，耗时：&#123;&#125; 毫秒&quot;, beanName, methodName, params, times);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    @Override</span><br><span class="line">    public boolean equals(Object o) &#123;</span><br><span class="line">        if (this == o) return true;</span><br><span class="line">        if (o == null || getClass() != o.getClass()) return false;</span><br><span class="line">        SchedulingRunnable that = (SchedulingRunnable) o;</span><br><span class="line">        if (params == null) &#123;</span><br><span class="line">            return beanName.equals(that.beanName) &amp;amp;&amp;amp;</span><br><span class="line">                    methodName.equals(that.methodName) &amp;amp;&amp;amp;</span><br><span class="line">                    that.params == null;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        return beanName.equals(that.beanName) &amp;amp;&amp;amp;</span><br><span class="line">                methodName.equals(that.methodName) &amp;amp;&amp;amp;</span><br><span class="line">                params.equals(that.params);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    @Override</span><br><span class="line">    public int hashCode() &#123;</span><br><span class="line">        if (params == null) &#123;</span><br><span class="line">            return Objects.hash(beanName, methodName);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        return Objects.hash(beanName, methodName, params);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<h3 id="4-定时任务控制类：ScheduledTask"><a href="#4-定时任务控制类：ScheduledTask" class="headerlink" title="4.定时任务控制类：ScheduledTask"></a>4.定时任务控制类：ScheduledTask</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line">import java.util.concurrent.ScheduledFuture;</span><br><span class="line"></span><br><span class="line">/**</span><br><span class="line"> * @program: simple-demo</span><br><span class="line"> * @description: 定时任务控制类</span><br><span class="line"> * @author: CaoTing</span><br><span class="line"> * @date: 2019/5/23</span><br><span class="line"> **/</span><br><span class="line">public final class ScheduledTask &#123;</span><br><span class="line"></span><br><span class="line">    public volatile ScheduledFuture&lt;?&gt; future;</span><br><span class="line">    /**</span><br><span class="line">     * 取消定时任务</span><br><span class="line">     */</span><br><span class="line">    public void cancel() &#123;</span><br><span class="line">        ScheduledFuture&lt;?&gt; future = this.future;</span><br><span class="line">        if (future != null) &#123;</span><br><span class="line">            future.cancel(true);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<h3 id="5-定时任务的测试"><a href="#5-定时任务的测试" class="headerlink" title="5.定时任务的测试"></a>5.定时任务的测试</h3><p>编写一个需要用于测试的任务类<br> <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line">import org.springframework.stereotype.Component;</span><br><span class="line"></span><br><span class="line">/**</span><br><span class="line"> * @program: simple-demo</span><br><span class="line"> * @description:</span><br><span class="line"> * @author: CaoTing</span><br><span class="line"> * @date: 2019/5/23</span><br><span class="line"> **/</span><br><span class="line">@Component(&quot;demoTask&quot;)</span><br><span class="line">public class DemoTask &#123;</span><br><span class="line"></span><br><span class="line">    public void taskWithParams(String param1, Integer param2) &#123;</span><br><span class="line">        System.out.println(&quot;这是有参示例任务：&quot; + param1 + param2);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    public void taskNoParams() &#123;</span><br><span class="line">        System.out.println(&quot;这是无参示例任务&quot;);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
-<p>进行单元测试<br> <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br></pre></td><td class="code"><pre><span class="line">import com.caotinging.demo.application.DynamicTaskApplication;</span><br><span class="line">import com.caotinging.demo.application.SchedulingRunnable;</span><br><span class="line">import com.caotinging.demo.config.CronTaskRegistrar;</span><br><span class="line">import org.junit.Test;</span><br><span class="line">import org.junit.runner.RunWith;</span><br><span class="line">import org.springframework.beans.factory.annotation.Autowired;</span><br><span class="line">import org.springframework.boot.test.context.SpringBootTest;</span><br><span class="line">import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;</span><br><span class="line"></span><br><span class="line">/**</span><br><span class="line"> * @program: simple-demo</span><br><span class="line"> * @description: 测试定时任务</span><br><span class="line"> * @author: CaoTing</span><br><span class="line"> * @date: 2019/5/23</span><br><span class="line"> **/</span><br><span class="line">@RunWith(SpringJUnit4ClassRunner.class)</span><br><span class="line">@SpringBootTest(classes = DynamicTaskApplication.class)</span><br><span class="line">public class TaskTest &#123;</span><br><span class="line"></span><br><span class="line">    @Autowired</span><br><span class="line">    CronTaskRegistrar cronTaskRegistrar;</span><br><span class="line"></span><br><span class="line">    @Test</span><br><span class="line">    public void testTask() throws InterruptedException &#123;</span><br><span class="line">        SchedulingRunnable task = new SchedulingRunnable(&quot;demoTask&quot;, &quot;taskNoParams&quot;, null);</span><br><span class="line">        cronTaskRegistrar.addCronTask(task, &quot;0/10 * * * * ?&quot;);</span><br><span class="line"></span><br><span class="line">        // 便于观察</span><br><span class="line">        Thread.sleep(3000000);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    @Test</span><br><span class="line">    public void testHaveParamsTask() throws InterruptedException &#123;</span><br><span class="line">        SchedulingRunnable task = new SchedulingRunnable(&quot;demoTask&quot;, &quot;taskWithParams&quot;, &quot;haha&quot;, 23);</span><br><span class="line">        cronTaskRegistrar.addCronTask(task, &quot;0/10 * * * * ?&quot;);</span><br><span class="line"></span><br><span class="line">        // 便于观察</span><br><span class="line">        Thread.sleep(3000000);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
-<h3 id="6-工具类：SpringContextUtils"><a href="#6-工具类：SpringContextUtils" class="headerlink" title="6.工具类：SpringContextUtils"></a>6.工具类：SpringContextUtils</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br></pre></td><td class="code"><pre><span class="line">import org.springframework.beans.BeansException;</span><br><span class="line">import org.springframework.context.ApplicationContext;</span><br><span class="line">import org.springframework.context.ApplicationContextAware;</span><br><span class="line">import org.springframework.stereotype.Component;</span><br><span class="line"></span><br><span class="line">/**</span><br><span class="line"> * @program: simple-demo</span><br><span class="line"> * @description: spring获取bean工具类</span><br><span class="line"> * @author: CaoTing</span><br><span class="line"> * @date: 2019/5/23</span><br><span class="line"> **/</span><br><span class="line">@Component</span><br><span class="line">public class SpringContextUtils implements ApplicationContextAware &#123;</span><br><span class="line"></span><br><span class="line">    private static ApplicationContext applicationContext = null;</span><br><span class="line"></span><br><span class="line">    @Override</span><br><span class="line">    public void setApplicationContext(ApplicationContext applicationContext) throws BeansException &#123;</span><br><span class="line">        if (SpringContextUtils.applicationContext == null) &#123;</span><br><span class="line">            SpringContextUtils.applicationContext = applicationContext;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    //获取applicationContext</span><br><span class="line">    public static ApplicationContext getApplicationContext() &#123;</span><br><span class="line">        return applicationContext;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    //通过name获取 Bean.</span><br><span class="line">    public static Object getBean(String name) &#123;</span><br><span class="line">        return getApplicationContext().getBean(name);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    //通过class获取Bean.</span><br><span class="line">    public static &lt;T&gt; T getBean(Class&lt;T&gt; clazz) &#123;</span><br><span class="line">        return getApplicationContext().getBean(clazz);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    //通过name,以及Clazz返回指定的Bean</span><br><span class="line">    public static &lt;T&gt; T getBean(String name, Class&lt;T&gt; clazz) &#123;</span><br><span class="line">        return getApplicationContext().getBean(name, clazz);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<h3 id="7-我的pom依赖"><a href="#7-我的pom依赖" class="headerlink" title="7.我的pom依赖"></a>7.我的pom依赖</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br></pre></td><td class="code"><pre><span class="line">&lt;dependencies&gt;</span><br><span class="line">        &lt;dependency&gt;</span><br><span class="line">            &lt;groupId&gt;org.springframework.boot&lt;/groupId&gt;</span><br><span class="line">            &lt;artifactId&gt;spring-boot-starter-jdbc&lt;/artifactId&gt;</span><br><span class="line">        &lt;/dependency&gt;</span><br><span class="line">        &lt;dependency&gt;</span><br><span class="line">            &lt;groupId&gt;com.baomidou&lt;/groupId&gt;</span><br><span class="line">            &lt;artifactId&gt;mybatisplus-spring-boot-starter&lt;/artifactId&gt;</span><br><span class="line">            &lt;version&gt;1.0.5&lt;/version&gt;</span><br><span class="line">        &lt;/dependency&gt;</span><br><span class="line">        &lt;dependency&gt;</span><br><span class="line">            &lt;groupId&gt;com.baomidou&lt;/groupId&gt;</span><br><span class="line">            &lt;artifactId&gt;mybatis-plus&lt;/artifactId&gt;</span><br><span class="line">            &lt;version&gt;2.1.9&lt;/version&gt;</span><br><span class="line">        &lt;/dependency&gt;</span><br><span class="line">        &lt;dependency&gt;</span><br><span class="line">            &lt;groupId&gt;mysql&lt;/groupId&gt;</span><br><span class="line">            &lt;artifactId&gt;mysql-connector-java&lt;/artifactId&gt;</span><br><span class="line">            &lt;scope&gt;runtime&lt;/scope&gt;</span><br><span class="line">        &lt;/dependency&gt;</span><br><span class="line">        &lt;dependency&gt;</span><br><span class="line">            &lt;groupId&gt;com.alibaba&lt;/groupId&gt;</span><br><span class="line">            &lt;artifactId&gt;druid-spring-boot-starter&lt;/artifactId&gt;</span><br><span class="line">            &lt;version&gt;1.1.9&lt;/version&gt;</span><br><span class="line">        &lt;/dependency&gt;</span><br><span class="line">        &lt;dependency&gt;</span><br><span class="line">            &lt;groupId&gt;org.springframework.boot&lt;/groupId&gt;</span><br><span class="line">            &lt;artifactId&gt;spring-boot-starter-aop&lt;/artifactId&gt;</span><br><span class="line">        &lt;/dependency&gt;</span><br><span class="line">        &lt;dependency&gt;</span><br><span class="line">            &lt;groupId&gt;org.springframework.boot&lt;/groupId&gt;</span><br><span class="line">            &lt;artifactId&gt;spring-boot-starter-web&lt;/artifactId&gt;</span><br><span class="line">        &lt;/dependency&gt;</span><br><span class="line"></span><br><span class="line">        &lt;!-- 数据库--&gt;</span><br><span class="line">        &lt;!--&lt;dependency&gt;</span><br><span class="line">            &lt;groupId&gt;mysql&lt;/groupId&gt;</span><br><span class="line">            &lt;artifactId&gt;mysql-connector-java&lt;/artifactId&gt;</span><br><span class="line">            &lt;scope&gt;runtime&lt;/scope&gt;</span><br><span class="line">        &lt;/dependency&gt;--&gt;</span><br><span class="line">        &lt;!-- https://mvnrepository.com/artifact/com.hynnet/oracle-driver-ojdbc --&gt;</span><br><span class="line">        &lt;!--&lt;dependency&gt;</span><br><span class="line">            &lt;groupId&gt;com.oracle&lt;/groupId&gt;</span><br><span class="line">            &lt;artifactId&gt;ojdbc6&lt;/artifactId&gt;</span><br><span class="line">            &lt;version&gt;11.2.0.1.0&lt;/version&gt;</span><br><span class="line">        &lt;/dependency&gt;--&gt;</span><br><span class="line"></span><br><span class="line">        &lt;!-- 单元测试 --&gt;</span><br><span class="line">        &lt;dependency&gt;</span><br><span class="line">            &lt;groupId&gt;org.springframework.boot&lt;/groupId&gt;</span><br><span class="line">            &lt;artifactId&gt;spring-boot-starter-test&lt;/artifactId&gt;</span><br><span class="line">            &lt;scope&gt;provided&lt;/scope&gt;</span><br><span class="line">        &lt;/dependency&gt;</span><br><span class="line"></span><br><span class="line">        &lt;!--redisTemplate --&gt;</span><br><span class="line">        &lt;dependency&gt;</span><br><span class="line">            &lt;groupId&gt;org.springframework.boot&lt;/groupId&gt;</span><br><span class="line">            &lt;artifactId&gt;spring-boot-starter-data-redis&lt;/artifactId&gt;</span><br><span class="line">        &lt;/dependency&gt;</span><br><span class="line">        &lt;dependency&gt;</span><br><span class="line">            &lt;groupId&gt;redis.clients&lt;/groupId&gt;</span><br><span class="line">            &lt;artifactId&gt;jedis&lt;/artifactId&gt;</span><br><span class="line">            &lt;version&gt;2.7.3&lt;/version&gt;</span><br><span class="line">        &lt;/dependency&gt;</span><br><span class="line"></span><br><span class="line">        &lt;!-- http连接 restTemplate --&gt;</span><br><span class="line">        &lt;dependency&gt;</span><br><span class="line">            &lt;groupId&gt;org.apache.httpcomponents&lt;/groupId&gt;</span><br><span class="line">            &lt;artifactId&gt;httpclient&lt;/artifactId&gt;</span><br><span class="line">        &lt;/dependency&gt;</span><br><span class="line">        &lt;dependency&gt;</span><br><span class="line">            &lt;groupId&gt;org.apache.httpcomponents&lt;/groupId&gt;</span><br><span class="line">            &lt;artifactId&gt;httpclient-cache&lt;/artifactId&gt;</span><br><span class="line">        &lt;/dependency&gt;</span><br><span class="line"></span><br><span class="line">        &lt;!-- 工具--&gt;</span><br><span class="line">        &lt;dependency&gt;</span><br><span class="line">            &lt;groupId&gt;org.projectlombok&lt;/groupId&gt;</span><br><span class="line">            &lt;artifactId&gt;lombok&lt;/artifactId&gt;</span><br><span class="line">            &lt;optional&gt;true&lt;/optional&gt;</span><br><span class="line">        &lt;/dependency&gt;</span><br><span class="line">        &lt;dependency&gt;</span><br><span class="line">            &lt;groupId&gt;com.alibaba&lt;/groupId&gt;</span><br><span class="line">            &lt;artifactId&gt;fastjson&lt;/artifactId&gt;</span><br><span class="line">            &lt;version&gt;1.2.31&lt;/version&gt;</span><br><span class="line">        &lt;/dependency&gt;</span><br><span class="line">        &lt;dependency&gt;</span><br><span class="line">            &lt;groupId&gt;org.apache.commons&lt;/groupId&gt;</span><br><span class="line">            &lt;artifactId&gt;commons-lang3&lt;/artifactId&gt;</span><br><span class="line">        &lt;/dependency&gt;</span><br><span class="line">        &lt;dependency&gt;</span><br><span class="line">            &lt;groupId&gt;commons-lang&lt;/groupId&gt;</span><br><span class="line">            &lt;artifactId&gt;commons-lang&lt;/artifactId&gt;</span><br><span class="line">            &lt;version&gt;2.6&lt;/version&gt;</span><br><span class="line">        &lt;/dependency&gt;</span><br><span class="line">        &lt;!-- https://mvnrepository.com/artifact/com.google/guava --&gt;</span><br><span class="line">        &lt;dependency&gt;</span><br><span class="line">            &lt;groupId&gt;com.google.guava&lt;/groupId&gt;</span><br><span class="line">            &lt;artifactId&gt;guava&lt;/artifactId&gt;</span><br><span class="line">            &lt;version&gt;10.0.1&lt;/version&gt;</span><br><span class="line">        &lt;/dependency&gt;</span><br><span class="line"></span><br><span class="line">        &lt;!-- pinyin4j --&gt;</span><br><span class="line">        &lt;dependency&gt;</span><br><span class="line">            &lt;groupId&gt;com.belerweb&lt;/groupId&gt;</span><br><span class="line">            &lt;artifactId&gt;pinyin4j&lt;/artifactId&gt;</span><br><span class="line">            &lt;version&gt;2.5.0&lt;/version&gt;</span><br><span class="line">        &lt;/dependency&gt;</span><br><span class="line">    &lt;/dependencies&gt;</span><br></pre></td></tr></table></figure>
-
-<h3 id="8-总结"><a href="#8-总结" class="headerlink" title="8.总结"></a>8.总结</h3><p>建议移步github获取简单demo上手实践哦，在本文文首哦。有帮助的话点个赞吧，笔芯。</p>
-
-      
-
-      
-    </div>
-    <div class="article-info article-info-index">
-      
-      
-	<div class="article-tag tagcloud">
-		<i class="icon-price-tags icon"></i>
-		<ul class="article-tag-list">
-			 
-        		<li class="article-tag-list-item">
-        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color5">Java</a>
-        		</li>
-      		
-		</ul>
-	</div>
-
-      
-
-      
-        <p class="article-more-link">
-          <a class="article-more-a" href="/2019/06/01/SpringBoot实现动态控制定时任务-支持多参数/">展开全文 >></a>
-        </p>
-      
-
-      
-      <div class="clearfix"></div>
-    </div>
-  </div>
-</article>
-
-<aside class="wrap-side-operation">
-    <div class="mod-side-operation">
-        
-        <div class="jump-container" id="js-jump-container" style="display:none;">
-            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
-                <i class="icon-font icon-back"></i>
-            </a>
-            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
-                <i class="icon-font icon-plane jump-plane"></i>
-            </div>
-        </div>
-        
-        
-    </div>
-</aside>
-
-
-
-
-  
   
     <nav id="page-nav">
       <span class="page-number current">1</span><a class="page-number" href="/page/2/">2</a><a class="page-number" href="/page/3/">3</a><span class="space">&hellip;</span><a class="page-number" href="/page/5/">5</a><a class="extend next" rel="next" href="/page/2/">Next &raquo;</a>
@@ -1841,15 +1845,15 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
               </li>
              
               <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color3">后端</a>
+              </li>
+             
+              <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color1">Linux</a>
               </li>
              
               <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color1">Shell</a>
-              </li>
-             
-              <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color3">后端</a>
               </li>
              
               <li class="article-tag-list-item">
@@ -1865,6 +1869,10 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
               </li>
              
               <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color1">Redis</a>
+              </li>
+             
+              <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color2">Spring</a>
               </li>
              
@@ -1877,18 +1885,6 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
               </li>
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color3">算法</a>
-              </li>
-             
-              <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color5">ZooKeeper</a>
-              </li>
-             
-              <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color4">服务器</a>
-              </li>
-             
-              <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color3">Reactor</a>
               </li>
              
@@ -1898,6 +1894,18 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
              
               <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color1">MySQL</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color3">算法</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color5">ZooKeeper</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color4">服务器</a>
               </li>
              
               <li class="article-tag-list-item">
