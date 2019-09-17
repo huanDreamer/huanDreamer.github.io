@@ -152,6 +152,122 @@
           <div id="js-content" class="content-ll">
             
   
+    <article id="post-Token认证，如何快速方便获取用户信息" class="article article-type-post  article-index" itemscope itemprop="blogPost">
+  <div class="article-inner">
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2019/05/20/Token认证，如何快速方便获取用户信息/">Token认证，如何快速方便获取用户信息</a>
+    </h1>
+  
+
+        
+        <a href="/2019/05/20/Token认证，如何快速方便获取用户信息/" class="archive-article-date">
+  	<time datetime="2019-05-20T06:31:29.029Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2019-05-20</time>
+</a>
+        
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <blockquote>
+<p>本文转载自 <a href="https://juejin.im/post/5ce0dfb45188250c942f6c1d" target="_blank" rel="noopener">https://juejin.im/post/5ce0dfb45188250c942f6c1d</a> </p>
+</blockquote>
+<h1 id="背景"><a href="#背景" class="headerlink" title="背景"></a>背景</h1><p>我们有一个Web项目，这个项目提供了很多的Rest API。也做了权限控制，访问API的请求必须要带上事先认证后获取的Token才可以。</p>
+<p>认证的话就在Filter中进行的，会获取请求的Token进行验证，如果成功了可以得到Token中的用户信息，本文的核心就是讲解如何将用户信息（用户ID）优雅的传递给API接口（Controller）。</p>
+<h1 id="方式一（很挫）"><a href="#方式一（很挫）" class="headerlink" title="方式一（很挫）"></a>方式一（很挫）</h1><p>我们在Filter中进行了统一拦截，在Controller中获取用户ID的话，仍然可以再次解析一遍Token获取用户ID</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">@GetMapping(&quot;/hello&quot;)</span><br><span class="line">public String test(HttpServletRequest request) &#123;</span><br><span class="line">    String token = request.getHeader(&quot;token&quot;);</span><br><span class="line">    JWTResult result = JWTUtils.checkToken(token);</span><br><span class="line">    Long userId = result.getUserId();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h1 id="方式二（优雅）"><a href="#方式二（优雅）" class="headerlink" title="方式二（优雅）"></a>方式二（优雅）</h1><p>方式一需要重新解析一遍Token, 浪费资源。我们可以直接将Filter中解析好了的用户ID直接通过Header传递给接口啊。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line">@Override</span><br><span class="line">public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)</span><br><span class="line">			throws IOException, ServletException &#123;</span><br><span class="line">    HttpServletRequest httpRequest = (HttpServletRequest) request;</span><br><span class="line">	HttpServletResponse httpResponse = (HttpServletResponse) response;</span><br><span class="line">    String token = request.getHeader(&quot;token&quot;);</span><br><span class="line">    JWTResult result = JWTUtils.checkToken(token);</span><br><span class="line">    Long userId = result.getUserId();</span><br><span class="line">	HttpServletRequestWrapper requestWrapper = new HttpServletRequestWrapper(httpRequest) &#123;</span><br><span class="line">		@Override</span><br><span class="line">		public String getHeader(String name) &#123;</span><br><span class="line">			if (name.equals(&quot;loginUserId&quot;)) &#123;</span><br><span class="line">				return userId .toString();</span><br><span class="line">			&#125;</span><br><span class="line">			return super.getHeader(name);</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;;</span><br><span class="line">	chain.doFilter(requestWrapper, httpResponse);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>接口中直接从Header中获取解析好了的用户ID:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">@GetMapping(&quot;/hello&quot;)</span><br><span class="line">public String save2(HttpServletRequest request) &#123;</span><br><span class="line">	Long userId = Long.parseLong(request.getHeader(&quot;loginUserId&quot;));	</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h1 id="方式三（很优雅）"><a href="#方式三（很优雅）" class="headerlink" title="方式三（很优雅）"></a>方式三（很优雅）</h1><p>通过Header传递确实很方便，但如果你有代码洁癖的话总会觉得怪怪的，能不能不用Header方式，比如说我就在方法上定义一个loginUserId的参数，你给我直接注入进来，这个有点意思哈，下面我们来实现下：</p>
+<h3 id="GET参数方式"><a href="#GET参数方式" class="headerlink" title="GET参数方式"></a>GET参数方式</h3><p>在Filter中追加参数：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line">@Override</span><br><span class="line">public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)</span><br><span class="line">			throws IOException, ServletException &#123;</span><br><span class="line">    HttpServletRequest httpRequest = (HttpServletRequest) request;</span><br><span class="line">	HttpServletResponse httpResponse = (HttpServletResponse) response;</span><br><span class="line">    String token = request.getHeader(&quot;token&quot;);</span><br><span class="line">    JWTResult result = JWTUtils.checkToken(token);</span><br><span class="line">    Long userId = result.getUserId();</span><br><span class="line">	HttpServletRequestWrapper requestWrapper = new HttpServletRequestWrapper(httpRequest) &#123;</span><br><span class="line">		    @Override</span><br><span class="line">			public String[] getParameterValues(String name) &#123;</span><br><span class="line">				if (name.equals(&quot;loginUserId&quot;)) &#123;</span><br><span class="line">					return new String[] &#123; userId .toString() &#125;;</span><br><span class="line">				&#125;</span><br><span class="line">				return super.getParameterValues(name);</span><br><span class="line">			&#125;</span><br><span class="line">			@Override</span><br><span class="line">			public Enumeration&lt;String&gt; getParameterNames() &#123;</span><br><span class="line">				Set&lt;String&gt; paramNames = new LinkedHashSet&lt;&gt;();</span><br><span class="line">				paramNames.add(&quot;loginUserId&quot;);</span><br><span class="line">				Enumeration&lt;String&gt; names =  super.getParameterNames();</span><br><span class="line">				while(names.hasMoreElements()) &#123;</span><br><span class="line">					paramNames.add(names.nextElement());</span><br><span class="line">				&#125;</span><br><span class="line">				return Collections.enumeration(paramNames);</span><br><span class="line">			&#125;</span><br><span class="line">	&#125;;</span><br><span class="line">	chain.doFilter(requestWrapper, httpResponse);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>接口中直接填写参数即可获取：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">@GetMapping(&quot;/hello&quot;)</span><br><span class="line">public String save2(String name, Long loginUserId) &#123;</span><br><span class="line">	// loginUserId 就是Filter中追加的值</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>对于post请求，也可以用这种方式：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">@PostMapping(&quot;/hello&quot;)</span><br><span class="line">public String save2(User user, Long loginUserId) &#123;</span><br><span class="line">	</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>可是往往我们在用post请求的时候，要么就是表单提交，要么就是json体的方式提交，一般不会使用get方式参数，这也就意味着这个loginUserId我们需要注入到对象中：</p>
+<p>先创建一个参数实体类:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">public class User &#123;</span><br><span class="line"></span><br><span class="line">	private String name;</span><br><span class="line">	</span><br><span class="line">	private Long loginUserId;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>先模拟表单提交的方式，看看行不行：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">@PostMapping(&quot;/hello&quot;)</span><br><span class="line">public User save2(User user) &#123;</span><br><span class="line">	return user;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>用PostMan测试一下，表单方式是直接支持的：</p>
+<p><img src="https://user-gold-cdn.xitu.io/2019/5/19/16ace69edcd28f75?imageView2/0/w/1280/h/960/ignore-error/1" alt></p>
+<p>再次试下Json提交方式：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">@PostMapping(&quot;/hello&quot;)</span><br><span class="line">public User save2(@RequestBody User user) &#123;</span><br><span class="line">	return user;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>看下图，失败了，得重新想办法实现下</p>
+<p><img src="https://user-gold-cdn.xitu.io/2019/5/19/16ace69edcc90ca7?imageView2/0/w/1280/h/960/ignore-error/1" alt></p>
+<p>只需要在HttpServletRequestWrapper中重新对提交的内容进行修改即可：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br></pre></td><td class="code"><pre><span class="line">@Override</span><br><span class="line">public ServletInputStream getInputStream() throws IOException &#123;</span><br><span class="line">	byte[] requestBody = new byte[0];</span><br><span class="line">	try &#123;</span><br><span class="line">		requestBody = StreamUtils.copyToByteArray(request.getInputStream());</span><br><span class="line">		Map map = JsonUtils.toBean(Map.class, new String(requestBody));</span><br><span class="line">		map.put(&quot;loginUserId&quot;, loginUserId);</span><br><span class="line">		requestBody = JsonUtils.toJson(map).getBytes();</span><br><span class="line">	&#125; catch (IOException e) &#123;</span><br><span class="line">		throw new RuntimeException(e);</span><br><span class="line">	&#125;</span><br><span class="line">	final ByteArrayInputStream bais = new ByteArrayInputStream(requestBody);</span><br><span class="line">	return new ServletInputStream() &#123;</span><br><span class="line">		 @Override</span><br><span class="line">		  public int read() throws IOException &#123;</span><br><span class="line">		       return bais.read();</span><br><span class="line">		  &#125;</span><br><span class="line">		 </span><br><span class="line">		  @Override</span><br><span class="line">		   public boolean isFinished() &#123;</span><br><span class="line">		       return false;</span><br><span class="line">		   &#125;</span><br><span class="line">		 </span><br><span class="line">		   @Override</span><br><span class="line">		   public boolean isReady() &#123;</span><br><span class="line">		        return true;</span><br><span class="line">		   &#125;</span><br><span class="line">		 </span><br><span class="line">		   @Override</span><br><span class="line">		    public void setReadListener(ReadListener listener) &#123;</span><br><span class="line">		 </span><br><span class="line">		    &#125;</span><br><span class="line">    &#125;;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>到此为止，我们就可以直接将Token解析的用户ID直接注入到参数中了，不用去Header中获取，是不是很方便。</p>
+<p><img src="https://user-gold-cdn.xitu.io/2019/5/15/16ab91d71d2ab715?imageView2/0/w/1280/h/960/ignore-error/1" alt="猿天地"></p>
+
+      
+
+      
+    </div>
+    <div class="article-info article-info-index">
+      
+      
+	<div class="article-tag tagcloud">
+		<i class="icon-price-tags icon"></i>
+		<ul class="article-tag-list">
+			 
+        		<li class="article-tag-list-item">
+        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color5">Java</a>
+        		</li>
+      		
+		</ul>
+	</div>
+
+      
+
+      
+        <p class="article-more-link">
+          <a class="article-more-a" href="/2019/05/20/Token认证，如何快速方便获取用户信息/">展开全文 >></a>
+        </p>
+      
+
+      
+      <div class="clearfix"></div>
+    </div>
+  </div>
+</article>
+
+<aside class="wrap-side-operation">
+    <div class="mod-side-operation">
+        
+        <div class="jump-container" id="js-jump-container" style="display:none;">
+            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
+                <i class="icon-font icon-back"></i>
+            </a>
+            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
+                <i class="icon-font icon-plane jump-plane"></i>
+            </div>
+        </div>
+        
+        
+    </div>
+</aside>
+
+
+
+
+  
     <article id="post-【Spring】Autowired原理及与Resource注解区别" class="article article-type-post  article-index" itemscope itemprop="blogPost">
   <div class="article-inner">
     
@@ -2588,94 +2704,6 @@ future.complete();
 
 
   
-    <article id="post-Java中的Wait和Notify机制" class="article article-type-post  article-index" itemscope itemprop="blogPost">
-  <div class="article-inner">
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2019/05/11/Java中的Wait和Notify机制/">Java 中的 Wait 和 Notify 机制</a>
-    </h1>
-  
-
-        
-        <a href="/2019/05/11/Java中的Wait和Notify机制/" class="archive-article-date">
-  	<time datetime="2019-05-11T15:10:27.027Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2019-05-11</time>
-</a>
-        
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <blockquote>
-<p>本文转载自 <a href="https://juejin.im/post/5cd67d31e51d453b5854b8a8" target="_blank" rel="noopener">https://juejin.im/post/5cd67d31e51d453b5854b8a8</a> </p>
-</blockquote>
-<h3 id="写在前面"><a href="#写在前面" class="headerlink" title="写在前面"></a>写在前面</h3><p><code>Wait</code> 和 <code>Notify</code> 是 <code>Java</code> 面试中常见的问题，但是在平时工作中可能不常见到。大家或多或少知道些背景知识，例如二者均为 <code>Object</code> 类的方法，而不是 <code>Thread</code> 特有的（因为<code>锁</code>是每个对象都具有的特性，因此操作锁的方法也紧跟对象，没毛病），且都只能在<code>同步代码块</code>中调用（即前提是先获得对象的<code>监视器锁</code>，一般来说在 <code>synchronized</code> 代码块中使用），否则抛出异常 <code>IllegalMonitorStateException</code>。</p>
-<p><code>Wait</code> 会挂起自己让出 <code>CPU</code> 时间片，并将自身加入锁定对象的 <code>Wait Set</code> 中，释放对象的监视器锁<code>（monitor）</code>让其他线程可以获得，直到其他线程调用此对象的 <code>notify( )</code> 方法或 <code>notifyAll( )</code> 方法，自身才能被唤醒（这里有个特殊情况就是 <code>Wait</code> 可以增加等待时间）；<code>Notify</code> 方法则会释放监视器锁的同时，唤醒对象 <code>Wait Set</code> 中等待的线程，顺序是随机的不确定。</p>
-<h3 id="Wait-Set"><a href="#Wait-Set" class="headerlink" title="Wait Set"></a>Wait Set</h3><p><code>虚拟机规范</code>中定义了一个 <code>Wait Set</code> 的概念，但至于其具体是什么样的数据结构规范没有强制规定，<strong>意味着不同的厂商可以自行实现</strong>，但不管怎样，线程调用了某个对象的 <code>Wait</code> 方法，就会被加入该对象的 <code>Wait Set</code> 中</p>
-<p><img src="https://user-gold-cdn.xitu.io/2019/5/11/16aa5da0e43cb932?imageView2/0/w/1280/h/960/ignore-error/1" alt="在这里插入图片描述"></p>
-<h3 id="Demo-代码"><a href="#Demo-代码" class="headerlink" title="Demo 代码"></a>Demo 代码</h3><p>下面通过一段 <code>demo</code> 来解释 <code>Wait</code> 和 <code>Notify</code> 的功能</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br></pre></td><td class="code"><pre><span class="line">import java.util.concurrent.TimeUnit;</span><br><span class="line"></span><br><span class="line">public class WaitNotify &#123;</span><br><span class="line"></span><br><span class="line">    public static void main(String[] args) &#123;</span><br><span class="line"></span><br><span class="line">        final Object A = new Object();</span><br><span class="line">        final Object B = new Object();</span><br><span class="line"></span><br><span class="line">        Thread t1 = new Thread(&quot;t1-thread&quot;) &#123;</span><br><span class="line">            @Override</span><br><span class="line">            public void run() &#123;</span><br><span class="line">                synchronized (A) &#123;</span><br><span class="line">                    System.out.println(Thread.currentThread().getName() + &quot;拿到 A 的监视器锁&quot;);</span><br><span class="line">                    System.out.println(Thread.currentThread().getName() + &quot;尝试获取 B 的监视器锁&quot;);</span><br><span class="line">                    try &#123;</span><br><span class="line">                        System.out.println(Thread.currentThread().getName() + &quot;休眠 2s，不释放 A 的监视器锁&quot;);</span><br><span class="line">                        TimeUnit.SECONDS.sleep(2);</span><br><span class="line">                        System.out.println(Thread.currentThread().getName() + &quot;挂起自己，释放 A 的监视器锁&quot;);</span><br><span class="line">                        A.wait();</span><br><span class="line">                        System.out.println(Thread.currentThread().getName() + &quot;被唤醒，等待获取 B 的监视器锁&quot;);</span><br><span class="line">                    &#125; catch (InterruptedException e) &#123;</span><br><span class="line">                        e.printStackTrace();</span><br><span class="line">                    &#125;</span><br><span class="line">                    synchronized (B) &#123;</span><br><span class="line">                        System.out.println(Thread.currentThread().getName() + &quot;拿到 B 的监视器锁&quot;);</span><br><span class="line">                        B.notify();</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;;</span><br><span class="line"></span><br><span class="line">        Thread t2 = new Thread(&quot;t2-thread&quot;) &#123;</span><br><span class="line">            @Override</span><br><span class="line">            public void run() &#123;</span><br><span class="line">                synchronized (B) &#123;</span><br><span class="line">                    System.out.println(Thread.currentThread().getName() + &quot;拿到 B 的监视器锁&quot;);</span><br><span class="line">                    System.out.println(Thread.currentThread().getName() + &quot;尝试获取 A 的监视器锁&quot;);</span><br><span class="line">                    synchronized (A) &#123;</span><br><span class="line">                        System.out.println(Thread.currentThread().getName() + &quot;拿到 A 的监视器锁&quot;);</span><br><span class="line">                        try &#123;</span><br><span class="line">                            System.out.println(Thread.currentThread().getName() + &quot;休眠 2s，不释放 A 的监视器锁&quot;);</span><br><span class="line">                            TimeUnit.SECONDS.sleep(2);</span><br><span class="line">                        &#125; catch (InterruptedException e) &#123;</span><br><span class="line">                            e.printStackTrace();</span><br><span class="line">                        &#125;</span><br><span class="line">                        System.out.println(Thread.currentThread().getName() + &quot;挂起自己，释放 A 的监视器锁，唤醒 t0&quot;);</span><br><span class="line">                        A.notify();</span><br><span class="line">                    &#125;</span><br><span class="line">                    try &#123;</span><br><span class="line">                        System.out.println(Thread.currentThread().getName() + &quot;休眠 2s，不释放 B 的监视器锁&quot;);</span><br><span class="line">                        TimeUnit.SECONDS.sleep(2);</span><br><span class="line">                        System.out.println(Thread.currentThread().getName() + &quot;挂起自己，释放 B 的监视器锁&quot;);</span><br><span class="line">                        B.wait();</span><br><span class="line">                        System.out.println(Thread.currentThread().getName() + &quot;被唤醒&quot;);</span><br><span class="line">                    &#125; catch (InterruptedException e) &#123;</span><br><span class="line">                        e.printStackTrace();</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;;</span><br><span class="line"></span><br><span class="line">        t1.start();</span><br><span class="line">        t2.start();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<h3 id="输出结果"><a href="#输出结果" class="headerlink" title="输出结果"></a>输出结果</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">t1-thread拿到 A 的监视器锁</span><br><span class="line">t2-thread拿到 B 的监视器锁</span><br><span class="line">t1-thread尝试获取 B 的监视器锁</span><br><span class="line">t2-thread尝试获取 A 的监视器锁</span><br><span class="line">t1-thread休眠 2s，不释放 A 的监视器锁</span><br><span class="line">t1-thread挂起自己，释放 A 的监视器锁</span><br><span class="line">t2-thread拿到 A 的监视器锁</span><br><span class="line">t2-thread休眠 2s，不释放 A 的监视器锁</span><br><span class="line">t2-thread挂起自己，释放 A 的监视器锁，唤醒 t0</span><br><span class="line">t2-thread休眠 2s，不释放 B 的监视器锁</span><br><span class="line">t1-thread被唤醒，等待获取 B 的监视器锁</span><br><span class="line">t2-thread挂起自己，释放 B 的监视器锁</span><br><span class="line">t1-thread拿到 B 的监视器锁</span><br><span class="line">t2-thread被唤醒</span><br><span class="line"></span><br><span class="line">Process finished with exit code 0</span><br></pre></td></tr></table></figure>
-
-<h3 id="时序图"><a href="#时序图" class="headerlink" title="时序图"></a>时序图</h3><p><img src="https://user-gold-cdn.xitu.io/2019/5/11/16aa5da0e439ccdb?imageView2/0/w/1280/h/960/ignore-error/1" alt="在这里插入图片描述"></p>
-<h3 id="写在最后"><a href="#写在最后" class="headerlink" title="写在最后"></a>写在最后</h3><p>这是一个不定时更新的、披着程序员外衣的文青小号，欢迎关注。</p>
-<p><img src="https://user-gold-cdn.xitu.io/2019/5/2/16a78675262bc604?imageView2/0/w/1280/h/960/ignore-error/1" alt></p>
-
-      
-
-      
-    </div>
-    <div class="article-info article-info-index">
-      
-      
-	<div class="article-tag tagcloud">
-		<i class="icon-price-tags icon"></i>
-		<ul class="article-tag-list">
-			 
-        		<li class="article-tag-list-item">
-        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color5">Java</a>
-        		</li>
-      		
-		</ul>
-	</div>
-
-      
-
-      
-        <p class="article-more-link">
-          <a class="article-more-a" href="/2019/05/11/Java中的Wait和Notify机制/">展开全文 >></a>
-        </p>
-      
-
-      
-      <div class="clearfix"></div>
-    </div>
-  </div>
-</article>
-
-<aside class="wrap-side-operation">
-    <div class="mod-side-operation">
-        
-        <div class="jump-container" id="js-jump-container" style="display:none;">
-            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
-                <i class="icon-font icon-back"></i>
-            </a>
-            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
-                <i class="icon-font icon-plane jump-plane"></i>
-            </div>
-        </div>
-        
-        
-    </div>
-</aside>
-
-
-
-
-  
   
     <nav id="page-nav">
       <a class="extend prev" rel="prev" href="/page/2/">&laquo; Prev</a><a class="page-number" href="/">1</a><a class="page-number" href="/page/2/">2</a><span class="page-number current">3</span><a class="page-number" href="/page/4/">4</a><a class="page-number" href="/page/5/">5</a><a class="extend next" rel="next" href="/page/4/">Next &raquo;</a>
@@ -2821,15 +2849,15 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
               </li>
              
               <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color1">MySQL</a>
+              </li>
+             
+              <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color3">Reactor</a>
               </li>
              
               <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color5">java</a>
-              </li>
-             
-              <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color1">MySQL</a>
               </li>
              
               <li class="article-tag-list-item">
