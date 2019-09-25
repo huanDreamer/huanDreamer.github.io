@@ -152,6 +152,100 @@
           <div id="js-content" class="content-ll">
             
   
+    <article id="post-分布式id生成器" class="article article-type-post  article-index" itemscope itemprop="blogPost">
+  <div class="article-inner">
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2019/09/25/分布式id生成器/">分布式id生成器</a>
+    </h1>
+  
+
+        
+        <a href="/2019/09/25/分布式id生成器/" class="archive-article-date">
+  	<time datetime="2019-09-25T02:31:25.025Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2019-09-25</time>
+</a>
+        
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <blockquote>
+<p>本文转载自 <a href="https://juejin.im/post/5d8882d8f265da03e369c063" target="_blank" rel="noopener">https://juejin.im/post/5d8882d8f265da03e369c063</a> </p>
+</blockquote>
+<h3 id="在高并发或者分表分库情况下怎么保证数据id的幂等性呢"><a href="#在高并发或者分表分库情况下怎么保证数据id的幂等性呢" class="headerlink" title="在高并发或者分表分库情况下怎么保证数据id的幂等性呢"></a>在高并发或者分表分库情况下怎么保证数据id的幂等性呢</h3><p>经常用到的解决方案有以下几种。<br>微软公司通用唯一识别码（UUID） Twitter公司雪花算法（SnowFlake） 基于数据库的id自增 对id进行缓存</p>
+<p>这里我们要谈到snowflake算法了</p>
+<p>snowflake是Twitter开源的分布式ID生成算法，结果是一个long型的ID。其核心思想是：使用41bit作为毫秒数，10bit作为机器的ID（5个bit是数据中心，5个bit的机器ID），12bit作为毫秒内的流水号，最后还有一个符号位，永远是0。 <strong>snowflake算法所生成的ID结构</strong><br><img src="https://user-gold-cdn.xitu.io/2019/9/23/16d5d544ea38f7cd?imageView2/0/w/1280/h/960/ignore-error/1" alt="图片.png"> 整个结构是64位，所以我们在Java中可以使用long来进行存储。 该算法实现基本就是二进制操作,单机每秒内理论上最多可以生成1024/*(2^12)，也就是409.6万个ID(1024 X 4096 = 4194304)</p>
+ <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">* 0 - 0000000000 0000000000 0000000000 0000000000 0 - 00000 - 00000 - 000000000000 </span><br><span class="line"> * 1位标识，由于long基本类型在Java中是带符号的，最高位是符号位，正数是0，负数是1，所以id一般是正数，最高位是0&lt;br&gt;</span><br><span class="line"> * 41位时间截(毫秒级)，注意，41位时间截不是存储当前时间的时间截，而是存储时间截的差值（当前时间截 - 开始时间截)</span><br><span class="line"> * 得到的值），这里的的开始时间截，一般是我们的id生成器开始使用的时间，由我们程序来指定的（如下下面程序IdWorker类的startTime属性）。41位的时间截，可以使用69年，年T = (1L &lt;&lt; 41) / (1000L * 60 * 60 * 24 * 365) = 69&lt;br&gt;</span><br><span class="line"> * 10位的数据机器位，可以部署在1024个节点，包括5位datacenterId和5位workerId&lt;br&gt;</span><br><span class="line"> * 12位序列，毫秒内的计数，12位的计数顺序号支持每个节点每毫秒(同一机器，同一时间截)产生4096个ID序号&lt;br&gt;</span><br><span class="line"> * 加起来刚好64位，为一个Long型。&lt;br&gt;</span><br><span class="line"> * SnowFlake的优点是，整体上按照时间自增排序，并且整个分布式系统内不会产生ID碰撞(由数据中心ID和机器ID作区分)，并且效率较高，经测试，SnowFlake每秒能够产生26万ID左右。</span><br></pre></td></tr></table></figure>
+
+<h3 id="snowFlake算法的优点："><a href="#snowFlake算法的优点：" class="headerlink" title="snowFlake算法的优点："></a>snowFlake算法的优点：</h3><p>1.生成ID时不依赖于DB，完全在内存生成，高性能高可用。 2.ID呈趋势递增，后续插入索引树的时候性能较好。</p>
+<h3 id="SnowFlake算法的缺点："><a href="#SnowFlake算法的缺点：" class="headerlink" title="SnowFlake算法的缺点："></a>SnowFlake算法的缺点：</h3><p>依赖于系统时钟的一致性。如果某台机器的系统时钟回拨，有可能造成ID冲突，或者ID乱序</p>
+<h3 id="算法代码如下"><a href="#算法代码如下" class="headerlink" title="算法代码如下"></a>算法代码如下</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br></pre></td><td class="code"><pre><span class="line">public class SnowflakeIdWorker &#123;</span><br><span class="line"> // ==============================Fields==================</span><br><span class="line">    /** 开始时间截 (2019-08-06) */</span><br><span class="line">    private final long twepoch = 1565020800000L;</span><br><span class="line"></span><br><span class="line">    /** 机器id所占的位数 */</span><br><span class="line">    private final long workerIdBits = 5L;</span><br><span class="line"></span><br><span class="line">    /** 数据标识id所占的位数 */</span><br><span class="line">    private final long datacenterIdBits = 5L;</span><br><span class="line"></span><br><span class="line">    /** 支持的最大机器id，结果是31 (这个移位算法可以很快的计算出几位二进制数所能表示的最大十进制数) */</span><br><span class="line">    private final long maxWorkerId = -1L ^ (-1L &lt;&lt; workerIdBits);</span><br><span class="line"></span><br><span class="line">    /** 支持的最大数据标识id，结果是31 */</span><br><span class="line">    private final long maxDatacenterId = -1L ^ (-1L &lt;&lt; datacenterIdBits);</span><br><span class="line"></span><br><span class="line">    /** 序列在id中占的位数 */</span><br><span class="line">    private final long sequenceBits = 12L;</span><br><span class="line"></span><br><span class="line">    /** 机器ID向左移12位 */</span><br><span class="line">    private final long workerIdShift = sequenceBits;</span><br><span class="line"></span><br><span class="line">    /** 数据标识id向左移17位(12+5) */</span><br><span class="line">    private final long datacenterIdShift = sequenceBits + workerIdBits;</span><br><span class="line"></span><br><span class="line">    /** 时间截向左移22位(5+5+12) */</span><br><span class="line">    private final long timestampLeftShift = sequenceBits + workerIdBits + datacenterIdBits;</span><br><span class="line"></span><br><span class="line">    /** 生成序列的掩码，这里为4095 (0b111111111111=0xfff=4095) */</span><br><span class="line">    private final long sequenceMask = -1L ^ (-1L &lt;&lt; sequenceBits);</span><br><span class="line"></span><br><span class="line">    /** 工作机器ID(0~31) */</span><br><span class="line">    private long workerId;</span><br><span class="line"></span><br><span class="line">    /** 数据中心ID(0~31) */</span><br><span class="line">    private long datacenterId;</span><br><span class="line"></span><br><span class="line">    /** 毫秒内序列(0~4095) */</span><br><span class="line">    private long sequence = 0L;</span><br><span class="line"></span><br><span class="line">    /** 上次生成ID的时间截 */</span><br><span class="line">    private long lastTimestamp = -1L;</span><br><span class="line"></span><br><span class="line">     //==============================Constructors====================</span><br><span class="line">    /**</span><br><span class="line">     * 构造函数</span><br><span class="line">     * @param workerId 工作ID (0~31)</span><br><span class="line">     * @param datacenterId 数据中心ID (0~31)</span><br><span class="line">     */</span><br><span class="line">    public SnowflakeIdWorker(long workerId, long datacenterId) &#123;</span><br><span class="line">        if (workerId &gt; maxWorkerId || workerId &lt; 0) &#123;</span><br><span class="line">            throw new IllegalArgumentException(String.format(&quot;worker Id can&apos;t be greater than %d or less than 0&quot;, maxWorkerId));</span><br><span class="line">        &#125;</span><br><span class="line">        if (datacenterId &gt; maxDatacenterId || datacenterId &lt; 0) &#123;</span><br><span class="line">            throw new IllegalArgumentException(String.format(&quot;datacenter Id can&apos;t be greater than %d or less than 0&quot;, maxDatacenterId));</span><br><span class="line">        &#125;</span><br><span class="line">        this.workerId = workerId;</span><br><span class="line">        this.datacenterId = datacenterId;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    // ==============================Methods=================================</span><br><span class="line">    /**</span><br><span class="line">     * 获得下一个ID (该方法是线程安全的)</span><br><span class="line">     * @return SnowflakeId</span><br><span class="line">     */</span><br><span class="line">    public synchronized long nextId() &#123;</span><br><span class="line">        long timestamp = timeGen();</span><br><span class="line"></span><br><span class="line">        //如果当前时间小于上一次ID生成的时间戳，说明系统时钟回退过这个时候应当抛出异常</span><br><span class="line">        if (timestamp &lt; lastTimestamp) &#123;</span><br><span class="line">            throw new RuntimeException(</span><br><span class="line">                    String.format(&quot;Clock moved backwards.  Refusing to generate id for %d milliseconds&quot;, lastTimestamp - timestamp));</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        //如果是同一时间生成的，则进行毫秒内序列</span><br><span class="line">        if (lastTimestamp == timestamp) &#123;</span><br><span class="line">            sequence = (sequence + 1) &amp;amp; sequenceMask;</span><br><span class="line">            //毫秒内序列溢出</span><br><span class="line">            if (sequence == 0) &#123;</span><br><span class="line">                //阻塞到下一个毫秒,获得新的时间戳</span><br><span class="line">                timestamp = tilNextMillis(lastTimestamp);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        //时间戳改变，毫秒内序列重置</span><br><span class="line">        else &#123;</span><br><span class="line">            sequence = 0L;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        //上次生成ID的时间截</span><br><span class="line">        lastTimestamp = timestamp;</span><br><span class="line"></span><br><span class="line">        //移位并通过或运算拼到一起组成64位的ID</span><br><span class="line">        return ((timestamp - twepoch) &lt;&lt; timestampLeftShift) //</span><br><span class="line">                | (datacenterId &lt;&lt; datacenterIdShift) //</span><br><span class="line">                | (workerId &lt;&lt; workerIdShift) //</span><br><span class="line">                | sequence;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    /**</span><br><span class="line">     * 阻塞到下一个毫秒，直到获得新的时间戳</span><br><span class="line">     * @param lastTimestamp 上次生成ID的时间截</span><br><span class="line">     * @return 当前时间戳</span><br><span class="line">     */</span><br><span class="line">    protected long tilNextMillis(long lastTimestamp) &#123;</span><br><span class="line">        long timestamp = timeGen();</span><br><span class="line">        while (timestamp &lt;= lastTimestamp) &#123;</span><br><span class="line">            timestamp = timeGen();</span><br><span class="line">        &#125;</span><br><span class="line">        return timestamp;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    /**</span><br><span class="line">     * 返回以毫秒为单位的当前时间</span><br><span class="line">     * @return 当前时间(毫秒)</span><br><span class="line">     */</span><br><span class="line">    protected long timeGen() &#123;</span><br><span class="line">        return System.currentTimeMillis();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    //==============================Test=============================================</span><br><span class="line">    /** 测试 */</span><br><span class="line">    public static void main(String[] args) &#123;</span><br><span class="line">        SnowflakeIdWorker idWorker = new SnowflakeIdWorker(0, 0);</span><br><span class="line">        for (int i = 0; i &lt; 1000; i++) &#123;</span><br><span class="line">            long id = idWorker.nextId();</span><br><span class="line">            System.out.println(Long.toBinaryString(id));</span><br><span class="line">            System.out.println(id);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="快速使用snowflake算法只需以下几步"><a href="#快速使用snowflake算法只需以下几步" class="headerlink" title="快速使用snowflake算法只需以下几步"></a>快速使用snowflake算法只需以下几步</h3><h3 id="引入hutool依赖"><a href="#引入hutool依赖" class="headerlink" title="引入hutool依赖"></a>引入hutool依赖</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">&lt;dependency&gt;</span><br><span class="line">    &lt;groupId&gt;cn.hutool&lt;/groupId&gt;</span><br><span class="line">    &lt;artifactId&gt;hutool-captcha&lt;/artifactId&gt;</span><br><span class="line">    &lt;version&gt;$&#123;hutool.version&#125;&lt;/version&gt;</span><br><span class="line">&lt;/dependency&gt;</span><br></pre></td></tr></table></figure>
+
+<h3 id="ID-生成器"><a href="#ID-生成器" class="headerlink" title="ID 生成器"></a>ID 生成器</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br></pre></td><td class="code"><pre><span class="line">public class IdGenerator &#123;</span><br><span class="line"></span><br><span class="line">    private long workerId = 0;</span><br><span class="line"></span><br><span class="line">    @PostConstruct</span><br><span class="line">    void init() &#123;</span><br><span class="line">        try &#123;</span><br><span class="line">            workerId = NetUtil.ipv4ToLong(NetUtil.getLocalhostStr());</span><br><span class="line">            log.info(&quot;当前机器 workerId: &#123;&#125;&quot;, workerId);</span><br><span class="line">        &#125; catch (Exception e) &#123;</span><br><span class="line">            log.warn(&quot;获取机器 ID 失败&quot;, e);</span><br><span class="line">            workerId = NetUtil.getLocalhost().hashCode();</span><br><span class="line">            log.info(&quot;当前机器 workerId: &#123;&#125;&quot;, workerId);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    /**</span><br><span class="line">     * 获取一个批次号，形如 2019071015301361000101237</span><br><span class="line">     * &lt;p&gt;</span><br><span class="line">     * 数据库使用 char(25) 存储</span><br><span class="line">     *</span><br><span class="line">     * @param tenantId 租户ID，5 位</span><br><span class="line">     * @param module   业务模块ID，2 位</span><br><span class="line">     * @return 返回批次号</span><br><span class="line">     */</span><br><span class="line">    public synchronized String batchId(int tenantId, int module) &#123;</span><br><span class="line">        String prefix = DateTime.now().toString(DatePattern.PURE_DATETIME_MS_PATTERN);</span><br><span class="line">        return prefix + tenantId + module + RandomUtil.randomNumbers(3);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    @Deprecated</span><br><span class="line">    public synchronized String getBatchId(int tenantId, int module) &#123;</span><br><span class="line">        return batchId(tenantId, module);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    /**</span><br><span class="line">     * 生成的是不带-的字符串，类似于：b17f24ff026d40949c85a24f4f375d42</span><br><span class="line">     *</span><br><span class="line">     * @return</span><br><span class="line">     */</span><br><span class="line">    public String simpleUUID() &#123;</span><br><span class="line">        return IdUtil.simpleUUID();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    /**</span><br><span class="line">     * 生成的UUID是带-的字符串，类似于：a5c8a5e8-df2b-4706-bea4-08d0939410e3</span><br><span class="line">     *</span><br><span class="line">     * @return</span><br><span class="line">     */</span><br><span class="line">    public String randomUUID() &#123;</span><br><span class="line">        return IdUtil.randomUUID();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    private Snowflake snowflake = IdUtil.createSnowflake(workerId, 1);</span><br><span class="line"></span><br><span class="line">    public synchronized long snowflakeId() &#123;</span><br><span class="line">        return snowflake.nextId();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    public synchronized long snowflakeId(long workerId, long dataCenterId) &#123;</span><br><span class="line">        Snowflake snowflake = IdUtil.createSnowflake(workerId, dataCenterId);</span><br><span class="line">        return snowflake.nextId();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    /**</span><br><span class="line">     * 生成类似：5b9e306a4df4f8c54a39fb0c</span><br><span class="line">     * &lt;p&gt;</span><br><span class="line">     * ObjectId 是 MongoDB 数据库的一种唯一 ID 生成策略，</span><br><span class="line">     * 是 UUID version1 的变种，详细介绍可见：服务化框架－分布式 Unique ID 的生成方法一览。</span><br><span class="line">     *</span><br><span class="line">     * @return</span><br><span class="line">     */</span><br><span class="line">    public String objectId() &#123;</span><br><span class="line">        return ObjectId.next();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="测试类"><a href="#测试类" class="headerlink" title="测试类"></a>测试类</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br></pre></td><td class="code"><pre><span class="line">public class IdGeneratorTest &#123;</span><br><span class="line"></span><br><span class="line">    @Autowired</span><br><span class="line">    private IdGenerator idGenerator;</span><br><span class="line"></span><br><span class="line">    @Test</span><br><span class="line">    public void testBatchId() &#123;</span><br><span class="line">        for (int i = 0; i &lt; 100; i++) &#123;</span><br><span class="line">            String batchId = idGenerator.batchId(1001, 100);</span><br><span class="line">            log.info(&quot;批次号: &#123;&#125;&quot;, batchId);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    @Test</span><br><span class="line">    public void testSimpleUUID() &#123;</span><br><span class="line">        for (int i = 0; i &lt; 100; i++) &#123;</span><br><span class="line">            String simpleUUID = idGenerator.simpleUUID();</span><br><span class="line">            log.info(&quot;simpleUUID: &#123;&#125;&quot;, simpleUUID);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    @Test</span><br><span class="line">    public void testRandomUUID() &#123;</span><br><span class="line">        for (int i = 0; i &lt; 100; i++) &#123;</span><br><span class="line">            String randomUUID = idGenerator.randomUUID();</span><br><span class="line">            log.info(&quot;randomUUID: &#123;&#125;&quot;, randomUUID);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    @Test</span><br><span class="line">    public void testObjectID() &#123;</span><br><span class="line">        for (int i = 0; i &lt; 100; i++) &#123;</span><br><span class="line">            String objectId = idGenerator.objectId();</span><br><span class="line">            log.info(&quot;objectId: &#123;&#125;&quot;, objectId);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    @Test</span><br><span class="line">    public void testSnowflakeId() &#123;</span><br><span class="line">        ExecutorService executorService = Executors.newFixedThreadPool(20);</span><br><span class="line">        for (int i = 0; i &lt; 20; i++) &#123;</span><br><span class="line">            executorService.execute(() -&gt; &#123;</span><br><span class="line">                log.info(&quot;分布式 ID: &#123;&#125;&quot;, idGenerator.snowflakeId());</span><br><span class="line">            &#125;);</span><br><span class="line">        &#125;</span><br><span class="line">        executorService.shutdown();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><img src="https://user-gold-cdn.xitu.io/2019/9/23/16d5d544ead5fdde?imageView2/0/w/1280/h/960/ignore-error/1" alt="图片.png"></p>
+<p>在项目中我们只需要注入 <code>@Autowired private IdGenerator idGenerator;</code>即可</p>
+<p>然后设置id <code>order.setId(idGenerator.snowflakeId() + &quot;&quot;);</code></p>
+
+      
+
+      
+    </div>
+    <div class="article-info article-info-index">
+      
+      
+	<div class="article-tag tagcloud">
+		<i class="icon-price-tags icon"></i>
+		<ul class="article-tag-list">
+			 
+        		<li class="article-tag-list-item">
+        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color3">后端</a>
+        		</li>
+      		
+		</ul>
+	</div>
+
+      
+
+      
+        <p class="article-more-link">
+          <a class="article-more-a" href="/2019/09/25/分布式id生成器/">展开全文 >></a>
+        </p>
+      
+
+      
+      <div class="clearfix"></div>
+    </div>
+  </div>
+</article>
+
+<aside class="wrap-side-operation">
+    <div class="mod-side-operation">
+        
+        <div class="jump-container" id="js-jump-container" style="display:none;">
+            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
+                <i class="icon-font icon-back"></i>
+            </a>
+            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
+                <i class="icon-font icon-plane jump-plane"></i>
+            </div>
+        </div>
+        
+        
+    </div>
+</aside>
+
+
+
+
+  
     <article id="post-一千行MySQL命令" class="article article-type-post  article-index" itemscope itemprop="blogPost">
   <div class="article-inner">
     
@@ -393,82 +487,6 @@
 
 
   
-    <article id="post-Setting Principals Outside of a Realm" class="article article-type-post  article-index" itemscope itemprop="blogPost">
-  <div class="article-inner">
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2019/09/05/Setting Principals Outside of a Realm/">Setting Principals Outside of a Realm</a>
-    </h1>
-  
-
-        
-        <a href="/2019/09/05/Setting Principals Outside of a Realm/" class="archive-article-date">
-  	<time datetime="2019-09-05T02:32:20.020Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2019-09-05</time>
-</a>
-        
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <blockquote>
-<p><a href="http://shiro-user.582556.n2.nabble.com/Setting-Principals-Outside-of-a-Realm-td7579653.html" target="_blank" rel="noopener">http://shiro-user.582556.n2.nabble.com/Setting-Principals-Outside-of-a-Realm-td7579653.html</a></p>
-</blockquote>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">PrincipalCollection principals = <span class="keyword">new</span> SimplePrincipalCollection(principal, <span class="string">"UUID-Realm"</span>); </span><br><span class="line">WebSubject.Builder builder = <span class="keyword">new</span> WebSubject.Builder(request, response); </span><br><span class="line">builder.principals(principals).authenticated(<span class="keyword">true</span>); </span><br><span class="line">WebSubject webSubject = builder.buildWebSubject(); </span><br><span class="line">ThreadContext.bind(webSubject);</span><br></pre></td></tr></table></figure>
-      
-
-      
-    </div>
-    <div class="article-info article-info-index">
-      
-      
-	<div class="article-tag tagcloud">
-		<i class="icon-price-tags icon"></i>
-		<ul class="article-tag-list">
-			 
-        		<li class="article-tag-list-item">
-        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color1">shiro</a>
-        		</li>
-      		
-		</ul>
-	</div>
-
-      
-
-      
-        <p class="article-more-link">
-          <a class="article-more-a" href="/2019/09/05/Setting Principals Outside of a Realm/">展开全文 >></a>
-        </p>
-      
-
-      
-      <div class="clearfix"></div>
-    </div>
-  </div>
-</article>
-
-<aside class="wrap-side-operation">
-    <div class="mod-side-operation">
-        
-        <div class="jump-container" id="js-jump-container" style="display:none;">
-            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
-                <i class="icon-font icon-back"></i>
-            </a>
-            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
-                <i class="icon-font icon-plane jump-plane"></i>
-            </div>
-        </div>
-        
-        
-    </div>
-</aside>
-
-
-
-
-  
     <article id="post-咱们一起聊聊Zookeeper" class="article article-type-post  article-index" itemscope itemprop="blogPost">
   <div class="article-inner">
     
@@ -596,15 +614,15 @@
         		</li>
       		 
         		<li class="article-tag-list-item">
+        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color4">服务器</a>
+        		</li>
+      		 
+        		<li class="article-tag-list-item">
         			<a href="javascript:void(0)" class="js-tag article-tag-list-link color3">算法</a>
         		</li>
       		 
         		<li class="article-tag-list-item">
         			<a href="javascript:void(0)" class="js-tag article-tag-list-link color5">ZooKeeper</a>
-        		</li>
-      		 
-        		<li class="article-tag-list-item">
-        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color4">服务器</a>
         		</li>
       		
 		</ul>
@@ -615,6 +633,82 @@
       
         <p class="article-more-link">
           <a class="article-more-a" href="/2019/09/05/咱们一起聊聊Zookeeper/">展开全文 >></a>
+        </p>
+      
+
+      
+      <div class="clearfix"></div>
+    </div>
+  </div>
+</article>
+
+<aside class="wrap-side-operation">
+    <div class="mod-side-operation">
+        
+        <div class="jump-container" id="js-jump-container" style="display:none;">
+            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
+                <i class="icon-font icon-back"></i>
+            </a>
+            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
+                <i class="icon-font icon-plane jump-plane"></i>
+            </div>
+        </div>
+        
+        
+    </div>
+</aside>
+
+
+
+
+  
+    <article id="post-Setting Principals Outside of a Realm" class="article article-type-post  article-index" itemscope itemprop="blogPost">
+  <div class="article-inner">
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2019/09/05/Setting Principals Outside of a Realm/">Setting Principals Outside of a Realm</a>
+    </h1>
+  
+
+        
+        <a href="/2019/09/05/Setting Principals Outside of a Realm/" class="archive-article-date">
+  	<time datetime="2019-09-05T02:32:20.020Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2019-09-05</time>
+</a>
+        
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <blockquote>
+<p><a href="http://shiro-user.582556.n2.nabble.com/Setting-Principals-Outside-of-a-Realm-td7579653.html" target="_blank" rel="noopener">http://shiro-user.582556.n2.nabble.com/Setting-Principals-Outside-of-a-Realm-td7579653.html</a></p>
+</blockquote>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">PrincipalCollection principals = <span class="keyword">new</span> SimplePrincipalCollection(principal, <span class="string">"UUID-Realm"</span>); </span><br><span class="line">WebSubject.Builder builder = <span class="keyword">new</span> WebSubject.Builder(request, response); </span><br><span class="line">builder.principals(principals).authenticated(<span class="keyword">true</span>); </span><br><span class="line">WebSubject webSubject = builder.buildWebSubject(); </span><br><span class="line">ThreadContext.bind(webSubject);</span><br></pre></td></tr></table></figure>
+      
+
+      
+    </div>
+    <div class="article-info article-info-index">
+      
+      
+	<div class="article-tag tagcloud">
+		<i class="icon-price-tags icon"></i>
+		<ul class="article-tag-list">
+			 
+        		<li class="article-tag-list-item">
+        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color1">shiro</a>
+        		</li>
+      		
+		</ul>
+	</div>
+
+      
+
+      
+        <p class="article-more-link">
+          <a class="article-more-a" href="/2019/09/05/Setting Principals Outside of a Realm/">展开全文 >></a>
         </p>
       
 
@@ -1533,205 +1627,6 @@ User user = constructor.newInstance();</code></p>
 
 
   
-    <article id="post-死磕Java内部类（一篇就够）" class="article article-type-post  article-index" itemscope itemprop="blogPost">
-  <div class="article-inner">
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2019/06/18/死磕Java内部类（一篇就够）/">死磕Java内部类（一篇就够）</a>
-    </h1>
-  
-
-        
-        <a href="/2019/06/18/死磕Java内部类（一篇就够）/" class="archive-article-date">
-  	<time datetime="2019-06-18T07:18:46.046Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2019-06-18</time>
-</a>
-        
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <blockquote>
-<p>本文转载自 <a href="https://juejin.im/post/5d0821315188254c434686c8" target="_blank" rel="noopener">https://juejin.im/post/5d0821315188254c434686c8</a><br>Java内部类，相信大家都用过，但是多数同学可能对它了解的并不深入，只是靠记忆来完成日常工作，却不能融会贯通，遇到奇葩问题更是难以有思路去解决。这篇文章带大家一起死磕Java内部类的方方面面。 友情提示：这篇文章的讨论基于JDK版本 1.8.0_191</p>
-</blockquote>
-<h3 id="开篇问题"><a href="#开篇问题" class="headerlink" title="开篇问题"></a>开篇问题</h3><p>我一直觉得技术是工具，是一定要落地的，要切实解决某些问题的，所以我们通过先抛出问题，然后解决这些问题，在这个过程中来加深理解，最容易有收获。 so，先抛出几个问题。（如果这些问题你早已思考过，答案也了然于胸，那恭喜你，这篇文章可以关掉了）。</p>
-<pre><code>* **为什么需要内部类？**
-* **为什么内部类（包括匿名内部类、局部内部类），会持有外部类的引用？**
-* **为什么匿名内部类使用到外部类方法中的局部变量时需要是final类型的？**
-* **如何创建内部类实例，如何继承内部类？**
-* **Lambda表达式是如何实现的？**</code></pre><h3 id="为什么需要内部类"><a href="#为什么需要内部类" class="headerlink" title="为什么需要内部类?"></a>为什么需要内部类?</h3><p>要回答这个问题，先要弄明白什么是内部类？我们知道Java有三种类型的内部类</p>
-<h3 id="普通的内部类"><a href="#普通的内部类" class="headerlink" title="普通的内部类"></a>普通的内部类</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">public class Demo &#123;</span><br><span class="line"></span><br><span class="line">    // 普通内部类</span><br><span class="line">    public class DemoRunnable implements Runnable &#123;</span><br><span class="line">        @Override</span><br><span class="line">        public void run() &#123;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<h3 id="匿名内部类"><a href="#匿名内部类" class="headerlink" title="匿名内部类"></a>匿名内部类</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">public class Demo &#123;</span><br><span class="line"></span><br><span class="line">    // 匿名内部类</span><br><span class="line">    private Runnable runnable = new Runnable() &#123;</span><br><span class="line">        @Override</span><br><span class="line">        public void run() &#123;</span><br><span class="line"></span><br><span class="line">        &#125;</span><br><span class="line">    &#125;;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<h3 id="方法内局部内部类"><a href="#方法内局部内部类" class="headerlink" title="方法内局部内部类"></a>方法内局部内部类</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">public class Demo &#123;</span><br><span class="line"></span><br><span class="line">    // 局部内部类</span><br><span class="line">    public void work() &#123;</span><br><span class="line">        class InnerRunnable implements Runnable &#123;</span><br><span class="line">            @Override</span><br><span class="line">            public void run() &#123;</span><br><span class="line"></span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        InnerRunnable runnable = new InnerRunnable();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>这三种形式的内部类，大家肯定都用过，但是技术在设计之初肯定也是要用来解决某个问题或者某个痛点，那可以想想内部类相对比外部定义类有什么优势呢？ 我们通过一个小例子来做说明</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line">public class Worker &#123;</span><br><span class="line">    private List&lt;Job&gt; mJobList = new ArrayList&lt;&gt;();</span><br><span class="line"></span><br><span class="line">    public void addJob(Runnable task) &#123;</span><br><span class="line">        mJobList.add(new Job(task));</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    private class Job implements Runnable &#123;</span><br><span class="line">        Runnable task;</span><br><span class="line">        public  Job(Runnable task) &#123;</span><br><span class="line">            this.task = task;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        @Override</span><br><span class="line">        public void run() &#123;</span><br><span class="line">            runnable.run();</span><br><span class="line">            System.out.println(&quot;left job size : &quot; + mJobList.size());</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>定义了一个Worker类，暴露了一个addJob方法，一个参数task，类型是Runnable，然后定义 了一个内部类Job类对task进行了一层封装，这里Job是私有的，所以外界是感知不到Job的存在的，所以有了内部类第一个优势。</p>
-<pre><code>* **内部类能够更好的封装，内聚，屏蔽细节**</code></pre><p>我们在Job的run方法中，打印了外部Worker的mJobList列表中剩余Job数量，代码这样写没问题，但是细想，内部类是如何拿到外部类的成员变量的呢？这里先卖个关子，但是已经可以先得出内部类的第二个优势了。</p>
-<pre><code>* **内部类天然有访问外部类成员变量的能力**</code></pre><p>内部类主要就是上面的二个优势。当然还有一些其他的小优点，比如可以用来实现多重继承，可以将逻辑内聚在一个类方便维护等，这些见仁见智，先不去说它们。</p>
-<p>我们接着看第二个问题！！！</p>
-<h3 id="为什么内部类（包括匿名内部类、局部内部类），会持有外部类的引用？"><a href="#为什么内部类（包括匿名内部类、局部内部类），会持有外部类的引用？" class="headerlink" title="为什么内部类（包括匿名内部类、局部内部类），会持有外部类的引用？"></a>为什么内部类（包括匿名内部类、局部内部类），会持有外部类的引用？</h3><p>问这个问题，显得我是个杠精，您先别着急，其实我想问的是，内部类Java是怎么实现的。 我们还是举例说明，先以普通的内部类为例</p>
-<h3 id="普通内部类的实现"><a href="#普通内部类的实现" class="headerlink" title="普通内部类的实现"></a>普通内部类的实现</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">public class Demo &#123;</span><br><span class="line">    // 普通内部类</span><br><span class="line">    public class DemoRunnable implements Runnable &#123;</span><br><span class="line">        @Override</span><br><span class="line">        public void run() &#123;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>切到Demo.java所在文件夹，命令行执行 javac Demo.java，在Demo类同目录下可以看到生成了二个class文件</p>
-<p><img src="https://user-gold-cdn.xitu.io/2019/6/18/16b67c1a51958f99?imageView2/0/w/1280/h/960/ignore-error/1" alt="普通内部类生成class.png"></p>
-<p>Demo.class很好理解，另一个 类</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">Demo$DemoRunnable.class</span><br></pre></td></tr></table></figure>
-
-<p>就是我们的内部类编译出来的，它的命名也是有规律的，外部类名Demo+$+内部类名DemoRunnable。 查看反编译后的代码（IntelliJ IDEA本身就支持，直接查看class文件即可）</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">package inner;</span><br><span class="line"></span><br><span class="line">public class Demo$DemoRunnable implements Runnable &#123;</span><br><span class="line">    public Demo$DemoRunnable(Demo var1) &#123;</span><br><span class="line">        this.this$0 = var1;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    public void run() &#123;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>生成的类只有一个构造器，参数就是Demo类型，而且保存到内部类本身的this$0字段中。到这里我们其实已经可以想到，内部类持有的外部类引用就是通过这个构造器传递进来的，它是一个强引用。</p>
-<h3 id="验证我们的想法"><a href="#验证我们的想法" class="headerlink" title="验证我们的想法"></a>验证我们的想法</h3><p>怎么验证呢？我们需要在Demo.class类中加一个方法，来实例化这个DemoRunnable内部类对象</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">// Demo.java</span><br><span class="line">    public void run() &#123;</span><br><span class="line">        DemoRunnable demoRunnable = new DemoRunnable();</span><br><span class="line">        demoRunnable.run();</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
-
-<p>再次执行 javac Demo.java，再执行javap -verbose Demo.class，查看Demo类的字节码，前方高能，需要一些字节码知识，这里我们重点关注run方法（插一句题外话，字节码简单的要能看懂，-。-）</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">public void run();</span><br><span class="line">    descriptor: ()V</span><br><span class="line">    flags: ACC_PUBLIC</span><br><span class="line">    Code:</span><br><span class="line">      stack=3, locals=2, args_size=1</span><br><span class="line">         0: new           #2                  // class inner/Demo$DemoRunnable</span><br><span class="line">         3: dup</span><br><span class="line">         4: aload_0</span><br><span class="line">         5: invokespecial #3                  // Method inner/Demo$DemoRunnable.&quot;&lt;init&gt;&quot;:(Linner/Demo;)V</span><br><span class="line">         8: astore_1</span><br><span class="line">         9: aload_1</span><br><span class="line">        10: invokevirtual #4                  // Method inner/Demo$DemoRunnable.run:()V</span><br><span class="line">        13: return</span><br></pre></td></tr></table></figure>
-
-<pre><code>* **先通过new指令，新建了一个Demo$DemoRunnable对象**
-* **aload_0指令将外部类Demo对象自身加载到栈帧中**
-* **调用Demo$DemoRunnable类的init方法，注意这里将Demo对象作为了参数传递进来了**</code></pre><p>到这一步其实已经很清楚了，就是将外部类对象自身作为参数传递给了内部类构造器，与我们上面的猜想一致。</p>
-<h3 id="匿名内部类的实现"><a href="#匿名内部类的实现" class="headerlink" title="匿名内部类的实现"></a>匿名内部类的实现</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">public class Demo &#123;</span><br><span class="line">    // 匿名内部类</span><br><span class="line">    private Runnable runnable = new Runnable() &#123;</span><br><span class="line">        @Override</span><br><span class="line">        public void run() &#123;</span><br><span class="line"></span><br><span class="line">        &#125;</span><br><span class="line">    &#125;;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>同样执行javac Demo.java，这次多生成了一个Demo$1.class，反编译查看代码</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">package inner;</span><br><span class="line"></span><br><span class="line">class Demo$1 implements Runnable &#123;</span><br><span class="line">    Demo$1(Demo var1) &#123;</span><br><span class="line">        this.this$0 = var1;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    public void run() &#123;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>可以看到匿名内部类和普通内部类实现基本一致，只是编译器自动给它拼了个名字，所以匿名内部类不能自定义构造器，因为名字编译完成后才能确定。 方法局部内部类，我这里就不赘述了，原理都是一样的，大家可以自行试验。 这样我们算是解答了第二个问题，来看第三个问题。</p>
-<h3 id="为什么匿名内部类使用到外部类方法中的局部变量时需要是final类型的？"><a href="#为什么匿名内部类使用到外部类方法中的局部变量时需要是final类型的？" class="headerlink" title="为什么匿名内部类使用到外部类方法中的局部变量时需要是final类型的？"></a>为什么匿名内部类使用到外部类方法中的局部变量时需要是final类型的？</h3><p>这里先申明一下，这个问题本身是有问题的，问题在哪呢？因为java8中并不一定需要声明为final。我们来看个例子</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">// Demo.java</span><br><span class="line">    public void run() &#123;</span><br><span class="line">        int age = 10;</span><br><span class="line">        Runnable runnable = new Runnable() &#123;</span><br><span class="line">            @Override</span><br><span class="line">            public void run() &#123;</span><br><span class="line">                int myAge = age + 1;</span><br><span class="line">                System.out.println(myAge);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
-
-<p>匿名内部类对象runnable，使用了外部类方法中的age局部变量。编译运行完全没问题，而age并没有final修饰啊！ 那我们再在run方法中，尝试修改age试试</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">public void run() &#123;</span><br><span class="line">        int age = 10;</span><br><span class="line">        Runnable runnable = new Runnable() &#123;</span><br><span class="line">            @Override</span><br><span class="line">            public void run() &#123;</span><br><span class="line">                int myAge = age + 1;</span><br><span class="line">                System.out.println(myAge);</span><br><span class="line">                age = 20;   // error</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
-
-<p><strong>编译器报错了，提示信息是”age is access from inner class, need to be final or effectively final“。很显然编译器很智能，由于我们第一个例子并没有修改age的值，所以编译器认为这是effectively final，是安全的，可以编译通过，而第二个例子尝试修改age的值，编译器立马就报错了。</strong></p>
-<h3 id="外部类变量是怎么传递给内部类的？"><a href="#外部类变量是怎么传递给内部类的？" class="headerlink" title="外部类变量是怎么传递给内部类的？"></a>外部类变量是怎么传递给内部类的？</h3><p>这里对于变量的类型分三种情况分别来说明</p>
-<h3 id="非final局部变量"><a href="#非final局部变量" class="headerlink" title="非final局部变量"></a>非final局部变量</h3><p>我们去掉尝试修改age的代码，然后执行javac Demo.java，查看Demo$1.class的实现代码</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">package inner;</span><br><span class="line"></span><br><span class="line">class Demo$1 implements Runnable &#123;</span><br><span class="line">    Demo$1(Demo var1, int var2) &#123;</span><br><span class="line">        this.this$0 = var1;</span><br><span class="line">        this.val$age = var2;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    public void run() &#123;</span><br><span class="line">        int var1 = this.val$age + 1;</span><br><span class="line">        System.out.println(var1);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>可以看到对于非final局部变量，是通过构造器的方式传递进来的。</p>
-<h3 id="final局部变量"><a href="#final局部变量" class="headerlink" title="final局部变量"></a>final局部变量</h3><p>age修改为final</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">public void run() &#123;</span><br><span class="line">        final int age = 10;</span><br><span class="line">        Runnable runnable = new Runnable() &#123;</span><br><span class="line">            @Override</span><br><span class="line">            public void run() &#123;</span><br><span class="line">                int myAge = age + 1;</span><br><span class="line">                System.out.println(myAge);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
-
-<p>同样执行javac Demo.java，查看Demo$1.class的实现代码</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">class Demo$1 implements Runnable &#123;</span><br><span class="line">    Demo$1(Demo var1) &#123;</span><br><span class="line">        this.this$0 = var1;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    public void run() &#123;</span><br><span class="line">        byte var1 = 11;</span><br><span class="line">        System.out.println(var1);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>可以看到编译器很聪明的做了优化，age是final的，所以在编译期间是确定的，直接将+1优化为11。 为了测试编译器的智商，我们把age的赋值修改一下，改为运行时才能确定的，看编译器如何应对</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">public void run() &#123;</span><br><span class="line">        final int age = (int) System.currentTimeMillis();</span><br><span class="line">        Runnable runnable = new Runnable() &#123;</span><br><span class="line">            @Override</span><br><span class="line">            public void run() &#123;</span><br><span class="line">                int myAge = age + 1;</span><br><span class="line">                System.out.println(myAge);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
-
-<p>再看Demo$1 字节码实现</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">class Demo$1 implements Runnable &#123;</span><br><span class="line">    Demo$1(Demo var1, int var2) &#123;</span><br><span class="line">        this.this$0 = var1;</span><br><span class="line">        this.val$age = var2;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    public void run() &#123;</span><br><span class="line">        int var1 = this.val$age + 1;</span><br><span class="line">        System.out.println(var1);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p><strong>编译器意识到编译期age的值不能确定，所以还是采用构造器传参的形式实现。现代编译器还是很机智的。</strong></p>
-<h3 id="外部类成员变量"><a href="#外部类成员变量" class="headerlink" title="外部类成员变量"></a>外部类成员变量</h3><p>将age改为Demo的成员变量，注意没有加任何修饰符，是包级访问级别。</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">public class Demo &#123;</span><br><span class="line">    int age = 10;</span><br><span class="line">    public void run() &#123;</span><br><span class="line">        Runnable runnable = new Runnable() &#123;</span><br><span class="line">            @Override</span><br><span class="line">            public void run() &#123;</span><br><span class="line">                int myAge = age + 1;</span><br><span class="line">                System.out.println(myAge);</span><br><span class="line">                age = 20;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>javac Demo.java，查看匿名内部内的实现</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">class Demo$1 implements Runnable &#123;</span><br><span class="line">    Demo$1(Demo var1) &#123;</span><br><span class="line">        this.this$0 = var1;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    public void run() &#123;</span><br><span class="line">        int var1 = this.this$0.age + 1;</span><br><span class="line">        System.out.println(var1);</span><br><span class="line">        this.this$0.age = 20;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>这一次编译器直接通过外部类的引用操作age，没毛病，由于age是包访问级别，所以这样是最高效的。 如果将age改为private，编译器会在Demo类中生成二个方法，分别用于读取age和设置age，篇幅关系，这种情况留给大家自行测试。</p>
-<h3 id="解答为何局部变量传递给匿名内部类需要是final"><a href="#解答为何局部变量传递给匿名内部类需要是final" class="headerlink" title="解答为何局部变量传递给匿名内部类需要是final?"></a>解答为何局部变量传递给匿名内部类需要是final?</h3><p><strong>通过上面的例子可以看到，不是一定需要局部变量是final的，但是你不能在匿名内部类中修改外部局部变量，因为Java对于匿名内部类传递变量的实现是基于构造器传参的，也就是说如果允许你在匿名内部类中修改值，你修改的是匿名内部类中的外部局部变量副本，最终并不会对外部类产生效果，因为已经是二个变量了。</strong> <strong>这样就会让程序员产生困扰，原以为修改会生效，事实上却并不会，所以Java就禁止在匿名内部类中修改外部局部变量。</strong></p>
-<h3 id="如何创建内部类实例，如何继承内部类？"><a href="#如何创建内部类实例，如何继承内部类？" class="headerlink" title="如何创建内部类实例，如何继承内部类？"></a>如何创建内部类实例，如何继承内部类？</h3><p>由于内部类对象需要持有外部类对象的引用，所以必须得先有外部类对象</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">Demo.DemoRunnable demoRunnable = new Demo().new DemoRunnable();</span><br></pre></td></tr></table></figure>
-
-<p>那如何继承一个内部类呢，先给出示例</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">public class Demo2 extends Demo.DemoRunnable &#123;</span><br><span class="line">        public Demo2(Demo demo) &#123;</span><br><span class="line">            demo.super();</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        @Override</span><br><span class="line">        public void run() &#123;</span><br><span class="line">            super.run();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
-
-<p>必须在构造器中传入一个Demo对象，并且还需要调用demo.super(); 看个例子</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">public class DemoKata &#123;</span><br><span class="line">    public static void main(String[] args) &#123;</span><br><span class="line">        Demo2 demo2 = new DemoKata().new Demo2(new Demo());</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    public class Demo2 extends Demo.DemoRunnable &#123;</span><br><span class="line">        public Demo2(Demo demo) &#123;</span><br><span class="line">            demo.super();</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        @Override</span><br><span class="line">        public void run() &#123;</span><br><span class="line">            super.run();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>由于Demo2也是一个内部类，所以需要先new一个DemoKata对象。 这一个问题描述的场景可能用的并不多，一般也不这么去用，这里提一下，大家知道有这么回事就行。</p>
-<h3 id="Lambda表达式是如何实现的？"><a href="#Lambda表达式是如何实现的？" class="headerlink" title="Lambda表达式是如何实现的？"></a>Lambda表达式是如何实现的？</h3><p>Java8引入了Lambda表达式，一定程度上可以简化我们的代码，使代码结构看起来更优雅。做技术的还是要有刨根问底的那股劲，问问自己有没有想过Java中Lambda到底是如何实现的呢？</p>
-<p>来看一个最简单的例子</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">public class Animal &#123;</span><br><span class="line">    public void run(Runnable runnable) &#123;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>Animal类中定义了一个run方法，参数是一个Runnable对象，Java8以前，我们可以传入一个匿名内部类对象</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">run(new Runnable() &#123;</span><br><span class="line">            @Override</span><br><span class="line">            public void run() &#123;</span><br><span class="line">            &#125;</span><br><span class="line">&#125;);</span><br></pre></td></tr></table></figure>
-
-<p>Java 8 之后编译器已经很智能的提示我们可以用Lambda表达式来替换。既然可以替换，那匿名内部类和Lambda表达式是不是底层实现是一样的呢，或者说Lambda表达式只是匿名内部类的语法糖呢？ 要解答这个问题，我们还是要去字节码中找线索。通过前面的知识，我们知道javac Animal.java命令将类编译成class，匿名内部类的方式会产生一个额外的类。那用Lambda表达式会不会也会编译新类呢？我们试一下便知。</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">public void run(Runnable runnable) &#123;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    public void test() &#123;</span><br><span class="line">        run(() -&gt; &#123;&#125;);</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
-
-<p>javac Animal.java，发现并没有生成额外的类！！！ 我们继续使用javap -verbose Animal.class来查看Animal.class的字节码实现，重点关注test方法</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line">public void test();</span><br><span class="line">    descriptor: ()V</span><br><span class="line">    flags: ACC_PUBLIC</span><br><span class="line">    Code:</span><br><span class="line">      stack=2, locals=1, args_size=1</span><br><span class="line">         0: aload_0</span><br><span class="line">         1: invokedynamic #2,  0              // InvokeDynamic #0:run:()Ljava/lang/Runnable;</span><br><span class="line">         6: invokevirtual #3                  // Method run:(Ljava/lang/Runnable;)V</span><br><span class="line">         9: return</span><br><span class="line"></span><br><span class="line">SourceFile: &quot;Demo.java&quot;</span><br><span class="line">InnerClasses:</span><br><span class="line">     public static final #34= #33 of #37; //Lookup=class java/lang/invoke/MethodHandles$Lookup of class java/lang/invoke/MethodHandles</span><br><span class="line">BootstrapMethods:</span><br><span class="line">  0: #18 invokestatic java/lang/invoke/LambdaMetafactory.metafactory:(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodHandle;Ljava/lang/invoke/MethodType;)Ljava/lang/invoke/CallSite;</span><br><span class="line">    Method arguments:</span><br><span class="line">      #19 ()V</span><br><span class="line">      #20 invokestatic com/company/inner/Demo.lambda$test$0:()V</span><br><span class="line">      #19 ()V</span><br></pre></td></tr></table></figure>
-
-<p>发现test方法字节码中多了一个invokedynamic /#2 0指令，这是java7引入的新指令，其中/#2 指向</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">#2 = InvokeDynamic      #0:#21         // #0:run:()Ljava/lang/Runnable;</span><br></pre></td></tr></table></figure>
-
-<p>而0代表BootstrapMethods方法表中的第一个，java/lang/invoke/LambdaMetafactory.metafactory方法被调用。</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">BootstrapMethods:</span><br><span class="line">  0: #18 invokestatic java/lang/invoke/LambdaMetafactory.metafactory:(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodHandle;Ljava/lang/invoke/MethodType;)Ljava/lang/invoke/CallSite;</span><br><span class="line">    Method arguments:</span><br><span class="line">      #19 ()V</span><br><span class="line">      #20 invokestatic com/company/inner/Demo.lambda$test$0:()V</span><br><span class="line">      #19 ()V</span><br></pre></td></tr></table></figure>
-
-<p>这里面我们看到了com/company/inner/Demo.lambda$test$0这么个东西，看起来跟我们的匿名内部类的名称有些类似，而且中间还有lambda，有可能就是我们要找的生成的类。 我们不妨验证下我们的想法，可以通过下面的代码打印出Lambda对象的真实类名。</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">public void run(Runnable runnable) &#123;</span><br><span class="line">        System.out.println(runnable.getClass().getCanonicalName());</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    public void test() &#123;</span><br><span class="line">        run(() -&gt; &#123;&#125;);</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
-
-<p>打印出runnable的类名，结果如下</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">com.company.inner.Demo$$Lambda$1/764977973</span><br></pre></td></tr></table></figure>
-
-<p>跟我们上面的猜测并不完全一致，我们继续找别的线索，既然我们有看到LambdaMetafactory.metafactory这个类被调用，不妨继续跟进看下它的实现</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">public static CallSite metafactory(MethodHandles.Lookup caller,</span><br><span class="line">                                       String invokedName,</span><br><span class="line">                                       MethodType invokedType,</span><br><span class="line">                                       MethodType samMethodType,</span><br><span class="line">                                       MethodHandle implMethod,</span><br><span class="line">                                       MethodType instantiatedMethodType)</span><br><span class="line">            throws LambdaConversionException &#123;</span><br><span class="line">        AbstractValidatingLambdaMetafactory mf;</span><br><span class="line">        mf = new InnerClassLambdaMetafactory(caller, invokedType,</span><br><span class="line">                                             invokedName, samMethodType,</span><br><span class="line">                                             implMethod, instantiatedMethodType,</span><br><span class="line">                                             false, EMPTY_CLASS_ARRAY, EMPTY_MT_ARRAY);</span><br><span class="line">        mf.validateMetafactoryArgs();</span><br><span class="line">        return mf.buildCallSite();</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
-
-<p>内部new了一个InnerClassLambdaMetafactory对象。看名字很可疑，继续跟进</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">public InnerClassLambdaMetafactory(...)</span><br><span class="line">            throws LambdaConversionException &#123;</span><br><span class="line">        //....</span><br><span class="line">        lambdaClassName = targetClass.getName().replace(&apos;.&apos;, &apos;/&apos;) + &quot;$$Lambda$&quot; + counter.incrementAndGet();</span><br><span class="line">        cw = new ClassWriter(ClassWriter.COMPUTE_MAXS);</span><br><span class="line">       //....</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
-
-<p>省略了很多代码，我们重点看lambdaClassName这个字符串（通过名字就知道是干啥的），可以看到它的拼接结果跟我们上面打印的Lambda类名基本一致。而下面的ClassWriter也暴露了，其实Lambda运用的是Asm字节码技术，在运行时生成类文件。我感觉到这里就差不多了，再往下可能就有点太过细节了。-。-</p>
-<h3 id="Lambda实现总结"><a href="#Lambda实现总结" class="headerlink" title="Lambda实现总结"></a>Lambda实现总结</h3><p>所以Lambda表达式并不是匿名内部类的语法糖，它是基于invokedynamic指令，在运行时使用ASM生成类文件来实现的。</p>
-<h3 id="写在最后"><a href="#写在最后" class="headerlink" title="写在最后"></a>写在最后</h3><p>这可能是我迄今写的最长的一篇技术文章了，写的过程中也在不断的加深自己对知识点的理解，颠覆了很多以往的错误认知。写技术文章这条路我会一直坚持下去。 非常喜欢得到里面的一句slogan，胡适先生说的话。 <strong>怕什么真理无穷，进一寸有一寸的欢喜</strong> 共勉!</p>
-
-      
-
-      
-    </div>
-    <div class="article-info article-info-index">
-      
-      
-	<div class="article-tag tagcloud">
-		<i class="icon-price-tags icon"></i>
-		<ul class="article-tag-list">
-			 
-        		<li class="article-tag-list-item">
-        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color5">Java</a>
-        		</li>
-      		
-		</ul>
-	</div>
-
-      
-
-      
-        <p class="article-more-link">
-          <a class="article-more-a" href="/2019/06/18/死磕Java内部类（一篇就够）/">展开全文 >></a>
-        </p>
-      
-
-      
-      <div class="clearfix"></div>
-    </div>
-  </div>
-</article>
-
-<aside class="wrap-side-operation">
-    <div class="mod-side-operation">
-        
-        <div class="jump-container" id="js-jump-container" style="display:none;">
-            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
-                <i class="icon-font icon-back"></i>
-            </a>
-            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
-                <i class="icon-font icon-plane jump-plane"></i>
-            </div>
-        </div>
-        
-        
-    </div>
-</aside>
-
-
-
-
-  
   
     <nav id="page-nav">
       <span class="page-number current">1</span><a class="page-number" href="/page/2/">2</a><a class="page-number" href="/page/3/">3</a><span class="space">&hellip;</span><a class="page-number" href="/page/5/">5</a><a class="extend next" rel="next" href="/page/2/">Next &raquo;</a>
@@ -1849,19 +1744,15 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
               </li>
              
               <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color2">Vue.js</a>
+              </li>
+             
+              <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color4">数据库</a>
               </li>
              
               <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color1">shiro</a>
-              </li>
-             
-              <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color2">Vue.js</a>
-              </li>
-             
-              <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color1">Redis</a>
               </li>
              
               <li class="article-tag-list-item">
@@ -1873,7 +1764,7 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
               </li>
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color4">JVM</a>
+                <a href="javascript:void(0)" class="js-tag color1">Redis</a>
               </li>
              
               <li class="article-tag-list-item">
@@ -1889,6 +1780,18 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
               </li>
              
               <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color3">架构</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color4">微服务</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color4">服务器</a>
+              </li>
+             
+              <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color3">算法</a>
               </li>
              
@@ -1897,15 +1800,7 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
               </li>
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color4">服务器</a>
-              </li>
-             
-              <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color3">架构</a>
-              </li>
-             
-              <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color4">微服务</a>
+                <a href="javascript:void(0)" class="js-tag color4">JVM</a>
               </li>
              
               <li class="article-tag-list-item">
