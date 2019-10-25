@@ -152,6 +152,188 @@
           <div id="js-content" class="content-ll">
             
   
+    <article id="post-拜托！面试请不要再问我SpringCloud底层原理" class="article article-type-post  article-index" itemscope itemprop="blogPost">
+  <div class="article-inner">
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2019/05/21/拜托！面试请不要再问我SpringCloud底层原理/">拜托！面试请不要再问我Spring Cloud底层原理</a>
+    </h1>
+  
+
+        
+        <a href="/2019/05/21/拜托！面试请不要再问我SpringCloud底层原理/" class="archive-article-date">
+  	<time datetime="2019-05-21T02:50:09.009Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2019-05-21</time>
+</a>
+        
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <blockquote>
+<p>本文转载自 <a href="https://juejin.im/post/5be13b83f265da6116393fc7" target="_blank" rel="noopener">https://juejin.im/post/5be13b83f265da6116393fc7</a><br>欢迎关注微信公众号：<strong>石杉的架构笔记（id：shishan100）</strong></p>
+</blockquote>
+<p>每周一至五早8点半，精品技术文章准时送上！</p>
+<h2 id="目录"><a href="#目录" class="headerlink" title="目录"></a>目录</h2><p><strong>一、业务场景介绍</strong></p>
+<p><strong>二、Spring Cloud核心组件：Eureka</strong></p>
+<p><strong>三、Spring Cloud核心组件：Feign</strong></p>
+<p><strong>四、Spring Cloud核心组件：Ribbon</strong></p>
+<p><strong>五、Spring Cloud核心组件：Hystrix</strong></p>
+<p><strong>六、Spring Cloud核心组件：Zuul</strong></p>
+<p><strong>七、总结</strong></p>
+<hr>
+<h2 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h2><p>毫无疑问，Spring Cloud是目前微服务架构领域的翘楚，无数的书籍博客都在讲解这个技术。不过大多数讲解还停留在对Spring Cloud功能使用的层面，其底层的很多原理，很多人可能并不知晓。<strong>因此本文将通过大量的手绘图</strong>，给大家谈谈Spring Cloud微服务架构的底层原理。</p>
+<p>实际上，Spring Cloud是一个全家桶式的技术栈，包含了很多组件。本文先从其最核心的几个组件入手，来剖析一下其底层的工作原理。<strong>也就是Eureka、Ribbon、Feign、Hystrix、Zuul这几个组件。</strong></p>
+<hr>
+<h2 id="一、业务场景介绍"><a href="#一、业务场景介绍" class="headerlink" title="一、业务场景介绍"></a>一、业务场景介绍</h2><p>先来给大家说一个业务场景，假设咱们现在开发一个电商网站，要实现支付订单的功能，流程如下：</p>
+<pre><code>* 创建一个订单后，如果用户立刻支付了这个订单，我们需要将订单状态更新为“已支付”
+* 扣减相应的商品库存
+* 通知仓储中心，进行发货
+* 给用户的这次购物增加相应的积分</code></pre><p>针对上述流程，<strong>我们需要有订单服务、库存服务、仓储服务、积分服务</strong>。整个流程的大体思路如下：</p>
+<pre><code>* 用户针对一个订单完成支付之后，就会去找订单服务，更新订单状态
+* 订单服务调用库存服务，完成相应功能
+* 订单服务调用仓储服务，完成相应功能
+* 订单服务调用积分服务，完成相应功能</code></pre><p><strong>至此，整个支付订单的业务流程结束</strong></p>
+<hr>
+<p>下图这张图，清晰表明了各服务间的调用过程：<br><img src="https://user-gold-cdn.xitu.io/2018/11/7/166ebffb48c481a3?imageView2/0/w/1280/h/960/ignore-error/1" alt></p>
+<p>好！有了业务场景之后，咱们就一起来看看Spring Cloud微服务架构中，这几个组件如何相互协作，各自发挥的作用以及其背后的原理。</p>
+<h2 id="二、Spring-Cloud核心组件：Eureka"><a href="#二、Spring-Cloud核心组件：Eureka" class="headerlink" title="二、Spring Cloud核心组件：Eureka"></a>二、Spring Cloud核心组件：Eureka</h2><p><strong>咱们来考虑第一个问题</strong>：订单服务想要调用库存服务、仓储服务，或者积分服务，怎么调用？</p>
+<pre><code>* 订单服务压根儿就不知道人家库存服务在哪台机器上啊！他就算想要发起一个请求，都不知道发送给谁，有心无力！
+* 这时候，就轮到Spring Cloud Eureka出场了。Eureka是微服务架构中的注册中心，专门负责服务的注册与发现。</code></pre><p>咱们来看看下面的这张图，结合图来仔细剖析一下整个流程：<br><img src="https://user-gold-cdn.xitu.io/2018/11/7/166ebffcb7ce31b8?imageView2/0/w/1280/h/960/ignore-error/1" alt></p>
+<p>如上图所示，库存服务、仓储服务、积分服务中都有一个<strong>Eureka Client组件，这个组件专门负责将这个服务的信息注册到Eureka Server中</strong>。说白了，就是告诉Eureka Server，自己在哪台机器上，监听着哪个端口。而<strong>Eureka Server是一个注册中心，里面有一个注册表，保存了各服务所在的机器和端口号</strong></p>
+<p>订单服务里也有一个Eureka Client组件，这个Eureka Client组件会找Eureka Server问一下：库存服务在哪台机器啊？监听着哪个端口啊？仓储服务呢？积分服务呢？然后就可以把这些相关信息从Eureka Server的注册表中拉取到自己本地缓存起来。</p>
+<p>这时如果订单服务想要调用库存服务，不就可以找自己本地的Eureka Client问一下库存服务在哪台机器？监听哪个端口吗？收到响应后，紧接着就可以发送一个请求过去，调用库存服务扣减库存的那个接口！同理，如果订单服务要调用仓储服务、积分服务，也是如法炮制。</p>
+<p>总结一下：</p>
+<pre><code>* **Eureka Client：**负责将这个服务的信息注册到Eureka Server中
+* **Eureka Server：**注册中心，里面有一个注册表，保存了各个服务所在的机器和端口号</code></pre><h2 id="三、Spring-Cloud核心组件：Feign"><a href="#三、Spring-Cloud核心组件：Feign" class="headerlink" title="三、Spring Cloud核心组件：Feign"></a>三、Spring Cloud核心组件：Feign</h2><p>现在订单服务确实知道库存服务、积分服务、仓库服务在哪里了，同时也监听着哪些端口号了。<strong>但是新问题又来了：难道订单服务要自己写一大堆代码，跟其他服务建立网络连接，然后构造一个复杂的请求，接着发送请求过去，最后对返回的响应结果再写一大堆代码来处理吗？</strong></p>
+<hr>
+<p>这是上述流程翻译的代码片段，咱们一起来看看，体会一下这种绝望而无助的感受！！！</p>
+<p><strong>友情提示，前方高能：</strong><br><img src="https://user-gold-cdn.xitu.io/2018/11/7/166ebced960f2024?imageView2/0/w/1280/h/960/ignore-error/1" alt><br><a href></a></p>
+<p><a href></a></p>
+<p>看完上面那一大段代码，有没有感到后背发凉、一身冷汗？实际上你进行服务间调用时，如果每次都手写代码，代码量比上面那段要多至少几倍，所以这个事压根儿就不是地球人能干的。</p>
+<p>既然如此，那怎么办呢？别急，Feign早已为我们提供好了优雅的解决方案。来看看如果用Feign的话，你的订单服务调用库存服务的代码会变成啥样？<br><img src="https://user-gold-cdn.xitu.io/2018/11/7/166ebcf01b773dd4?imageView2/0/w/1280/h/960/ignore-error/1" alt><br><a href></a></p>
+<p><a href></a></p>
+<p>看完上面的代码什么感觉？是不是感觉整个世界都干净了，又找到了活下去的勇气！没有底层的建立连接、构造请求、解析响应的代码，直接就是用注解定义一个 FeignClient接口，然后调用那个接口就可以了。人家Feign Client会在底层根据你的注解，跟你指定的服务建立连接、构造请求、发起靕求、获取响应、解析响应，等等。这一系列脏活累活，人家Feign全给你干了。</p>
+<p>那么问题来了，Feign是如何做到这么神奇的呢？很简单，<strong>Feign的一个关键机制就是使用了动态代理</strong>。咱们一起来看看下面的图，结合图来分析：</p>
+<pre><code>* 首先，如果你对某个接口定义了@FeignClient注解，Feign就会针对这个接口创建一个动态代理
+* 接着你要是调用那个接口，本质就是会调用 Feign创建的动态代理，这是核心中的核心
+* Feign的动态代理会根据你在接口上的@RequestMapping等注解，来动态构造出你要请求的服务的地址
+* 最后针对这个地址，发起请求、解析响应</code></pre><p><img src="https://user-gold-cdn.xitu.io/2018/11/7/166ebfff505b2a20?imageView2/0/w/1280/h/960/ignore-error/1" alt><br><a href></a></p>
+<p><a href></a></p>
+<h2 id="四、Spring-Cloud核心组件：Ribbon"><a href="#四、Spring-Cloud核心组件：Ribbon" class="headerlink" title="四、Spring Cloud核心组件：Ribbon"></a>四、Spring Cloud核心组件：Ribbon</h2><p>说完了Feign，还没完。现在新的问题又来了，如果人家库存服务部署在了5台机器上，如下所示：</p>
+<pre><code>* 192.168.169:9000
+* 192.168.170:9000
+* 192.168.171:9000
+* 192.168.172:9000
+* 192.168.173:9000</code></pre><p><strong>这下麻烦了！人家Feign怎么知道该请求哪台机器呢？</strong></p>
+<pre><code>* 这时Spring Cloud Ribbon就派上用场了。Ribbon就是专门解决这个问题的。它的作用是**负载均衡**，会帮你在每次请求时选择一台机器，均匀的把请求分发到各个机器上
+* Ribbon的负载均衡默认使用的最经典的**Round Robin轮询算法**。这是啥？简单来说，就是如果订单服务对库存服务发起10次请求，那就先让你请求第1台机器、然后是第2台机器、第3台机器、第4台机器、第5台机器，接着再来—个循环，第1台机器、第2台机器。。。以此类推。</code></pre><p><strong>此外，Ribbon是和Feign以及Eureka紧密协作，完成工作的，具体如下：</strong></p>
+<pre><code>* 首先Ribbon会从 Eureka Client里获取到对应的服务注册表，也就知道了所有的服务都部署在了哪些机器上，在监听哪些端口号。
+* 然后Ribbon就可以使用默认的Round Robin算法，从中选择一台机器
+* Feign就会针对这台机器，构造并发起请求。</code></pre><p>对上述整个过程，再来一张图，帮助大家更深刻的理解：<br><img src="https://user-gold-cdn.xitu.io/2018/11/7/166ec001dc155e98?imageView2/0/w/1280/h/960/ignore-error/1" alt><br><a href></a></p>
+<p><a href></a></p>
+<hr>
+<h2 id="五、Spring-Cloud核心组件：Hystrix"><a href="#五、Spring-Cloud核心组件：Hystrix" class="headerlink" title="五、Spring Cloud核心组件：Hystrix"></a>五、Spring Cloud核心组件：Hystrix</h2><p>在微服务架构里，一个系统会有很多的服务。<strong>以本文的业务场景为例</strong>：订单服务在一个业务流程里需要调用三个服务。现在假设订单服务自己最多只有100个线程可以处理请求，然后呢，积分服务不幸的挂了，每次订单服务调用积分服务的时候，都会卡住几秒钟，然后抛出—个超时异常。</p>
+<p><strong>咱们一起来分析一下，这样会导致什么问题？</strong></p>
+<pre><code>1. 如果系统处于高并发的场景下，大量请求涌过来的时候，订单服务的100个线程都会卡在请求积分服务这块。导致订单服务没有一个线程可以处理请求
+1. 然后就会导致别人请求订单服务的时候，发现订单服务也挂了，不响应任何请求了</code></pre><p>上面这个，就是<strong>微服务架构中恐怖的服务雪崩问题</strong>，如下图所示：<br><img src="https://user-gold-cdn.xitu.io/2018/11/7/166ec0033f64a0a7?imageView2/0/w/1280/h/960/ignore-error/1" alt></p>
+<p>如上图，这么多服务互相调用，要是不做任何保护的话，某一个服务挂了，就会引起连锁反应，导致别的服务也挂。比如积分服务挂了，会导致订单服务的线程全部卡在请求积分服务这里，没有一个线程可以工作，瞬间导致订单服务也挂了，别人请求订单服务全部会卡住，无法响应。</p>
+<p><strong>但是我们思考一下，就算积分服务挂了，订单服务也可以不用挂啊！为什么？</strong></p>
+<pre><code>* 我们结合业务来看：支付订单的时候，只要把库存扣减了，然后通知仓库发货就OK了
+* 如果积分服务挂了，大不了等他恢复之后，慢慢人肉手工恢复数据！为啥一定要因为一个积分服务挂了，就直接导致订单服务也挂了呢？不可以接受！</code></pre><p><strong>现在问题分析完了，如何解决？</strong></p>
+<p>这时就轮到Hystrix闪亮登场了。Hystrix是隔离、熔断以及降级的一个框架。啥意思呢？说白了，<strong>Hystrix会搞很多个小小的线程池</strong>，比如订单服务请求库存服务是一个线程池，请求仓储服务是一个线程池，请求积分服务是一个线程池。每个线程池里的线程就仅仅用于请求那个服务。</p>
+<p><strong>打个比方：现在很不幸，积分服务挂了，会咋样？</strong></p>
+<p>当然会导致订单服务里那个用来调用积分服务的线程都卡死不能工作了啊！但由于订单服务调用库存服务、仓储服务的这两个线程池都是正常工作的，所以这两个服务不会受到任何影响。</p>
+<p>这个时候如果别人请求订单服务，订单服务还是可以正常调用库存服务扣减库存，调用仓储服务通知发货。只不过调用积分服务的时候，每次都会报错。<strong>但是如果积分服务都挂了，每次调用都要去卡住几秒钟干啥呢？有意义吗？当然没有！</strong>所以我们直接对积分服务熔断不就得了，比如在5分钟内请求积分服务直接就返回了，不要去走网络请求卡住几秒钟，<strong>这个过程，就是所谓的熔断！</strong></p>
+<hr>
+<p><strong>那人家又说，兄弟，积分服务挂了你就熔断，好歹你干点儿什么啊！别啥都不干就直接返回啊？</strong>没问题，咱们就来个降级：每次调用积分服务，你就在数据库里记录一条消息，说给某某用户增加了多少积分，因为积分服务挂了，导致没增加成功！这样等积分服务恢复了，你可以根据这些记录手工加一下积分。<strong>这个过程，就是所谓的降级。</strong></p>
+<hr>
+<p>为帮助大家更直观的理解，接下来用一张图，梳理一下Hystrix隔离、熔断和降级的全流程：<br><img src="https://user-gold-cdn.xitu.io/2018/11/7/166ec004edf94426?imageView2/0/w/1280/h/960/ignore-error/1" alt><br><a href></a></p>
+<p><a href></a></p>
+<h2 id="六、Spring-Cloud核心组件：Zuul"><a href="#六、Spring-Cloud核心组件：Zuul" class="headerlink" title="六、Spring Cloud核心组件：Zuul"></a>六、Spring Cloud核心组件：Zuul</h2><p>说完了Hystrix，接着给大家说说最后一个组件：Zuul，也就是微服务网关。<strong>这个组件是负责网络路由的。</strong>不懂网络路由？行，那我给你说说，如果没有Zuul的日常工作会怎样？</p>
+<p>假设你后台部署了几百个服务，现在有个前端兄弟，人家请求是直接从浏览器那儿发过来的。<strong>打个比方</strong>：人家要请求一下库存服务，你难道还让人家记着这服务的名字叫做inventory-service？部署在5台机器上？就算人家肯记住这一个，你后台可有几百个服务的名称和地址呢？难不成人家请求一个，就得记住一个？你要这样玩儿，那真是友谊的小船，说翻就翻！</p>
+<p>上面这种情况，压根儿是不现实的。所以一般微服务架构中都必然会设计一个网关在里面，像android、ios、pc前端、微信小程序、H5等等，不用去关心后端有几百个服务，就知道有一个网关，所有请求都往网关走，网关会根据请求中的一些特征，将请求转发给后端的各个服务。</p>
+<p>而且有一个网关之后，还有很多好处，比如可以做<strong>统一的降级、限流、认证授权、安全</strong>，等等。</p>
+<h2 id="七、总结："><a href="#七、总结：" class="headerlink" title="七、总结："></a>七、总结：</h2><p>最后再来总结一下，上述几个Spring Cloud核心组件，在微服务架构中，分别扮演的角色：</p>
+<pre><code>* **Eureka**：各个服务启动时，Eureka Client都会将服务注册到Eureka Server，并且Eureka Client还可以反过来从Eureka Server拉取注册表，从而知道其他服务在哪里
+* **Ribbon**：服务间发起请求的时候，基于Ribbon做负载均衡，从一个服务的多台机器中选择一台
+* **Feign**：基于Feign的动态代理机制，根据注解和选择的机器，拼接请求URL地址，发起请求
+* **Hystrix**：发起请求是通过Hystrix的线程池来走的，不同的服务走不同的线程池，实现了不同服务调用的隔离，避免了服务雪崩的问题
+* **Zuul**：如果前端、移动端要调用后端系统，统一从Zuul网关进入，由Zuul网关转发请求给对应的服务</code></pre><p>以上就是我们通过一个电商业务场景，阐述了Spring Cloud微服务架构几个核心组件的底层原理。</p>
+<p><strong>文字总结还不够直观？没问题！</strong>我们将Spring Cloud的5个核心组件通过一张图串联起来，再来直观的感受一下其底层的架构原理：<br><img src="https://user-gold-cdn.xitu.io/2018/11/7/166ec006b1536f43?imageView2/0/w/1280/h/960/ignore-error/1" alt><br><a href></a></p>
+<p><a href></a></p>
+<p>如有收获，请帮忙转发，您的鼓励是作者最大的动力，谢谢！</p>
+<p><img src="https://user-gold-cdn.xitu.io/2018/11/6/166e9511e7162c8b?imageView2/0/w/1280/h/960/ignore-error/1" alt></p>
+<p>Spring Cloud原创系列文章，将会持续更新</p>
+<p>欢迎关注微信公众号：<strong>石杉的架构笔记（id:shishan100）</strong></p>
+<p>十余年<strong>BAT架构经验</strong>倾囊相授</p>
+
+      
+
+      
+    </div>
+    <div class="article-info article-info-index">
+      
+      
+	<div class="article-tag tagcloud">
+		<i class="icon-price-tags icon"></i>
+		<ul class="article-tag-list">
+			 
+        		<li class="article-tag-list-item">
+        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color2">Spring</a>
+        		</li>
+      		 
+        		<li class="article-tag-list-item">
+        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color4">服务器</a>
+        		</li>
+      		 
+        		<li class="article-tag-list-item">
+        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color3">架构</a>
+        		</li>
+      		 
+        		<li class="article-tag-list-item">
+        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color4">微服务</a>
+        		</li>
+      		
+		</ul>
+	</div>
+
+      
+
+      
+        <p class="article-more-link">
+          <a class="article-more-a" href="/2019/05/21/拜托！面试请不要再问我SpringCloud底层原理/">展开全文 >></a>
+        </p>
+      
+
+      
+      <div class="clearfix"></div>
+    </div>
+  </div>
+</article>
+
+<aside class="wrap-side-operation">
+    <div class="mod-side-operation">
+        
+        <div class="jump-container" id="js-jump-container" style="display:none;">
+            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
+                <i class="icon-font icon-back"></i>
+            </a>
+            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
+                <i class="icon-font icon-plane jump-plane"></i>
+            </div>
+        </div>
+        
+        
+    </div>
+</aside>
+
+
+
+
+  
     <article id="post-用大白话告诉你小白都能看懂的Hadoop架构原理" class="article article-type-post  article-index" itemscope itemprop="blogPost">
   <div class="article-inner">
     
@@ -2553,140 +2735,6 @@ future.complete();
 
 
   
-    <article id="post-死磕java并发包之LongAdder源码分析" class="article article-type-post  article-index" itemscope itemprop="blogPost">
-  <div class="article-inner">
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2019/05/13/死磕java并发包之LongAdder源码分析/">死磕 java并发包之LongAdder源码分析</a>
-    </h1>
-  
-
-        
-        <a href="/2019/05/13/死磕java并发包之LongAdder源码分析/" class="archive-article-date">
-  	<time datetime="2019-05-13T03:14:06.006Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2019-05-13</time>
-</a>
-        
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <blockquote>
-<p>本文转载自 <a href="https://juejin.im/post/5cd842aa6fb9a032332b4bb8" target="_blank" rel="noopener">https://juejin.im/post/5cd842aa6fb9a032332b4bb8</a> </p>
-</blockquote>
-<h2 id="问题"><a href="#问题" class="headerlink" title="问题"></a>问题</h2><p>（1）java8中为什么要新增LongAdder？</p>
-<p>（2）LongAdder的实现方式？</p>
-<p>（3）LongAdder与AtomicLong的对比？</p>
-<h2 id="简介"><a href="#简介" class="headerlink" title="简介"></a>简介</h2><p>LongAdder是java8中新增的原子类，在多线程环境中，它比AtomicLong性能要高出不少，特别是写多的场景。</p>
-<p>它是怎么实现的呢？让我们一起来学习吧。</p>
-<h2 id="原理"><a href="#原理" class="headerlink" title="原理"></a>原理</h2><p>LongAdder的原理是，在最初无竞争时，只更新base的值，当有多线程竞争时通过分段的思想，让不同的线程更新不同的段，最后把这些段相加就得到了完整的LongAdder存储的值。</p>
-<p><img src="https://gitee.com/alan-tang-tt/yuan/raw/master/%E6%AD%BB%E7%A3%95%20java%E5%B9%B6%E5%8F%91%E5%8C%85/resource/LongAdder1.png" alt="LongAdder"></p>
-<h2 id="源码分析"><a href="#源码分析" class="headerlink" title="源码分析"></a>源码分析</h2><p>LongAdder继承自Striped64抽象类，Striped64中定义了Cell内部类和各重要属性。</p>
-<h3 id="主要内部类"><a href="#主要内部类" class="headerlink" title="主要内部类"></a>主要内部类</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line">// Striped64中的内部类，使用@sun.misc.Contended注解，说明里面的值消除伪共享</span><br><span class="line">@sun.misc.Contended static final class Cell &#123;</span><br><span class="line">    // 存储元素的值，使用volatile修饰保证可见性</span><br><span class="line">    volatile long value;</span><br><span class="line">    Cell(long x) &#123; value = x; &#125;</span><br><span class="line">    // CAS更新value的值</span><br><span class="line">    final boolean cas(long cmp, long val) &#123;</span><br><span class="line">        return UNSAFE.compareAndSwapLong(this, valueOffset, cmp, val);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    // Unsafe实例</span><br><span class="line">    private static final sun.misc.Unsafe UNSAFE;</span><br><span class="line">    // value字段的偏移量</span><br><span class="line">    private static final long valueOffset;</span><br><span class="line">    static &#123;</span><br><span class="line">        try &#123;</span><br><span class="line">            UNSAFE = sun.misc.Unsafe.getUnsafe();</span><br><span class="line">            Class&lt;?&gt; ak = Cell.class;</span><br><span class="line">            valueOffset = UNSAFE.objectFieldOffset</span><br><span class="line">                (ak.getDeclaredField(&quot;value&quot;));</span><br><span class="line">        &#125; catch (Exception e) &#123;</span><br><span class="line">            throw new Error(e);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>Cell类使用@sun.misc.Contended注解，说明是要避免伪共享的。</p>
-<p>使用Unsafe的CAS更新value的值，其中value的值使用volatile修饰，保证可见性。</p>
-<p>关于Unsafe的介绍请查看【<a href="https://link.juejin.im?target=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2F0s-u-MysppIaIHVrshp9fA" target="_blank" rel="noopener">死磕 java魔法类之Unsafe解析</a>】。</p>
-<p>关于伪共享的介绍请查看【<a href="https://link.juejin.im?target=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2Frd13SOSxhLA6TT13N9ni8Q" target="_blank" rel="noopener">杂谈 什么是伪共享（false sharing）？</a>】。</p>
-<h3 id="主要属性"><a href="#主要属性" class="headerlink" title="主要属性"></a>主要属性</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">// 这三个属性都在Striped64中</span><br><span class="line">// cells数组，存储各个段的值</span><br><span class="line">transient volatile Cell[] cells;</span><br><span class="line">// 最初无竞争时使用的，也算一个特殊的段</span><br><span class="line">transient volatile long base;</span><br><span class="line">// 标记当前是否有线程在创建或扩容cells，或者在创建Cell</span><br><span class="line">// 通过CAS更新该值，相当于是一个锁</span><br><span class="line">transient volatile int cellsBusy;</span><br></pre></td></tr></table></figure>
-
-<p>最初无竞争或有其它线程在创建cells数组时使用base更新值，有过竞争时使用cells更新值。</p>
-<p>最初无竞争是指一开始没有线程之间的竞争，但也有可能是多线程在操作，只是这些线程没有同时去更新base的值。</p>
-<p>有过竞争是指只要出现过竞争不管后面有没有竞争都使用cells更新值，规则是不同的线程hash到不同的cell上去更新，减少竞争。</p>
-<h3 id="add-x-方法"><a href="#add-x-方法" class="headerlink" title="add(x)方法"></a>add(x)方法</h3><p>add(x)方法是LongAdder的主要方法，使用它可以使LongAdder中存储的值增加x，x可为正可为负。</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line">public void add(long x) &#123;</span><br><span class="line">    // as是Striped64中的cells属性</span><br><span class="line">    // b是Striped64中的base属性</span><br><span class="line">    // v是当前线程hash到的Cell中存储的值</span><br><span class="line">    // m是cells的长度减1，hash时作为掩码使用</span><br><span class="line">    // a是当前线程hash到的Cell</span><br><span class="line">    Cell[] as; long b, v; int m; Cell a;</span><br><span class="line">    // 条件1：cells不为空，说明出现过竞争，cells已经创建</span><br><span class="line">    // 条件2：cas操作base失败，说明其它线程先一步修改了base，正在出现竞争</span><br><span class="line">    if ((as = cells) != null || !casBase(b = base, b + x)) &#123;</span><br><span class="line">        // true表示当前竞争还不激烈</span><br><span class="line">        // false表示竞争激烈，多个线程hash到同一个Cell，可能要扩容</span><br><span class="line">        boolean uncontended = true;</span><br><span class="line">        // 条件1：cells为空，说明正在出现竞争，上面是从条件2过来的</span><br><span class="line">        // 条件2：应该不会出现</span><br><span class="line">        // 条件3：当前线程所在的Cell为空，说明当前线程还没有更新过Cell，应初始化一个Cell</span><br><span class="line">        // 条件4：更新当前线程所在的Cell失败，说明现在竞争很激烈，多个线程hash到了同一个Cell，应扩容</span><br><span class="line">        if (as == null || (m = as.length - 1) &lt; 0 ||</span><br><span class="line">            // getProbe()方法返回的是线程中的threadLocalRandomProbe字段</span><br><span class="line">            // 它是通过随机数生成的一个值，对于一个确定的线程这个值是固定的</span><br><span class="line">            // 除非刻意修改它</span><br><span class="line">            (a = as[getProbe() &amp;amp; m]) == null ||</span><br><span class="line">            !(uncontended = a.cas(v = a.value, v + x)))</span><br><span class="line">            // 调用Striped64中的方法处理</span><br><span class="line">            longAccumulate(x, null, uncontended);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>（1）最初无竞争时只更新base；</p>
-<p>（2）直到更新base失败时，创建cells数组；</p>
-<p>（3）当多个线程竞争同一个Cell比较激烈时，可能要扩容；</p>
-<h2 id="longAccumulate-方法"><a href="#longAccumulate-方法" class="headerlink" title="longAccumulate()方法"></a>longAccumulate()方法</h2><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br></pre></td><td class="code"><pre><span class="line">final void longAccumulate(long x, LongBinaryOperator fn,</span><br><span class="line">                              boolean wasUncontended) &#123;</span><br><span class="line">    // 存储线程的probe值</span><br><span class="line">    int h;</span><br><span class="line">    // 如果getProbe()方法返回0，说明随机数未初始化</span><br><span class="line">    if ((h = getProbe()) == 0) &#123;</span><br><span class="line">        // 强制初始化</span><br><span class="line">        ThreadLocalRandom.current(); // force initialization</span><br><span class="line">        // 重新获取probe值</span><br><span class="line">        h = getProbe();</span><br><span class="line">        // 都未初始化，肯定还不存在竞争激烈</span><br><span class="line">        wasUncontended = true;</span><br><span class="line">    &#125;</span><br><span class="line">    // 是否发生碰撞</span><br><span class="line">    boolean collide = false;                // True if last slot nonempty</span><br><span class="line">    for (;;) &#123;</span><br><span class="line">        Cell[] as; Cell a; int n; long v;</span><br><span class="line">        // cells已经初始化过</span><br><span class="line">        if ((as = cells) != null &amp;amp;&amp;amp; (n = as.length) &gt; 0) &#123;</span><br><span class="line">            // 当前线程所在的Cell未初始化</span><br><span class="line">            if ((a = as[(n - 1) &amp;amp; h]) == null) &#123;</span><br><span class="line">                // 当前无其它线程在创建或扩容cells，也没有线程在创建Cell</span><br><span class="line">                if (cellsBusy == 0) &#123;       // Try to attach new Cell</span><br><span class="line">                    // 新建一个Cell，值为当前需要增加的值</span><br><span class="line">                    Cell r = new Cell(x);   // Optimistically create</span><br><span class="line">                    // 再次检测cellsBusy，并尝试更新它为1</span><br><span class="line">                    // 相当于当前线程加锁</span><br><span class="line">                    if (cellsBusy == 0 &amp;amp;&amp;amp; casCellsBusy()) &#123;</span><br><span class="line">                        // 是否创建成功</span><br><span class="line">                        boolean created = false;</span><br><span class="line">                        try &#123;               // Recheck under lock</span><br><span class="line">                            Cell[] rs; int m, j;</span><br><span class="line">                            // 重新获取cells，并找到当前线程hash到cells数组中的位置</span><br><span class="line">                            // 这里一定要重新获取cells，因为as并不在锁定范围内</span><br><span class="line">                            // 有可能已经扩容了，这里要重新获取</span><br><span class="line">                            if ((rs = cells) != null &amp;amp;&amp;amp;</span><br><span class="line">                                (m = rs.length) &gt; 0 &amp;amp;&amp;amp;</span><br><span class="line">                                rs[j = (m - 1) &amp;amp; h] == null) &#123;</span><br><span class="line">                                // 把上面新建的Cell放在cells的j位置处</span><br><span class="line">                                rs[j] = r;</span><br><span class="line">                                // 创建成功</span><br><span class="line">                                created = true;</span><br><span class="line">                            &#125;</span><br><span class="line">                        &#125; finally &#123;</span><br><span class="line">                            // 相当于释放锁</span><br><span class="line">                            cellsBusy = 0;</span><br><span class="line">                        &#125;</span><br><span class="line">                        // 创建成功了就返回</span><br><span class="line">                        // 值已经放在新建的Cell里面了</span><br><span class="line">                        if (created)</span><br><span class="line">                            break;</span><br><span class="line">                        continue;           // Slot is now non-empty</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125;</span><br><span class="line">                // 标记当前未出现冲突</span><br><span class="line">                collide = false;</span><br><span class="line">            &#125;</span><br><span class="line">            // 当前线程所在的Cell不为空，且更新失败了</span><br><span class="line">            // 这里简单地设为true，相当于简单地自旋一次</span><br><span class="line">            // 通过下面的语句修改线程的probe再重新尝试</span><br><span class="line">            else if (!wasUncontended)       // CAS already known to fail</span><br><span class="line">                wasUncontended = true;      // Continue after rehash</span><br><span class="line">            // 再次尝试CAS更新当前线程所在Cell的值，如果成功了就返回</span><br><span class="line">            else if (a.cas(v = a.value, ((fn == null) ? v + x :</span><br><span class="line">                                         fn.applyAsLong(v, x))))</span><br><span class="line">                break;</span><br><span class="line">            // 如果cells数组的长度达到了CPU核心数，或者cells扩容了</span><br><span class="line">            // 设置collide为false并通过下面的语句修改线程的probe再重新尝试</span><br><span class="line">            else if (n &gt;= NCPU || cells != as)</span><br><span class="line">                collide = false;            // At max size or stale</span><br><span class="line">            // 上上个elseif都更新失败了，且上个条件不成立，说明出现冲突了</span><br><span class="line">            else if (!collide)</span><br><span class="line">                collide = true;</span><br><span class="line">            // 明确出现冲突了，尝试占有锁，并扩容</span><br><span class="line">            else if (cellsBusy == 0 &amp;amp;&amp;amp; casCellsBusy()) &#123;</span><br><span class="line">                try &#123;</span><br><span class="line">                    // 检查是否有其它线程已经扩容过了</span><br><span class="line">                    if (cells == as) &#123;      // Expand table unless stale</span><br><span class="line">                        // 新数组为原数组的两倍</span><br><span class="line">                        Cell[] rs = new Cell[n &lt;&lt; 1];</span><br><span class="line">                        // 把旧数组元素拷贝到新数组中</span><br><span class="line">                        for (int i = 0; i &lt; n; ++i)</span><br><span class="line">                            rs[i] = as[i];</span><br><span class="line">                        // 重新赋值cells为新数组</span><br><span class="line">                        cells = rs;</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125; finally &#123;</span><br><span class="line">                    // 释放锁</span><br><span class="line">                    cellsBusy = 0;</span><br><span class="line">                &#125;</span><br><span class="line">                // 已解决冲突</span><br><span class="line">                collide = false;</span><br><span class="line">                // 使用扩容后的新数组重新尝试</span><br><span class="line">                continue;                   // Retry with expanded table</span><br><span class="line">            &#125;</span><br><span class="line">            // 更新失败或者达到了CPU核心数，重新生成probe，并重试</span><br><span class="line">            h = advanceProbe(h);</span><br><span class="line">        &#125;</span><br><span class="line">        // 未初始化过cells数组，尝试占有锁并初始化cells数组</span><br><span class="line">        else if (cellsBusy == 0 &amp;amp;&amp;amp; cells == as &amp;amp;&amp;amp; casCellsBusy()) &#123;</span><br><span class="line">            // 是否初始化成功</span><br><span class="line">            boolean init = false;</span><br><span class="line">            try &#123;                           // Initialize table</span><br><span class="line">                // 检测是否有其它线程初始化过</span><br><span class="line">                if (cells == as) &#123;</span><br><span class="line">                    // 新建一个大小为2的Cell数组</span><br><span class="line">                    Cell[] rs = new Cell[2];</span><br><span class="line">                    // 找到当前线程hash到数组中的位置并创建其对应的Cell</span><br><span class="line">                    rs[h &amp;amp; 1] = new Cell(x);</span><br><span class="line">                    // 赋值给cells数组</span><br><span class="line">                    cells = rs;</span><br><span class="line">                    // 初始化成功</span><br><span class="line">                    init = true;</span><br><span class="line">                &#125;</span><br><span class="line">            &#125; finally &#123;</span><br><span class="line">                // 释放锁</span><br><span class="line">                cellsBusy = 0;</span><br><span class="line">            &#125;</span><br><span class="line">            // 初始化成功直接返回</span><br><span class="line">            // 因为增加的值已经同时创建到Cell中了</span><br><span class="line">            if (init)</span><br><span class="line">                break;</span><br><span class="line">        &#125;</span><br><span class="line">        // 如果有其它线程在初始化cells数组中，就尝试更新base</span><br><span class="line">        // 如果成功了就返回</span><br><span class="line">        else if (casBase(v = base, ((fn == null) ? v + x :</span><br><span class="line">                                    fn.applyAsLong(v, x))))</span><br><span class="line">            break;                          // Fall back on using base</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>（1）如果cells数组未初始化，当前线程会尝试占有cellsBusy锁并创建cells数组；</p>
-<p>（2）如果当前线程尝试创建cells数组时，发现有其它线程已经在创建了，就尝试更新base，如果成功就返回；</p>
-<p>（3）通过线程的probe值找到当前线程应该更新cells数组中的哪个Cell；</p>
-<p>（4）如果当前线程所在的Cell未初始化，就占有占有cellsBusy锁并在相应的位置创建一个Cell；</p>
-<p>（5）尝试CAS更新当前线程所在的Cell，如果成功就返回，如果失败说明出现冲突；</p>
-<p>（5）当前线程更新Cell失败后并不是立即扩容，而是尝试更新probe值后再重试一次；</p>
-<p>（6）如果在重试的时候还是更新失败，就扩容；</p>
-<p>（7）扩容时当前线程占有cellsBusy锁，并把数组容量扩大到两倍，再迁移原cells数组中元素到新数组中；</p>
-<p>（8）cellsBusy在创建cells数组、创建Cell、扩容cells数组三个地方用到；</p>
-<h2 id="sum-方法"><a href="#sum-方法" class="headerlink" title="sum()方法"></a>sum()方法</h2><p>sum()方法是获取LongAdder中真正存储的值的大小，通过把base和所有段相加得到。</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">public long sum() &#123;</span><br><span class="line">    Cell[] as = cells; Cell a;</span><br><span class="line">    // sum初始等于base</span><br><span class="line">    long sum = base;</span><br><span class="line">    // 如果cells不为空</span><br><span class="line">    if (as != null) &#123;</span><br><span class="line">        // 遍历所有的Cell</span><br><span class="line">        for (int i = 0; i &lt; as.length; ++i) &#123;</span><br><span class="line">            // 如果所在的Cell不为空，就把它的value累加到sum中</span><br><span class="line">            if ((a = as[i]) != null)</span><br><span class="line">                sum += a.value;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    // 返回sum</span><br><span class="line">    return sum;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>可以看到sum()方法是把base和所有段的值相加得到，那么，这里有一个问题，如果前面已经累加到sum上的Cell的value有修改，不是就没法计算到了么？</p>
-<p>答案确实如此，所以LongAdder可以说不是强一致性的，它是最终一致性的。</p>
-<h2 id="LongAdder-VS-AtomicLong"><a href="#LongAdder-VS-AtomicLong" class="headerlink" title="LongAdder VS AtomicLong"></a>LongAdder VS AtomicLong</h2><p>直接上代码：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br></pre></td><td class="code"><pre><span class="line">public class LongAdderVSAtomicLongTest &#123;</span><br><span class="line">    public static void main(String[] args)&#123;</span><br><span class="line">        testAtomicLongVSLongAdder(1, 10000000);</span><br><span class="line">        testAtomicLongVSLongAdder(10, 10000000);</span><br><span class="line">        testAtomicLongVSLongAdder(20, 10000000);</span><br><span class="line">        testAtomicLongVSLongAdder(40, 10000000);</span><br><span class="line">        testAtomicLongVSLongAdder(80, 10000000);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    static void testAtomicLongVSLongAdder(final int threadCount, final int times)&#123;</span><br><span class="line">        try &#123;</span><br><span class="line">            System.out.println(&quot;threadCount：&quot; + threadCount + &quot;, times：&quot; + times);</span><br><span class="line">            long start = System.currentTimeMillis();</span><br><span class="line">            testLongAdder(threadCount, times);</span><br><span class="line">            System.out.println(&quot;LongAdder elapse：&quot; + (System.currentTimeMillis() - start) + &quot;ms&quot;);</span><br><span class="line"></span><br><span class="line">            long start2 = System.currentTimeMillis();</span><br><span class="line">            testAtomicLong(threadCount, times);</span><br><span class="line">            System.out.println(&quot;AtomicLong elapse：&quot; + (System.currentTimeMillis() - start2) + &quot;ms&quot;);</span><br><span class="line">        &#125; catch (InterruptedException e) &#123;</span><br><span class="line">            e.printStackTrace();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    static void testAtomicLong(final int threadCount, final int times) throws InterruptedException &#123;</span><br><span class="line">        AtomicLong atomicLong = new AtomicLong();</span><br><span class="line">        List&lt;Thread&gt; list = new ArrayList&lt;&gt;();</span><br><span class="line">        for (int i=0;i&lt;threadCount;i++)&#123;</span><br><span class="line">            list.add(new Thread(() -&gt; &#123;</span><br><span class="line">                for (int j = 0; j&lt;times; j++)&#123;</span><br><span class="line">                    atomicLong.incrementAndGet();</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;));</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        for (Thread thread : list)&#123;</span><br><span class="line">            thread.start();</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        for (Thread thread : list)&#123;</span><br><span class="line">            thread.join();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    static void testLongAdder(final int threadCount, final int times) throws InterruptedException &#123;</span><br><span class="line">        LongAdder longAdder = new LongAdder();</span><br><span class="line">        List&lt;Thread&gt; list = new ArrayList&lt;&gt;();</span><br><span class="line">        for (int i=0;i&lt;threadCount;i++)&#123;</span><br><span class="line">            list.add(new Thread(() -&gt; &#123;</span><br><span class="line">                for (int j = 0; j&lt;times; j++)&#123;</span><br><span class="line">                    longAdder.add(1);</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;));</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        for (Thread thread : list)&#123;</span><br><span class="line">            thread.start();</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        for (Thread thread : list)&#123;</span><br><span class="line">            thread.join();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>运行结果如下：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">threadCount：1, times：10000000</span><br><span class="line">LongAdder elapse：158ms</span><br><span class="line">AtomicLong elapse：64ms</span><br><span class="line">threadCount：10, times：10000000</span><br><span class="line">LongAdder elapse：206ms</span><br><span class="line">AtomicLong elapse：2449ms</span><br><span class="line">threadCount：20, times：10000000</span><br><span class="line">LongAdder elapse：429ms</span><br><span class="line">AtomicLong elapse：5142ms</span><br><span class="line">threadCount：40, times：10000000</span><br><span class="line">LongAdder elapse：840ms</span><br><span class="line">AtomicLong elapse：10506ms</span><br><span class="line">threadCount：80, times：10000000</span><br><span class="line">LongAdder elapse：1369ms</span><br><span class="line">AtomicLong elapse：20482ms</span><br></pre></td></tr></table></figure>
-
-<p>可以看到当只有一个线程的时候，AtomicLong反而性能更高，随着线程越来越多，AtomicLong的性能急剧下降，而LongAdder的性能影响很小。</p>
-<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>（1）LongAdder通过base和cells数组来存储值；</p>
-<p>（2）不同的线程会hash到不同的cell上去更新，减少了竞争；</p>
-<p>（3）LongAdder的性能非常高，最终会达到一种无竞争的状态；</p>
-<h2 id="彩蛋"><a href="#彩蛋" class="headerlink" title="彩蛋"></a>彩蛋</h2><p>在longAccumulate()方法中有个条件是<code>n &gt;= NCPU</code>就不会走到扩容逻辑了，而n是2的倍数，那是不是代表cells数组最大只能达到大于等于NCPU的最小2次方？</p>
-<p>答案是明确的。因为同一个CPU核心同时只会运行一个线程，而更新失败了说明有两个不同的核心更新了同一个Cell，这时会重新设置更新失败的那个线程的probe值，这样下一次它所在的Cell很大概率会发生改变，如果运行的时间足够长，最终会出现同一个核心的所有线程都会hash到同一个Cell（大概率，但不一定全在一个Cell上）上去更新，所以，这里cells数组中长度并不需要太长，达到CPU核心数足够了。</p>
-<p>比如，笔者的电脑是8核的，所以这里cells的数组最大只会到8，达到8就不会扩容了。</p>
-<p><img src="https://gitee.com/alan-tang-tt/yuan/raw/master/%E6%AD%BB%E7%A3%95%20java%E5%B9%B6%E5%8F%91%E5%8C%85/resource/LongAdder2.png" alt="LongAdder"></p>
-<hr>
-<p>欢迎关注我的公众号“彤哥读源码”，查看更多源码系列文章, 与彤哥一起畅游源码的海洋。</p>
-<p><img src="https://gitee.com/alan-tang-tt/yuan/raw/master/%E6%AD%BB%E7%A3%95%20java%E9%9B%86%E5%90%88%E7%B3%BB%E5%88%97/resource/qrcode_ss.jpg" alt="qrcode"></p>
-
-      
-
-      
-    </div>
-    <div class="article-info article-info-index">
-      
-      
-	<div class="article-tag tagcloud">
-		<i class="icon-price-tags icon"></i>
-		<ul class="article-tag-list">
-			 
-        		<li class="article-tag-list-item">
-        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color5">Java</a>
-        		</li>
-      		
-		</ul>
-	</div>
-
-      
-
-      
-        <p class="article-more-link">
-          <a class="article-more-a" href="/2019/05/13/死磕java并发包之LongAdder源码分析/">展开全文 >></a>
-        </p>
-      
-
-      
-      <div class="clearfix"></div>
-    </div>
-  </div>
-</article>
-
-<aside class="wrap-side-operation">
-    <div class="mod-side-operation">
-        
-        <div class="jump-container" id="js-jump-container" style="display:none;">
-            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
-                <i class="icon-font icon-back"></i>
-            </a>
-            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
-                <i class="icon-font icon-plane jump-plane"></i>
-            </div>
-        </div>
-        
-        
-    </div>
-</aside>
-
-
-
-
-  
   
     <nav id="page-nav">
       <a class="extend prev" rel="prev" href="/page/2/">&laquo; Prev</a><a class="page-number" href="/">1</a><a class="page-number" href="/page/2/">2</a><span class="page-number current">3</span><a class="page-number" href="/page/4/">4</a><a class="page-number" href="/page/5/">5</a><a class="extend next" rel="next" href="/page/4/">Next &raquo;</a>
@@ -2788,6 +2836,10 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
               </li>
              
               <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color2">Spring Boot</a>
+              </li>
+             
+              <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color2">RxJava</a>
               </li>
              
@@ -2804,23 +2856,7 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
               </li>
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color2">Vue.js</a>
-              </li>
-             
-              <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color4">数据库</a>
-              </li>
-             
-              <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color1">shiro</a>
-              </li>
-             
-              <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color2">Spring</a>
-              </li>
-             
-              <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color4">分布式</a>
               </li>
              
               <li class="article-tag-list-item">
@@ -2828,7 +2864,23 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
               </li>
              
               <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color2">Vue.js</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color2">Spring</a>
+              </li>
+             
+              <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color1">MySQL</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color4">分布式</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color4">JVM</a>
               </li>
              
               <li class="article-tag-list-item">
@@ -2840,18 +2892,6 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
               </li>
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color3">架构</a>
-              </li>
-             
-              <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color4">微服务</a>
-              </li>
-             
-              <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color4">服务器</a>
-              </li>
-             
-              <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color3">算法</a>
               </li>
              
@@ -2860,7 +2900,15 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
               </li>
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color4">JVM</a>
+                <a href="javascript:void(0)" class="js-tag color4">服务器</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color3">架构</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color4">微服务</a>
               </li>
              
               <li class="article-tag-list-item">
@@ -2877,6 +2925,10 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
              
               <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color2">TCP/IP</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color1">shiro</a>
               </li>
             
             <div class="clearfix"></div>
