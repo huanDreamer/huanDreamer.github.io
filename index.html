@@ -152,6 +152,150 @@
           <div id="js-content" class="content-ll">
             
   
+    <article id="post-面试必问的线程池需要了解一下" class="article article-type-post  article-index" itemscope itemprop="blogPost">
+  <div class="article-inner">
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2019/10/29/面试必问的线程池需要了解一下/">面试必问的线程池需要了解一下</a>
+    </h1>
+  
+
+        
+        <a href="/2019/10/29/面试必问的线程池需要了解一下/" class="archive-article-date">
+  	<time datetime="2019-10-29T09:46:54.054Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2019-10-29</time>
+</a>
+        
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <blockquote>
+<p>本文转载自 <a href="https://juejin.im/post/5db7ea3a5188257d606ab15b" target="_blank" rel="noopener">https://juejin.im/post/5db7ea3a5188257d606ab15b</a> </p>
+</blockquote>
+<pre><code>* [1.为什么要用线程池](#1%E4%B8%BA%E4%BB%80%E4%B9%88%E8%A6%81%E7%94%A8%E7%BA%BF%E7%A8%8B%E6%B1%A0)
+* [2.常见线程池以及参数](#2%E5%B8%B8%E8%A7%81%E7%BA%BF%E7%A8%8B%E6%B1%A0%E4%BB%A5%E5%8F%8A%E5%8F%82%E6%95%B0)
+
+    * [2.1 创建线程池](#21-%E5%88%9B%E5%BB%BA%E7%BA%BF%E7%A8%8B%E6%B1%A0)
+    * [2.2 线程池参数](#22-%E7%BA%BF%E7%A8%8B%E6%B1%A0%E5%8F%82%E6%95%B0)
+    * [2.3 常见线程池](#23-%E5%B8%B8%E8%A7%81%E7%BA%BF%E7%A8%8B%E6%B1%A0)
+* [3.执行流程](#3%E6%89%A7%E8%A1%8C%E6%B5%81%E7%A8%8B)
+* [4.健康检查](#4%E5%81%A5%E5%BA%B7%E6%A3%80%E6%9F%A5)</code></pre><h3 id="1-为什么要用线程池"><a href="#1-为什么要用线程池" class="headerlink" title="1.为什么要用线程池"></a>1.为什么要用线程池</h3><p>线程池提供了一种任务的提交与任务的执行解偶的策略,并且有以下几种优势</p>
+<p><strong>提高资源利用率</strong><br>通过复用自己的线程来降低创建线程和销毁线程的开销。<br>如果不用线程池而采用为每个任务都创建一个新线程的话会很浪费系统资源。因为创建线程和销毁线程都是耗系统资源的行为。除此之外还会由于线程过多而导致JVM出现OutOfMemory</p>
+<p><strong>提高响应速度</strong><br>当新来一个任务时，如果有空闲线程存在可立即执行任务，中间节省了创建线程的过程</p>
+<p><strong>统一管理线程</strong><br>如果不用线程池来管理，而是无限创建线程的话不仅消耗系统资源，而且还会导致系统不稳定。使用线程池可以进行统一分配，调优以及监控。</p>
+<h3 id="2-常见线程池以及参数"><a href="#2-常见线程池以及参数" class="headerlink" title="2.常见线程池以及参数"></a>2.常见线程池以及参数</h3><h3 id="2-1-创建线程池"><a href="#2-1-创建线程池" class="headerlink" title="2.1 创建线程池"></a>2.1 创建线程池</h3><p>通过Executors的工厂方法来创建线程池,比如创建一个固定线程数的线程池</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ExecutorService executorService = Executors.newFixedThreadPool(5);</span><br></pre></td></tr></table></figure>
+
+<p>通过ThreadPoolExecutor的构造函数来创建线程池</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">ThreadPoolExecutor pool = new ThreadPoolExecutor(int corePoolSize,</span><br><span class="line">                                                 int maxmumPoolSize,</span><br><span class="line">                                                 long keepAliveTime,</span><br><span class="line">                                                 TimeUnit unit,</span><br><span class="line">                                                 BolockingQueue&lt;Runnable&gt; workQueue,</span><br><span class="line">                                                 ThreadFactory factory,</span><br><span class="line">                                                 RejectedExecusionHandler handler);</span><br></pre></td></tr></table></figure>
+
+<p>官方比较推荐使用后者，因为可以灵活选择参数配置，以及自定义配置</p>
+<p>无论是采用那种方式创建一个线程池，它内部都是通过 ThreadPoolExecutor的构造函数来实现的。所以要想全面掌握线程池的各种特性以及性能的话需要对 ThreadPoolExecutor类深入理解，包括各种参数的意义，参数之间是如何配合工作的等等。</p>
+<h3 id="2-2-线程池参数"><a href="#2-2-线程池参数" class="headerlink" title="2.2 线程池参数"></a>2.2 线程池参数</h3><pre><code>1. </code></pre><p><strong>corePoolSize</strong> 核心线程数。默认情况下，当提交一个任务时线程池会新建一个线程池(及时有空闲线程存在)，直到线程数量等于基本大小(也可以预初始化线程)<br>    1.<br><strong>workQueue</strong> 一个存放任务的阻塞队列,当线程池里的基本线程都在忙着的时候，提交一个新任务的话会暂时存放到阻塞队列，等待执行，常用的阻塞队列有一下几种</p>
+<pre><code>    * ArrayBlockingQueue 基于数组实现的FIFO阻塞队列(有限长度)
+    * LinkedBlockingQueue 基于链表实现的FIFO阻塞队列(无限长度)
+    * SynchronousQueue 本身不存储任务，当有任务来的时候会一直阻塞，直到线程去执行
+    * PriorityBlockingQueue 具有优先级的优先队列
+* **maximumPoolSize** 最大线程数。当所有的核心线程都在运行并且阻塞队列也满了的话会创建额外的几个线程来执行，这时候线程池里的所有线程数量就是最大线程数量。如果线程池采用的是像LinkedBlockingQueue这种无界队列的话，该参数不会起到作用
+* **KeepAliveTime** 和 **TimeUnit** 如果某个线程的空闲时间大于KeepAliveTime的时候会被标记为可回收， 并且当前线程池里的数量大于核心线程数量的时候会被终止。所以该参数跟maximumPoolSize一样，使用无界队列的时候不起作用，TimeUnit是时间单位
+* **RejectedExecusionHandler** 饱和策略。如果我们的任务队列满了，并且线程池里的线程数量已经达到了最大线程数，而且这些线程都不再空闲状态。这时候新提交任务的话，无法去执行，所以需要一种饱和策略来去处理这些任务。Java提供了一下几种策略
+
+    * AbortPolicy (默认策略) 直接抛异常，调用者需要根据自己的需求去捕获处理异常
+    * DiscardPolicy 直接丢弃，不处理直接丢弃该任务
+    * DiscardOldestPolicy 丢弃队列里最近的一个任务，并执行当前任务。如果是优先队列的话会丢弃优先级最高的任务，所以不推荐与优先队列一起组合使用
+    * CallerRunsPolicy 由调用者当前线程来执行该任务。</code></pre><h3 id="2-3-常见线程池"><a href="#2-3-常见线程池" class="headerlink" title="2.3 常见线程池"></a>2.3 常见线程池</h3><p>Java类库提供了灵活的创建线程池方法，可以通过调用Executors中的静态工厂方法来创建一个线程池。</p>
+<pre><code>1. **newFixedThreadPool** 将创建一个固定线程数量的线程池,每当提交一个任务时就创建一个线程。直到达到线程池的最大数量。corePoolSize和maximumPoolSize值相同，并且采用了LinkedBlockingQueue，所以最大线程池数，饱和策略，存活时间等等参数都将不被用到。</code></pre><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">public static ExecutorService newFixedThreadPool(int nThreads) &#123;</span><br><span class="line">        return new ThreadPoolExecutor(nThreads, nThreads,</span><br><span class="line">                                      0L, TimeUnit.MILLISECONDS,</span><br><span class="line">                                      new LinkedBlockingQueue&lt;Runnable&gt;());</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+
+<pre><code>1. **newSingleThreadExecutor** 一个但线程的Executor,它跟上面的newFixedThreadPool类似，区别在于只有一个工作线程。通过该线程池可以确保有序的执行队列中的任务,因为只有一个工作线程，所以出队的顺序就是执行的顺序。</code></pre><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">public static ExecutorService newSingleThreadExecutor() &#123;</span><br><span class="line">        return new FinalizableDelegatedExecutorService</span><br><span class="line">            (new ThreadPoolExecutor(1, 1,</span><br><span class="line">                                    0L, TimeUnit.MILLISECONDS,</span><br><span class="line">                                    new LinkedBlockingQueue&lt;Runnable&gt;()));</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+
+<pre><code>1. **newCachedThreadPool** 此线程池的线程数量没有显式的限制默认为Integer.MAX_VALUE,可以为每个任务创建一个线程来处理,但是它没这么做，它是具有缓存线程的功能，是一种可伸缩的。比如，当处理新任务是首先看有没有空闲可用的线程来处理，如果没有的话才会新创建。并且当创建的线程空闲一段时间之后会回收(默认一分钟)</code></pre><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">public static ExecutorService newCachedThreadPool() &#123;</span><br><span class="line">        return new ThreadPoolExecutor(0, Integer.MAX_VALUE,</span><br><span class="line">                                      60L, TimeUnit.SECONDS,</span><br><span class="line">                                      new SynchronousQueue&lt;Runnable&gt;());</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+
+<pre><code>1. **newScheduledThreadPool**</code></pre><p>创建一个固定线程数的线程池,并且以延迟或定时的方式来执行。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">public ScheduledThreadPoolExecutor(int corePoolSize) &#123;</span><br><span class="line">        super(corePoolSize, Integer.MAX_VALUE, 0, NANOSECONDS,</span><br><span class="line">              new DelayedWorkQueue());</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-执行流程"><a href="#3-执行流程" class="headerlink" title="3.执行流程"></a>3.执行流程</h3><p>线程池执行任务是由Executor接口的execute()方法来执行的，下面看下执行任务流程的一段核心代码（java8）</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">public void execute(Runnable command) &#123;</span><br><span class="line"></span><br><span class="line">        int c = ctl.get();</span><br><span class="line">        if (workerCountOf(c) &lt; corePoolSize) &#123;</span><br><span class="line">            if (addWorker(command, true))</span><br><span class="line">                return;</span><br><span class="line">            c = ctl.get();</span><br><span class="line">        &#125;</span><br><span class="line">        if (isRunning(c) &amp;amp;&amp;amp; workQueue.offer(command)) &#123;</span><br><span class="line">            int recheck = ctl.get();</span><br><span class="line">            if (! isRunning(recheck) &amp;amp;&amp;amp; remove(command))</span><br><span class="line">                reject(command);</span><br><span class="line">            else if (workerCountOf(recheck) == 0)</span><br><span class="line">                addWorker(null, false);</span><br><span class="line">        &#125;</span><br><span class="line">        else if (!addWorker(command, false))</span><br><span class="line">            reject(command);</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+
+<p>线程池的执行流程由以下几个步骤来完成（每种线程池的实现略有不同，但核心思想相似）</p>
+<p>1）首先，如果当前工作的线程数量小于核心线程数，则新创建一个线程来执行。如果核心线程池数满了，</p>
+<p>2）判断线程池的任务队列是否已满，如果没满的话把该任务放到任务队列里，等待核心线程空闲之后去执行，如果满了的话进入下一阶段</p>
+<p>3）判断判断线程池里工作的线程数量是否达到了最大线程数，如果没达到则创建一个新的线程来去执行。否则，采用饱和策略来处理</p>
+<p>如果进去看内部实现的话会发现，线程池会把每个工作线程包装成Worker,而把需要执行的任务包装成Task来运行。</p>
+<p><img src="https://user-gold-cdn.xitu.io/2019/10/22/16df3054f05feaee?imageView2/0/w/1280/h/960/ignore-error/1" alt></p>
+<h3 id="4-健康检查"><a href="#4-健康检查" class="headerlink" title="4.健康检查"></a>4.健康检查</h3><p>在项目中使用线程池的时候有必要对线程池进行监控，这样可以根据线程池的使用状况快速定位问题。可以通过线程池提供的参数进行监控，在监控线程池的时候可以使用以下属性。</p>
+<pre><code>* taskCount 线程池需要执行的任务数量
+* completedTaskCount 已经成功运行的任务数
+* largestPoolSize 曾经出现的最多线程数
+* getPoolSize 获取线程数
+* getActiveCount 活动线程数</code></pre><p><strong>示例代码</strong></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">public class Task  implements Runnable&#123;</span><br><span class="line">    private int i;</span><br><span class="line"></span><br><span class="line">    public Task(int i) &#123;</span><br><span class="line">        this.i = i;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    @Override</span><br><span class="line">    public void run() &#123;</span><br><span class="line">        System.out.println(&quot;task num =&quot;+i);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line">```</span><br></pre></td></tr></table></figure>
+
+<p>public class Test {<br>    public static void main(String[] args) {<br>        ThreadPoolExecutor pool = new ThreadPoolExecutor(10,20,60,TimeUnit.SECONDS,new ArrayBlockingQueue&lt;&gt;(5));<br>        for (int i=0;i&lt;5;i++){<br>            try {<br>                Thread.sleep(1000);<br>            } catch (InterruptedException e) {<br>                e.printStackTrace();<br>            }<br>            System.out.println(“完成任务数= “+pool.getCompletedTaskCount()+”  任务数= “+pool.getTaskCount()+” “ +<br>                    “”+”  活动线程数=”+pool.getActiveCount() +”” +”  线程数=”+pool.getPoolSize() +”  “+”  最大线程数=”+pool.getLargestPoolSize() );</p>
+<pre><code>        Task task = new Task(i);
+        pool.execute(task);
+    }
+    pool.shutdown();
+
+}</code></pre><p>}</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">打印结果如下：</span><br></pre></td></tr></table></figure>
+
+<p>完成任务数= 0  任务数= 0   活动线程数=0  线程数=0    最大线程数=0<br>task num =0<br>完成任务数= 1  任务数= 1   活动线程数=0  线程数=1    最大线程数=1<br>task num =1<br>完成任务数= 2  任务数= 2   活动线程数=0  线程数=2    最大线程数=2<br>task num =2<br>完成任务数= 3  任务数= 3   活动线程数=0  线程数=3    最大线程数=3<br>task num =3<br>完成任务数= 4  任务数= 4   活动线程数=0  线程数=4    最大线程数=4<br>task num =4<br>```</p>
+
+      
+
+      
+    </div>
+    <div class="article-info article-info-index">
+      
+      
+	<div class="article-tag tagcloud">
+		<i class="icon-price-tags icon"></i>
+		<ul class="article-tag-list">
+			 
+        		<li class="article-tag-list-item">
+        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color5">Java</a>
+        		</li>
+      		
+		</ul>
+	</div>
+
+      
+
+      
+        <p class="article-more-link">
+          <a class="article-more-a" href="/2019/10/29/面试必问的线程池需要了解一下/">展开全文 >></a>
+        </p>
+      
+
+      
+      <div class="clearfix"></div>
+    </div>
+  </div>
+</article>
+
+<aside class="wrap-side-operation">
+    <div class="mod-side-operation">
+        
+        <div class="jump-container" id="js-jump-container" style="display:none;">
+            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
+                <i class="icon-font icon-back"></i>
+            </a>
+            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
+                <i class="icon-font icon-plane jump-plane"></i>
+            </div>
+        </div>
+        
+        
+    </div>
+</aside>
+
+
+
+
+  
     <article id="post-Github上热门的SpringBoot项目实战推荐" class="article article-type-post  article-index" itemscope itemprop="blogPost">
   <div class="article-inner">
     
@@ -795,15 +939,15 @@
         		</li>
       		 
         		<li class="article-tag-list-item">
+        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color4">服务器</a>
+        		</li>
+      		 
+        		<li class="article-tag-list-item">
         			<a href="javascript:void(0)" class="js-tag article-tag-list-link color3">算法</a>
         		</li>
       		 
         		<li class="article-tag-list-item">
         			<a href="javascript:void(0)" class="js-tag article-tag-list-link color5">ZooKeeper</a>
-        		</li>
-      		 
-        		<li class="article-tag-list-item">
-        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color4">服务器</a>
         		</li>
       		
 		</ul>
@@ -1423,136 +1567,6 @@ User user = constructor.newInstance();</code></p>
 
 
   
-    <article id="post-分布式数据库中间件MyCat搞起来！" class="article article-type-post  article-index" itemscope itemprop="blogPost">
-  <div class="article-inner">
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2019/06/28/分布式数据库中间件MyCat搞起来！/">分布式数据库中间件 MyCat 搞起来！</a>
-    </h1>
-  
-
-        
-        <a href="/2019/06/28/分布式数据库中间件MyCat搞起来！/" class="archive-article-date">
-  	<time datetime="2019-06-28T07:51:14.014Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2019-06-28</time>
-</a>
-        
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <blockquote>
-<p>本文转载自 <a href="https://juejin.im/post/5d1566caf265da1ba77cb708" target="_blank" rel="noopener">https://juejin.im/post/5d1566caf265da1ba77cb708</a> </p>
-</blockquote>
-<p>关于 MyCat 的铺垫文章已经写了三篇了：</p>
-<pre><code>1. [MySQL 只能做小项目？松哥要说几句公道话！](https://link.juejin.im?target=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2FbcyjBgEqg6Or5zdi4jHaiA)
-1. [北冥有 Data，其名为鲲，鲲之大，一个 MySQL 放不下！](https://link.juejin.im?target=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2FqUGANVj2mmoMwUZEV5Zc1w)
-1. [What？Tomcat 竟然也算中间件？](https://link.juejin.im?target=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2F7pj5E2HvmiejBJrW0T86oQ)</code></pre><p>今天终于可以迎接我们的大 Boss 出场了！</p>
-<h1 id="MyCat-简介"><a href="#MyCat-简介" class="headerlink" title="MyCat 简介"></a>MyCat 简介</h1><p>前面文章我们提到，如果数据量比较大的话，我们需要对数据进行分库分表，分完之后，原本存在一个数据库中的数据，现在就存在多个数据库中了，就像下面这样：</p>
-<p><img src="https://user-gold-cdn.xitu.io/2019/6/28/16b9b999eca3fda2?imageView2/0/w/1280/h/960/ignore-error/1" alt></p>
-<p>那么此时 MyCat 所扮演的角色就是分布式数据库中间件！</p>
-<p>MyCat 是一个开源的分布式数据库中间件，它实现了 MySQL 协议，在开发者眼里，他就是一个数据库代理，我们甚至可以使用 MySQL 的客户端工具以及命令行来访问 MyCat 。</p>
-<p>MyCat 现在已经不仅仅只支持 MySQL 了，同时也支持 MSSQL、Oracle、DB2、以及 PostgreSQL等主流数据库。甚至像 MongoDB 这种 NoSQL 也支持。</p>
-<h1 id="快速入门"><a href="#快速入门" class="headerlink" title="快速入门"></a>快速入门</h1><h2 id="搭建读写分离"><a href="#搭建读写分离" class="headerlink" title="搭建读写分离"></a>搭建读写分离</h2><p>要搞 MyCat ，一般要先搭建好 MySQL 的读写分离，MySQL 的读写分离可以参考松哥之前的这篇文章：</p>
-<pre><code>1. [提高性能，MySQL 读写分离环境搭建(二)](https://link.juejin.im?target=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2FSC0OYM6yO_GxQh9DvSsnoQ)</code></pre><h2 id="MyCat-安装"><a href="#MyCat-安装" class="headerlink" title="MyCat 安装"></a>MyCat 安装</h2><p>环境：</p>
-<pre><code>* CentOS7
-* JDK1.8</code></pre><p>MyCat 使用 Java 开发，因此，运行 MyCat ，一定要具备 Java 环境，配置 Java 运行环境这个比较容易，网上资料也很多，我就不详细介绍了。</p>
-<p>Java 环境安装好之后，首先下载 MyCat：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">wget http://dl.mycat.io/1.6.7.1/Mycat-server-1.6.7.1-release-20190213150257-linux.tar.gz</span><br></pre></td></tr></table></figure>
-
-<p>下载完成后，对下载文件进行解压。</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">tar -zxvf Mycat-server-1.6.7.1-release-20190213150257-linux.tar.gz</span><br></pre></td></tr></table></figure>
-
-<p>解压成功后，会出现一个 <code>mycat</code> 目录，进入到 <code>mycat/conf</code> 目录，对 <code>mycat</code> 进行配置：</p>
-<p>首先来配置 <code>schema.xml</code> 文件：</p>
-<p><img src="https://user-gold-cdn.xitu.io/2019/6/28/16b9b999ec783a97?imageView2/0/w/1280/h/960/ignore-error/1" alt></p>
-<pre><code>1. 首先在 `schema` 中指定逻辑库的名字，逻辑库是指 `MyCat` 中的库，这个库不存储数据，数据存储在 `MySQL` 中的物理库中。
-1. 逻辑库中配置逻辑表，配置逻辑表时，需要指定 `dataNode` 节点， `dataNode` 就是指数据库存储的位置
-1. 配置 `dataNode` ，`dataNode` 指定 `dataHost` 和物理库的名字。
-1. `dataHost` 则配置 `MySQL` 的主机和从机的位置，登录密码等。主机和从机都可以配置多个。</code></pre><p>配置完 schema.xml 后 ，接下来配置 server.xml。</p>
-<p>server.xml 中主要配置 MyCat 的登录用户名和密码，以及需要操作的逻辑库。</p>
-<p><img src="https://user-gold-cdn.xitu.io/2019/6/28/16b9b99a1a7fec73?imageView2/0/w/1280/h/960/ignore-error/1" alt></p>
-<p>配置完成后，接下来就可以启动 MyCat 了 。</p>
-<p>执行 MyCat 解压目录下的 bin 目录下的 mycat 命令，可以启动 MyCat</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">./bin/mycat start</span><br></pre></td></tr></table></figure>
-
-<p>如果启动后，提示无法创建 <code>mycat.pid</code> 文件，就自己手动创建一个 <code>mycat.pid</code> 文件。启动成功之后，就可以在本地连接 <code>MyCat</code> 了，连接方式和 <code>MySQL</code> 一样，唯一的区别在于端口号不同。</p>
-<p>在连接 <code>MyCat</code> 之前，先在 <code>MySQL</code> 物理库中创建 <code>db1</code>、<code>db2</code> 以及 <code>db3</code> 三个数据库。</p>
-<p>使用 <code>SQLyog</code> 连接：</p>
-<p><img src="https://user-gold-cdn.xitu.io/2019/6/28/16b9b999ecbdcb90?imageView2/0/w/1280/h/960/ignore-error/1" alt></p>
-<p>也可以在 <code>cmd</code> 命令行登录 <code>MyCat</code> ：</p>
-<p><img src="https://user-gold-cdn.xitu.io/2019/6/28/16b9b999f41ebb17?imageView2/0/w/1280/h/960/ignore-error/1" alt></p>
-<p>登录成功后 ，在 <code>MyCat</code> 的窗口中，执行如下命令，创建表：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">create table t_user (id integer primary key,username varchar(255))</span><br></pre></td></tr></table></figure>
-
-<p>执行成功后，我们会发现物理库中出现了相应的表。 接下来，手动往各个物理库的物理表中存储一条数据，然后在 MyCat 窗口中查询：</p>
-<p><img src="https://user-gold-cdn.xitu.io/2019/6/28/16b9b999eccf3c2f?imageView2/0/w/1280/h/960/ignore-error/1" alt></p>
-<p>这样就可以查询到 三个库中的三个表中的数据。</p>
-<h1 id="问题分析"><a href="#问题分析" class="headerlink" title="问题分析"></a>问题分析</h1><p>整个过程不难，但是有的小伙伴在第一次配置的过程中还是容易出错，因此我这里还是来说两句，出错了要如何定位。</p>
-<p>一般来说，配置 MyCat 出错，问题可能发生在两个阶段。第一个阶段就是客户端连接 MyCat 出错，第二个阶段就是 MyCat 连接 MySQL 出错。</p>
-<p>无论你是使用 SQLyog 还是 Navicat ，我们在连接数据库的过程中，都可以先测试连接，很多人卡在这一步。</p>
-<p>如果在测试连接的时候就连接不通，说明是 MyCat 的问题，这个时候检查步骤如下：</p>
-<pre><code>1. 首先当然是查看日志信息，看能不能找出端倪
-1. 通过 jps 命令查看 mycat 是否成功启动
-1. 检查 server.xml 中配置是否正确，用户名密码是否输入正确</code></pre><p>这是第一种可能的问题，第二种问题就是测试连接没问题，但是测试完后，却连接不上。反映到 Navicat 上，就是测试连接没问题，测完之后，点击连接名要打开连接时，Navicat 就崩了，出现这个问题一般是 MyCat 在连接 MySQL 出问题了，这个时候就要去检查 schema.xml 文件中关于 MySQL 主机和从机的配置是否正确，数据库地址是否正确，用户名密码是否正确。</p>
-<h1 id="结语"><a href="#结语" class="headerlink" title="结语"></a>结语</h1><p>好了，本文主要简单介绍了下 MyCat 的安装问题，下篇文章我们来看 MyCat 中的分片规则问题。</p>
-<p>参考资料：</p>
-<pre><code>1. [MyCat 官方文档](https://link.juejin.im?target=http%3A%2F%2Fwww.mycat.io%2F)</code></pre><p>关注公众号【江南一点雨】，专注于 Spring Boot+微服务以及前后端分离等全栈技术，定期视频教程分享，关注后回复 Java ，领取松哥为你精心准备的 Java 干货！<br><img src="https://user-gold-cdn.xitu.io/2019/6/28/16b9b99ae9446d11?imageView2/0/w/1280/h/960/ignore-error/1" alt></p>
-
-      
-
-      
-    </div>
-    <div class="article-info article-info-index">
-      
-      
-	<div class="article-tag tagcloud">
-		<i class="icon-price-tags icon"></i>
-		<ul class="article-tag-list">
-			 
-        		<li class="article-tag-list-item">
-        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color1">MySQL</a>
-        		</li>
-      		
-		</ul>
-	</div>
-
-      
-
-      
-        <p class="article-more-link">
-          <a class="article-more-a" href="/2019/06/28/分布式数据库中间件MyCat搞起来！/">展开全文 >></a>
-        </p>
-      
-
-      
-      <div class="clearfix"></div>
-    </div>
-  </div>
-</article>
-
-<aside class="wrap-side-operation">
-    <div class="mod-side-operation">
-        
-        <div class="jump-container" id="js-jump-container" style="display:none;">
-            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
-                <i class="icon-font icon-back"></i>
-            </a>
-            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
-                <i class="icon-font icon-plane jump-plane"></i>
-            </div>
-        </div>
-        
-        
-    </div>
-</aside>
-
-
-
-
-  
   
     <nav id="page-nav">
       <span class="page-number current">1</span><a class="page-number" href="/page/2/">2</a><a class="page-number" href="/page/3/">3</a><span class="space">&hellip;</span><a class="page-number" href="/page/5/">5</a><a class="extend next" rel="next" href="/page/2/">Next &raquo;</a>
@@ -1654,10 +1668,6 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
               </li>
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color2">Spring Boot</a>
-              </li>
-             
-              <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color2">RxJava</a>
               </li>
              
@@ -1678,11 +1688,15 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
               </li>
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color1">Redis</a>
+                <a href="javascript:void(0)" class="js-tag color1">shiro</a>
               </li>
              
               <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color2">Vue.js</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color1">Redis</a>
               </li>
              
               <li class="article-tag-list-item">
@@ -1691,10 +1705,6 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
              
               <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color1">MySQL</a>
-              </li>
-             
-              <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color4">分布式</a>
               </li>
              
               <li class="article-tag-list-item">
@@ -1710,23 +1720,15 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
               </li>
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color3">算法</a>
-              </li>
-             
-              <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color5">ZooKeeper</a>
-              </li>
-             
-              <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color4">服务器</a>
-              </li>
-             
-              <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color3">架构</a>
               </li>
              
               <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color4">微服务</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color4">服务器</a>
               </li>
              
               <li class="article-tag-list-item">
@@ -1742,11 +1744,23 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
               </li>
              
               <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color4">分布式</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color3">算法</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color5">ZooKeeper</a>
+              </li>
+             
+              <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color2">TCP/IP</a>
               </li>
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color1">shiro</a>
+                <a href="javascript:void(0)" class="js-tag color2">Spring Boot</a>
               </li>
             
             <div class="clearfix"></div>
