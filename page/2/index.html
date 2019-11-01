@@ -152,6 +152,400 @@
           <div id="js-content" class="content-ll">
             
   
+    <article id="post-惊！史上最全的select加锁分析(Mysql)" class="article article-type-post  article-index" itemscope itemprop="blogPost">
+  <div class="article-inner">
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2019/08/20/惊！史上最全的select加锁分析(Mysql)/">惊！史上最全的select加锁分析(Mysql)</a>
+    </h1>
+  
+
+        
+        <a href="/2019/08/20/惊！史上最全的select加锁分析(Mysql)/" class="archive-article-date">
+  	<time datetime="2019-08-20T03:08:21.021Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2019-08-20</time>
+</a>
+        
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <blockquote>
+<p>本文转载自 <a href="https://juejin.im/post/5d5671a2e51d45620821cea7" target="_blank" rel="noopener">https://juejin.im/post/5d5671a2e51d45620821cea7</a> </p>
+</blockquote>
+<h2 id="引言"><a href="#引言" class="headerlink" title="引言"></a>引言</h2><p>大家在面试中有没遇到面试官问你下面六句Sql的区别呢</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">select * from table where id = ?</span><br><span class="line">select * from table where id &lt; ?</span><br><span class="line">select * from table where id = ? lock in share mode</span><br><span class="line">select * from table where id &lt; ? lock in share mode</span><br><span class="line">select * from table where id = ? for update</span><br><span class="line">select * from table where id &lt; ? for update</span><br></pre></td></tr></table></figure>
+
+<p>如果你能清楚的说出，这六句sql在不同的事务隔离级别下，是否加锁，加的是共享锁还是排他锁，是否存在间隙锁，那这篇文章就没有看的意义了。 之所以写这篇文章是因为目前为止网上这方面的文章太片面，都只说了一半，且大多没指明隔离级别，以及<code>where</code>后跟的是否为索引条件列。在此，我就不一一列举那些有误的文章了，大家可以自行百度一下，大多都是讲不清楚。 OK，要回答这个问题，先问自己三个问题</p>
+<pre><code>* 当前事务隔离级别是什么
+* id列是否存在索引
+* 如果存在索引是聚簇索引还是非聚簇索引呢？</code></pre><p>OK，开始回答</p>
+<h2 id="正文"><a href="#正文" class="headerlink" title="正文"></a>正文</h2><pre><code>* innodb一定存在聚簇索引，默认以主键作为聚簇索引
+* 有几个索引，就有几棵B+树(不考虑hash索引的情形)
+* 聚簇索引的叶子节点为磁盘上的真实数据。非聚簇索引的叶子节点还是索引，指向聚簇索引B+树。</code></pre><p>下面啰嗦点基础知识</p>
+<h3 id="锁类型"><a href="#锁类型" class="headerlink" title="锁类型"></a>锁类型</h3><p><strong>共享锁</strong>(S锁):假设事务T1对数据A加上共享锁，那么事务T2<strong>可以</strong>读数据A，<strong>不能</strong>修改数据A。</p>
+<p><strong>排他锁</strong>(X锁):假设事务T1对数据A加上共享锁，那么事务T2<strong>不能</strong>读数据A，<strong>不能</strong>修改数据A。 我们通过<code>update</code>、<code>delete</code>等语句加上的锁都是行级别的锁。只有<code>LOCK TABLE … READ</code>和<code>LOCK TABLE … WRITE</code>才能申请表级别的锁。</p>
+<p><strong>意向共享锁</strong>(IS锁):一个事务在获取（任何一行/或者全表）S锁之前，一定会先在所在的表上加IS锁。</p>
+<p><strong>意向排他锁</strong>(IX锁):一个事务在获取（任何一行/或者全表）X锁之前，一定会先在所在的表上加IX锁。<br><strong>意向锁存在的目的?</strong></p>
+<p>OK，这里说一下意向锁存在的目的。假设事务T1，用X锁来锁住了表上的几条记录，那么此时表上存在IX锁，即意向排他锁。那么此时事务T2要进行<code>LOCK TABLE … WRITE</code>的表级别锁的请求，可以直接根据意向锁是否存在而判断是否有锁冲突。</p>
+<h3 id="加锁算法"><a href="#加锁算法" class="headerlink" title="加锁算法"></a>加锁算法</h3><p>我的说法是来自官方文档: <code>https://dev.mysql.com/doc/refman/5.7/en/innodb-locking.html</code> 加上自己矫揉造作的见解得出。</p>
+<p>ok，记得如下三种，本文就够用了</p>
+<p><code>Record Locks</code>：简单翻译为行锁吧。注意了，该锁是对索引记录进行加锁！锁是在加索引上而不是行上的。注意了，innodb一定存在聚簇索引，因此行锁最终都会落到聚簇索引上！</p>
+<p><code>Gap Locks</code>：简单翻译为间隙锁，是对索引的间隙加锁，其目的只有一个，防止其他事物插入数据。在<code>Read Committed</code>隔离级别下，不会使用间隙锁。这里我对官网补充一下，隔离级别比<code>Read Committed</code>低的情况下，也不会使用间隙锁，如隔离级别为<code>Read Uncommited</code>时，也不存在间隙锁。当隔离级别为<code>Repeatable Read</code>和<code>Serializable</code>时，就会存在间隙锁。</p>
+<p><code>Next-Key Locks</code>：这个理解为<code>Record Lock</code>+索引前面的<code>Gap Lock</code>。记住了，锁住的是索引前面的间隙！比如一个索引包含值，10，11，13和20。那么，间隙锁的范围如下</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">(negative infinity, 10]</span><br><span class="line">(10, 11]</span><br><span class="line">(11, 13]</span><br><span class="line">(13, 20]</span><br><span class="line">(20, positive infinity)</span><br></pre></td></tr></table></figure>
+
+<h3 id="快照读和当前读"><a href="#快照读和当前读" class="headerlink" title="快照读和当前读"></a>快照读和当前读</h3><p>最后一点基础知识了，大家坚持看完，这些是后面分析的基础！ 在mysql中select分为快照读和当前读，执行下面的语句</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">select * from table where id = ?;</span><br></pre></td></tr></table></figure>
+
+<p>执行的是快照读，读的是数据库记录的快照版本，是不加锁的。（这种说法在隔离级别为<code>Serializable</code>中不成立，后面我会补充。） 那么，执行</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">select * from table where id = ? lock in share mode;</span><br></pre></td></tr></table></figure>
+
+<p>会对读取记录加S锁 (共享锁)，执行</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">select * from table where id = ? for update</span><br></pre></td></tr></table></figure>
+
+<p>会对读取记录加X锁 (排他锁)，那么</p>
+<p><strong>加的是表锁还是行锁呢？</strong></p>
+<p>针对这点，我们先回忆一下事务的四个隔离级别，他们由弱到强如下所示:</p>
+<pre><code>* `Read Uncommited(RU)`：读未提交，一个事务可以读到另一个事务未提交的数据！
+* `Read Committed (RC)`：读已提交，一个事务可以读到另一个事务已提交的数据!
+* `Repeatable Read (RR)`:可重复读，加入间隙锁，一定程度上避免了幻读的产生！注意了，只是一定程度上，并没有完全避免!我会在下一篇文章说明!另外就是记住从该级别才开始加入间隙锁(这句话记下来，后面有用到)!
+* `Serializable`：串行化，该级别下读写串行化，且所有的`select`语句后都自动加上`lock in share mode`，即使用了共享锁。因此在该隔离级别下，使用的是当前读，而不是快照读。</code></pre><p>那么关于是表锁还是行锁，大家可以看到网上最流传的一个说法是这样的，<br><strong>InnoDB行锁是通过给索引上的索引项加锁来实现的，这一点MySQL与Oracle不同，后者是通过在数据块中对相应数据行加锁来实现的。 InnoDB这种行锁实现特点意味着：只有通过索引条件检索数据，InnoDB才使用行级锁，否则，InnoDB将使用表锁！</strong></p>
+<p>这句话大家可以搜一下，都是你抄我的，我抄你的。那么，这句话本身有两处错误！ <strong>错误一</strong>:并不是用表锁来实现锁表的操作，而是利用了<code>Next-Key Locks</code>，也可以理解为是用了行锁+间隙锁来实现锁表的操作! 为了便于说明，我来个例子，假设有表数据如下，pId为主键索引</p>
+<table>
+<thead>
+<tr>
+<th align="center">pId(int)</th>
+<th align="center">name(varchar)</th>
+<th align="center">num(int)</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center">1</td>
+<td align="center">aaa</td>
+<td align="center">100</td>
+</tr>
+<tr>
+<td align="center">2</td>
+<td align="center">bbb</td>
+<td align="center">200</td>
+</tr>
+<tr>
+<td align="center">7</td>
+<td align="center">ccc</td>
+<td align="center">200</td>
+</tr>
+</tbody></table>
+<p>执行语句(name列无索引)</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">select * from table where name = `aaa` for update</span><br></pre></td></tr></table></figure>
+
+<p>那么此时在pId=1,2,7这三条记录上存在行锁(把行锁住了)。另外，在(-∞,1)(1,2)(2,7)(7,+∞)上存在间隙锁(把间隙锁住了)。因此，给人一种整个表锁住的错觉！</p>
+<p><code>ps:</code>对该结论有疑问的，可自行执行<code>show engine innodb status;</code>语句进行分析。</p>
+<p><strong>错误二</strong>:所有文章都不提隔离级别！</p>
+<p>注意我上面说的，之所以能够锁表，是通过行锁+间隙锁来实现的。那么，<code>RU</code>和<code>RC</code>都不存在间隙锁，这种说法在<code>RU</code>和<code>RC</code>中还能成立么？ 因此，该说法只在<code>RR</code>和<code>Serializable</code>中是成立的。如果隔离级别为<code>RU</code>和<code>RC</code>，无论条件列上是否有索引，都不会锁表，只锁行！</p>
+<h3 id="分析"><a href="#分析" class="headerlink" title="分析"></a>分析</h3><p>下面来对开始的问题作出解答，假设有表如下，pId为主键索引</p>
+<table>
+<thead>
+<tr>
+<th align="center">pId(int)</th>
+<th align="center">name(varchar)</th>
+<th align="center">num(int)</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center">1</td>
+<td align="center">aaa</td>
+<td align="center">100</td>
+</tr>
+<tr>
+<td align="center">2</td>
+<td align="center">bbb</td>
+<td align="center">200</td>
+</tr>
+<tr>
+<td align="center">3</td>
+<td align="center">bbb</td>
+<td align="center">300</td>
+</tr>
+<tr>
+<td align="center">7</td>
+<td align="center">ccc</td>
+<td align="center">200</td>
+</tr>
+</tbody></table>
+<h3 id="RC-RU-条件列非索引"><a href="#RC-RU-条件列非索引" class="headerlink" title="RC/RU+条件列非索引"></a>RC/RU+条件列非索引</h3><p>(1)<code>select * from table where num = 200</code></p>
+<p>不加任何锁，是快照读。</p>
+<p>(2)<code>select * from table where num &gt; 200</code></p>
+<p>不加任何锁，是快照读。</p>
+<p>(3)<code>select * from table where num = 200 lock in share mode</code></p>
+<p>当num = 200，有两条记录。这两条记录对应的pId=2，7，因此在pId=2，7的聚簇索引上加行级S锁，采用当前读。</p>
+<p>(4)<code>select * from table where num &gt; 200 lock in share mode</code></p>
+<p>当num &gt; 200，有一条记录。这条记录对应的pId=3，因此在pId=3的聚簇索引上加上行级S锁，采用当前读。</p>
+<p>(5)<code>select * from table where num = 200 for update</code></p>
+<p>当num = 200，有两条记录。这两条记录对应的pId=2，7，因此在pId=2，7的聚簇索引上加行级X锁，采用当前读。</p>
+<p>(6)<code>select * from table where num &gt; 200 for update</code></p>
+<p>当num &gt; 200，有一条记录。这条记录对应的pId=3，因此在pId=3的聚簇索引上加上行级X锁，采用当前读。</p>
+<h3 id="RC-RU-条件列是聚簇索引"><a href="#RC-RU-条件列是聚簇索引" class="headerlink" title="RC/RU+条件列是聚簇索引"></a>RC/RU+条件列是聚簇索引</h3><p>恩，大家应该知道pId是主键列，因此pId用的就是聚簇索引。此情况其实和<strong>RC/RU+条件列非索引</strong>情况是类似的。</p>
+<p>(1)<code>select * from table where pId = 2</code></p>
+<p>不加任何锁，是快照读。</p>
+<p>(2)<code>select * from table where pId &gt; 2</code></p>
+<p>不加任何锁，是快照读。</p>
+<p>(3)<code>select * from table where pId = 2 lock in share mode</code></p>
+<p>在pId=2的聚簇索引上，加S锁，为当前读。</p>
+<p>(4)<code>select * from table where pId &gt; 2 lock in share mode</code></p>
+<p>在pId=3，7的聚簇索引上，加S锁，为当前读。</p>
+<p>(5)<code>select * from table where pId = 2 for update</code></p>
+<p>在pId=2的聚簇索引上，加X锁，为当前读。</p>
+<p>(6)<code>select * from table where pId &gt; 2 for update</code></p>
+<p>在pId=3，7的聚簇索引上，加X锁，为当前读。</p>
+<p>这里，大家可能有疑问<br><strong>为什么条件列加不加索引，加锁情况是一样的？</strong></p>
+<p>ok,其实是不一样的。在RC/RU隔离级别中，MySQL Server做了优化。在条件列没有索引的情况下，尽管通过聚簇索引来扫描全表，进行全表加锁。但是，MySQL Server层会进行过滤并把不符合条件的锁当即释放掉，因此你看起来最终结果是一样的。但是<strong>RC/RU+条件列非索引</strong>比本例多了一个释放不符合条件的锁的过程！</p>
+<h3 id="RC-RU-条件列是非聚簇索引"><a href="#RC-RU-条件列是非聚簇索引" class="headerlink" title="RC/RU+条件列是非聚簇索引"></a>RC/RU+条件列是非聚簇索引</h3><p>我们在num列上建上非唯一索引。此时有一棵聚簇索引(主键索引，pId)形成的B+索引树，其叶子节点为硬盘上的真实数据。以及另一棵非聚簇索引(非唯一索引，num)形成的B+索引树，其叶子节点依然为索引节点，保存了num列的字段值，和对应的聚簇索引。</p>
+<p>接下来分析开始</p>
+<p>(1)<code>select * from table where num = 200</code></p>
+<p>不加任何锁，是快照读。</p>
+<p>(2)<code>select * from table where num &gt; 200</code></p>
+<p>不加任何锁，是快照读。</p>
+<p>(3)<code>select * from table where num = 200 lock in share mode</code></p>
+<p>当num = 200，由于num列上有索引，因此先在 num = 200的两条索引记录上加行级S锁。接着，去聚簇索引树上查询，这两条记录对应的pId=2，7，因此在pId=2，7的聚簇索引上加行级S锁，采用当前读。</p>
+<p>(4)<code>select * from table where num &gt; 200 lock in share mode</code></p>
+<p>当num &gt; 200，由于num列上有索引，因此先在符合条件的 num = 300的一条索引记录上加行级S锁。接着，去聚簇索引树上查询，这条记录对应的pId=3，因此在pId=3的聚簇索引上加行级S锁，采用当前读。</p>
+<p>(5)<code>select * from table where num = 200 for update</code></p>
+<p>当num = 200，由于num列上有索引，因此先在 num = 200的两条索引记录上加行级X锁。接着，去聚簇索引树上查询，这两条记录对应的pId=2，7，因此在pId=2，7的聚簇索引上加行级X锁，采用当前读。</p>
+<p>(6)<code>select * from table where num &gt; 200 for update</code></p>
+<p>当num &gt; 200，由于num列上有索引，因此先在符合条件的 num = 300的一条索引记录上加行级X锁。接着，去聚簇索引树上查询，这条记录对应的pId=3，因此在pId=3的聚簇索引上加行级X锁，采用当前读。</p>
+<h3 id="RR-Serializable-条件列非索引"><a href="#RR-Serializable-条件列非索引" class="headerlink" title="RR/Serializable+条件列非索引"></a>RR/Serializable+条件列非索引</h3><p>RR级别需要多考虑的就是gap lock，他的加锁特征在于，无论你怎么查都是锁全表。如下所示 接下来分析开始</p>
+<p>(1)<code>select * from table where num = 200</code></p>
+<p>在RR级别下，不加任何锁，是快照读。 在Serializable级别下，在pId = 1,2,3,7（全表所有记录）的聚簇索引上加S锁。并且在 聚簇索引的所有间隙(-∞,1)(1,2)(2,3)(3,7)(7,+∞)加gap lock</p>
+<p>(2)<code>select * from table where num &gt; 200</code></p>
+<p>在RR级别下，不加任何锁，是快照读。 在Serializable级别下，在pId = 1,2,3,7（全表所有记录）的聚簇索引上加S锁。并且在 聚簇索引的所有间隙(-∞,1)(1,2)(2,3)(3,7)(7,+∞)加gap lock</p>
+<p>(3)<code>select * from table where num = 200 lock in share mode</code></p>
+<p>在pId = 1,2,3,7（全表所有记录）的聚簇索引上加S锁。并且在 聚簇索引的所有间隙(-∞,1)(1,2)(2,3)(3,7)(7,+∞)加gap lock</p>
+<p>(4)<code>select * from table where num &gt; 200 lock in share mode</code></p>
+<p>在pId = 1,2,3,7（全表所有记录）的聚簇索引上加S锁。并且在 聚簇索引的所有间隙(-∞,1)(1,2)(2,3)(3,7)(7,+∞)加gap lock</p>
+<p>(5)<code>select * from table where num = 200 for update</code></p>
+<p>在pId = 1,2,3,7（全表所有记录）的聚簇索引上加X锁。并且在 聚簇索引的所有间隙(-∞,1)(1,2)(2,3)(3,7)(7,+∞)加gap lock</p>
+<p>(6)<code>select * from table where num &gt; 200 for update</code></p>
+<p>在pId = 1,2,3,7（全表所有记录）的聚簇索引上加X锁。并且在 聚簇索引的所有间隙(-∞,1)(1,2)(2,3)(3,7)(7,+∞)加gap lock</p>
+<h3 id="RR-Serializable-条件列是聚簇索引"><a href="#RR-Serializable-条件列是聚簇索引" class="headerlink" title="RR/Serializable+条件列是聚簇索引"></a>RR/Serializable+条件列是聚簇索引</h3><p>恩，大家应该知道pId是主键列，因此pId用的就是聚簇索引。该情况的加锁特征在于，如果<code>where</code>后的条件为精确查询(<code>=</code>的情况)，那么只存在record lock。如果<code>where</code>后的条件为范围查询(<code>&gt;</code>或<code>&lt;</code>的情况)，那么存在的是record lock+gap lock。</p>
+<p>(1)<code>select * from table where pId = 2</code></p>
+<p>在RR级别下，不加任何锁，是快照读。 在Serializable级别下，是当前读，在pId=2的聚簇索引上加S锁，不存在gap lock。</p>
+<p>(2)<code>select * from table where pId &gt; 2</code></p>
+<p>在RR级别下，不加任何锁，是快照读。 在Serializable级别下，是当前读，在pId=3,7的聚簇索引上加S锁。在(2,3)(3,7)(7,+∞)加上gap lock</p>
+<p>(3)<code>select * from table where pId = 2 lock in share mode</code></p>
+<p>是当前读，在pId=2的聚簇索引上加S锁，不存在gap lock。</p>
+<p>(4)<code>select * from table where pId &gt; 2 lock in share mode</code></p>
+<p>是当前读，在pId=3,7的聚簇索引上加S锁。在(2,3)(3,7)(7,+∞)加上gap lock</p>
+<p>(5)<code>select * from table where pId = 2 for update</code></p>
+<p>是当前读，在pId=2的聚簇索引上加X锁。</p>
+<p>(6)<code>select * from table where pId &gt; 2 for update</code></p>
+<p>在pId=3,7的聚簇索引上加X锁。在(2,3)(3,7)(7,+∞)加上gap lock</p>
+<p>(7)<code>select * from table where pId = 6 [lock in share mode|for update]</code></p>
+<p>注意了，pId=6是不存在的列，这种情况会在(3,7)上加gap lock。</p>
+<p>(8)<code>select * from table where pId &gt; 18 [lock in share mode|for update]</code></p>
+<p>注意了，pId&gt;18，查询结果是空的。在这种情况下，是在(7,+∞)上加gap lock。</p>
+<h3 id="RR-Serializable-条件列是非聚簇索引"><a href="#RR-Serializable-条件列是非聚簇索引" class="headerlink" title="RR/Serializable+条件列是非聚簇索引"></a>RR/Serializable+条件列是非聚簇索引</h3><p>这里非聚簇索引，需要区分是否为唯一索引。因为如果是非唯一索引，间隙锁的加锁方式是有区别的。</p>
+<p>先说一下，唯一索引的情况。如果是唯一索引，情况和<strong>RR/Serializable+条件列是聚簇索引</strong>类似，唯一有区别的是:这个时候有两棵索引树，加锁是加在对应的非聚簇索引树和聚簇索引树上！大家可以自行推敲!</p>
+<p>下面说一下，非聚簇索引是非唯一索引的情况，他和唯一索引的区别就是通过索引进行精确查询以后，不仅存在record lock，还存在gap lock。而通过唯一索引进行精确查询后，只存在record lock，不存在gap lock。老规矩在num列建立非唯一索引</p>
+<p>(1)<code>select * from table where num = 200</code></p>
+<p>在RR级别下，不加任何锁，是快照读。 在Serializable级别下，是当前读，在pId=2，7的聚簇索引上加S锁，在num=200的非聚集索引上加S锁，在(100,200)(200,300)加上gap lock。</p>
+<p>(2)<code>select * from table where num &gt; 200</code></p>
+<p>在RR级别下，不加任何锁，是快照读。 在Serializable级别下，是当前读，在pId=3的聚簇索引上加S锁，在num=300的非聚集索引上加S锁。在(200,300)(300,+∞)加上gap lock</p>
+<p>(3)<code>select * from table where num = 200 lock in share mode</code></p>
+<p>是当前读，在pId=2，7的聚簇索引上加S锁，在num=200的非聚集索引上加S锁，在(100,200)(200,300)加上gap lock。</p>
+<p>(4)<code>select * from table where num &gt; 200 lock in share mode</code></p>
+<p>是当前读，在pId=3的聚簇索引上加S锁，在num=300的非聚集索引上加S锁。在(200,300)(300,+∞)加上gap lock。</p>
+<p>(5)<code>select * from table where num = 200 for update</code></p>
+<p>是当前读，在pId=2，7的聚簇索引上加S锁，在num=200的非聚集索引上加X锁，在(100,200)(200,300)加上gap lock。</p>
+<p>(6)<code>select * from table where num &gt; 200 for update</code></p>
+<p>是当前读，在pId=3的聚簇索引上加S锁，在num=300的非聚集索引上加X锁。在(200,300)(300,+∞)加上gap lock</p>
+<p>(7)<code>select * from table where num = 250 [lock in share mode|for update]</code></p>
+<p>注意了，num=250是不存在的列，这种情况会在(200,300)上加gap lock。</p>
+<p>(8)<code>select * from table where num &gt; 400 [lock in share mode|for update]</code></p>
+<p>注意了，pId&gt;400，查询结果是空的。在这种情况下，是在(400,+∞)上加gap lock。</p>
+
+      
+
+      
+    </div>
+    <div class="article-info article-info-index">
+      
+      
+	<div class="article-tag tagcloud">
+		<i class="icon-price-tags icon"></i>
+		<ul class="article-tag-list">
+			 
+        		<li class="article-tag-list-item">
+        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color5">Java</a>
+        		</li>
+      		
+		</ul>
+	</div>
+
+      
+
+      
+        <p class="article-more-link">
+          <a class="article-more-a" href="/2019/08/20/惊！史上最全的select加锁分析(Mysql)/">展开全文 >></a>
+        </p>
+      
+
+      
+      <div class="clearfix"></div>
+    </div>
+  </div>
+</article>
+
+<aside class="wrap-side-operation">
+    <div class="mod-side-operation">
+        
+        <div class="jump-container" id="js-jump-container" style="display:none;">
+            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
+                <i class="icon-font icon-back"></i>
+            </a>
+            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
+                <i class="icon-font icon-plane jump-plane"></i>
+            </div>
+        </div>
+        
+        
+    </div>
+</aside>
+
+
+
+
+  
+    <article id="post-万万没想到，JVM内存结构的面试题可以问的这么难？" class="article article-type-post  article-index" itemscope itemprop="blogPost">
+  <div class="article-inner">
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2019/08/06/万万没想到，JVM内存结构的面试题可以问的这么难？/">万万没想到，JVM内存结构的面试题可以问的这么难？</a>
+    </h1>
+  
+
+        
+        <a href="/2019/08/06/万万没想到，JVM内存结构的面试题可以问的这么难？/" class="archive-article-date">
+  	<time datetime="2019-08-06T03:41:56.056Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2019-08-06</time>
+</a>
+        
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <blockquote>
+<p>本文转载自 <a href="https://juejin.im/post/5d4789afe51d453b386a62ac" target="_blank" rel="noopener">https://juejin.im/post/5d4789afe51d453b386a62ac</a> </p>
+</blockquote>
+<p>在我的博客中，之前有很多文章介绍过JVM内存结构，相信很多看多我文章的朋友对这部分知识都有一定的了解了。</p>
+<p>那么，请大家尝试着回答一下以下问题：</p>
+<p>1、JVM管理的内存结构是怎样的？<br>2、不同的虚拟机在实现运行时内存的时候有什么区别？<br>3、运行时数据区中哪些区域是线程共享的？哪些是独享的？<br>4、除了JVM运行时内存以外，还有什么区域可以用吗？<br>5、堆和栈的区别是什么？<br>6、Java中的数组是存储在堆上还是栈上的？<br>7、Java中的对象创建有多少种方式？<br>8、Java中对象创建的过程是怎么样的？<br>9、Java中的对象一定在堆上分配内存吗？<br>10、如何获取堆和栈的dump文件？</p>
+<p>以上10道题，如果您可以全部准确无误的回答的话，那说明你真的很了解JVM的内存结构以及内存分配相关的知识了，如果有哪些知识点是不了解的，那么本文正好可以帮你答疑解惑。<br>JVM管理的内存结构是怎样的？</p>
+<p>Java虚拟机在执行Java程序的过程中会把他所管理的内存划分为若干个不同的数据区域。《Java虚拟机规范》中规定了JVM所管理的内存需要包括一下几个运行时区域：</p>
+<p><img src="https://user-gold-cdn.xitu.io/2019/8/5/16c5f71ceedef2ff?imageView2/0/w/1280/h/960/ignore-error/1" alt>￼</p>
+<p>主要包含了PC寄存器（程序计数器）、Java虚拟机栈、本地方法栈、Java堆、方法区以及运行时常量池。</p>
+<p>各个区域有各自不同的作用，关于各个区域的作用就不在本文中相信介绍了。</p>
+<p>但是，需要注意的是，上面的区域划分只是逻辑区域，对于有些区域的限制是比较松的，所以不同的虚拟机厂商在实现上，甚至是同一款虚拟机的不同版本也是不尽相同的。<br>不同的虚拟机在实现运行时内存的时候有什么区别？</p>
+<p>前面提到过《Java虚拟机规范》定义的JVM运行时所需的内存区域，不同的虚拟机实现上有所不同，而在这么多区域中，规范对于方法区的管理是最宽松的，规范中关于这部分的描述如下：</p>
+<p>方法区在虚拟机启动的时候创建，虽然方法区是堆的逻辑组成部分，但是简单的虚拟机实现可以选择在这个区域不实现垃圾收集与压缩。本版本的规范也不限定实现方法区的内存位置和代码编译的管理策略。方法区的容量可以是固定的，也可以随着程序执行的需求动态扩展，并在不需要过多的空间时自行收缩。方法区在实际内存空间站可以是不连续的。</p>
+<p>这一规定，可以说是给了虚拟机厂商很大的自由。</p>
+<p>虚拟机规范对方法区实现的位置并没有明确要求，在最著名的HotSopt虚拟机实现中（在Java 8 之前），方法区仅是逻辑上的独立区域，在物理上并没有独立于堆而存在，而是位于永久代中。所以，这时候方法区也是可以被垃圾回收的。<br>实践证明，JVM中存在着大量的声明短暂的对象，还有一些生命周期比较长的对象。为了对他们采用不同的收集策略，采用了分代收集算法，所以HotSpot虚拟机把的根据对象的年龄不同，把堆分位新生代、老年代和永久代。</p>
+<p>在Java 8中 ，HotSpot虚拟机移除了永久代，使用本地内存来存储类元数据信息并称之为：元空间（Metaspace）</p>
+<p><img src="https://user-gold-cdn.xitu.io/2019/8/5/16c5f71cedf925ff?imageView2/0/w/1280/h/960/ignore-error/1" alt>￼
+运行时数据区中哪些区域是线程共享的？哪些是独享的？</p>
+<p>在JVM运行时内存区域中，PC寄存器、虚拟机栈和本地方法栈是线程独享的。</p>
+<p>而Java堆、方法区是线程共享的。但是值得注意的是，Java堆其实还未每一个线程单独分配了一块<a href="https://link.juejin.im?target=https%3A%2F%2Fwww.hollischuang.com%2Farchives%2F3855" target="_blank" rel="noopener">TLAB空间</a>，这部分空间在分配时是线程独享的，在使用时是线程共享的。<br>除了JVM运行时内存以外，还有什么区域可以用吗？</p>
+<p>除了我们前面介绍的虚拟机运行时数据区以外，还有一部分内存也被频繁使用，他不是运行时数据区的一部分，也不是Java虚拟机规范中定义的内存区域，他就是——直接内存。</p>
+<p>直接内存的分配不受Java堆大小的限制，但是他还是会收到服务器总内存的影响。</p>
+<p>在JDK 1.4中引入的NIO中，引入了一种基于Channel和Buffer的I/O方式，他可以使用Native函数直接分配堆外内存，然后通过一个存储在Java堆中的DirectByteBuffer对象作为这块内存的应用进行操作。</p>
+<p><img src="https://user-gold-cdn.xitu.io/2019/8/5/16c5f71cf1ef6818?imageView2/0/w/1280/h/960/ignore-error/1" alt>￼
+堆和栈的区别是什么？</p>
+<p>堆和栈（虚拟机栈）是完全不同的两块内存区域，一个是线程独享的，一个是线程共享的，二者之间最大的区别就是存储的内容不同：</p>
+<p>堆中主要存放对象实例。<br>栈（局部变量表）中主要存放各种基本数据类型、对象的引用。<br>Java中的数组是存储在堆上还是栈上的？</p>
+<p>在Java中，数组同样是一个对象，所以对象在内存中如何存放同样适用于数组；</p>
+<p>所以，数组的实例是保存在堆中，而数组的引用是保存在栈上的。</p>
+<p><img src="https://user-gold-cdn.xitu.io/2019/8/5/16c5f71ceef4b84d?imageView2/0/w/1280/h/960/ignore-error/1" alt>￼
+Java中的对象创建有多少种方式？</p>
+<p>Java中有很多方式可以创建一个对象，最简单的方式就是使用new关键字。</p>
+<p><code>User user = new User();</code></p>
+<p>除此以外，还可以使用反射机制创建对象：</p>
+<p><code>User user = User.class.newInstance();</code></p>
+<p>或者使用Constructor类的newInstance：</p>
+<p><code>Constructor&lt;User&gt; constructor = User.class.getConstructor();
+User user = constructor.newInstance();</code></p>
+<p>除此之外还可以使用clone方法和反序列化的方式，这两种方式不常用并且代码比较复杂，就不在这里展示了，感兴趣的可以自行了解下。</p>
+<p>Java中对象创建的过程是怎么样的？</p>
+<p>对于一个普通的Java对象的创建，大致过程如下：</p>
+<p>1、虚拟机遇到new指令，到常量池定位到这个类的符号引用。<br>2、检查符号引用代表的类是否被加载、解析、初始化过。<br>3、虚拟机为对象分配内存。<br>4、虚拟机将分配到的内存空间都初始化为零值。<br>5、虚拟机对对象进行必要的设置。<br>6、执行方法，成员变量进行初始化。<br>Java中的对象一定在堆上分配内存吗？</p>
+<p>前面我们说过，Java堆中主要保存了对象实例，但是，随着JIT编译期的发展与<a href="https://link.juejin.im?target=https%3A%2F%2Fwww.hollischuang.com%2Farchives%2F2583" target="_blank" rel="noopener">逃逸分析</a>技术逐渐成熟，<a href="https://link.juejin.im?target=https%3A%2F%2Fwww.hollischuang.com%2Farchives%2F2398" target="_blank" rel="noopener">栈上分配</a>、标量替换优化技术将会导致一些微妙的变化，所有的对象都分配到堆上也渐渐变得不那么“绝对”了。</p>
+<p>其实，在编译期间，JIT会对代码做很多优化。其中有一部分优化的目的就是减少内存堆分配压力，其中一种重要的技术叫做逃逸分析。</p>
+<p>如果JIT经过逃逸分析，发现有些对象没有逃逸出方法，那么有可能堆内存分配会被优化成栈内存分配。</p>
+<p><img src="https://user-gold-cdn.xitu.io/2019/8/5/16c5f71cf10db7bf?imageView2/0/w/1280/h/960/ignore-error/1" alt>￼
+10、如何获取堆和栈的dump文件？</p>
+<p>Java Dump，Java虚拟机的运行时快照。将Java虚拟机运行时的状态和信息保存到文件。</p>
+<p>可以使用在服务器上使用<a href="https://link.juejin.im?target=https%3A%2F%2Fwww.hollischuang.com%2Farchives%2F303" target="_blank" rel="noopener">jmap</a>命令来获取堆dump，使用<a href="https://link.juejin.im?target=http%3A%2F%2Fwww.hollischuang.com%2Farchives%2F110" target="_blank" rel="noopener">jstack</a>命令来获取线程的调用栈dump。</p>
+<p>最后，欢迎大家关注我的公众号：<br><img src="https://user-gold-cdn.xitu.io/2019/8/5/16c5f71f7d7e8f51?imageView2/0/w/1280/h/960/ignore-error/1" alt></p>
+
+      
+
+      
+    </div>
+    <div class="article-info article-info-index">
+      
+      
+	<div class="article-tag tagcloud">
+		<i class="icon-price-tags icon"></i>
+		<ul class="article-tag-list">
+			 
+        		<li class="article-tag-list-item">
+        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color5">Java</a>
+        		</li>
+      		 
+        		<li class="article-tag-list-item">
+        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color4">JVM</a>
+        		</li>
+      		
+		</ul>
+	</div>
+
+      
+
+      
+        <p class="article-more-link">
+          <a class="article-more-a" href="/2019/08/06/万万没想到，JVM内存结构的面试题可以问的这么难？/">展开全文 >></a>
+        </p>
+      
+
+      
+      <div class="clearfix"></div>
+    </div>
+  </div>
+</article>
+
+<aside class="wrap-side-operation">
+    <div class="mod-side-operation">
+        
+        <div class="jump-container" id="js-jump-container" style="display:none;">
+            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
+                <i class="icon-font icon-back"></i>
+            </a>
+            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
+                <i class="icon-font icon-plane jump-plane"></i>
+            </div>
+        </div>
+        
+        
+    </div>
+</aside>
+
+
+
+
+  
     <article id="post-分布式数据库中间件MyCat搞起来！" class="article article-type-post  article-index" itemscope itemprop="blogPost">
   <div class="article-inner">
     
@@ -1217,221 +1611,6 @@
 
 
   
-    <article id="post-hello-world" class="article article-type-post  article-index" itemscope itemprop="blogPost">
-  <div class="article-inner">
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2019/05/30/hello-world/">Hello World</a>
-    </h1>
-  
-
-        
-        <a href="/2019/05/30/hello-world/" class="archive-article-date">
-  	<time datetime="2019-05-30T00:45:32.658Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2019-05-30</time>
-</a>
-        
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <p>Welcome to <a href="https://hexo.io/" target="_blank" rel="noopener">Hexo</a>! This is your very first post. Check <a href="https://hexo.io/docs/" target="_blank" rel="noopener">documentation</a> for more info. If you get any problems when using Hexo, you can find the answer in <a href="https://hexo.io/docs/troubleshooting.html" target="_blank" rel="noopener">troubleshooting</a> or you can ask me on <a href="https://github.com/hexojs/hexo/issues" target="_blank" rel="noopener">GitHub</a>.</p>
-<h2 id="Quick-Start"><a href="#Quick-Start" class="headerlink" title="Quick Start"></a>Quick Start</h2><h3 id="Create-a-new-post"><a href="#Create-a-new-post" class="headerlink" title="Create a new post"></a>Create a new post</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ hexo new <span class="string">"My New Post"</span></span><br></pre></td></tr></table></figure>
-
-<p>More info: <a href="https://hexo.io/docs/writing.html" target="_blank" rel="noopener">Writing</a></p>
-<h3 id="Run-server"><a href="#Run-server" class="headerlink" title="Run server"></a>Run server</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ hexo server</span><br></pre></td></tr></table></figure>
-
-<p>More info: <a href="https://hexo.io/docs/server.html" target="_blank" rel="noopener">Server</a></p>
-<h3 id="Generate-static-files"><a href="#Generate-static-files" class="headerlink" title="Generate static files"></a>Generate static files</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ hexo generate</span><br></pre></td></tr></table></figure>
-
-<p>More info: <a href="https://hexo.io/docs/generating.html" target="_blank" rel="noopener">Generating</a></p>
-<h3 id="Deploy-to-remote-sites"><a href="#Deploy-to-remote-sites" class="headerlink" title="Deploy to remote sites"></a>Deploy to remote sites</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ hexo deploy</span><br></pre></td></tr></table></figure>
-
-<p>More info: <a href="https://hexo.io/docs/deployment.html" target="_blank" rel="noopener">Deployment</a></p>
-
-      
-
-      
-    </div>
-    <div class="article-info article-info-index">
-      
-      
-      
-
-      
-        <p class="article-more-link">
-          <a class="article-more-a" href="/2019/05/30/hello-world/">展开全文 >></a>
-        </p>
-      
-
-      
-      <div class="clearfix"></div>
-    </div>
-  </div>
-</article>
-
-<aside class="wrap-side-operation">
-    <div class="mod-side-operation">
-        
-        <div class="jump-container" id="js-jump-container" style="display:none;">
-            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
-                <i class="icon-font icon-back"></i>
-            </a>
-            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
-                <i class="icon-font icon-plane jump-plane"></i>
-            </div>
-        </div>
-        
-        
-    </div>
-</aside>
-
-
-
-
-  
-    <article id="post-熟练掌握各种MQ？那面试官很可能用这道题目先摸摸你的老底！" class="article article-type-post  article-index" itemscope itemprop="blogPost">
-  <div class="article-inner">
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2019/05/28/熟练掌握各种MQ？那面试官很可能用这道题目先摸摸你的老底！/">熟练掌握各种MQ？那面试官很可能用这道题目先摸摸你的老底！</a>
-    </h1>
-  
-
-        
-        <a href="/2019/05/28/熟练掌握各种MQ？那面试官很可能用这道题目先摸摸你的老底！/" class="archive-article-date">
-  	<time datetime="2019-05-28T07:38:06.006Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2019-05-28</time>
-</a>
-        
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <blockquote>
-<p>本文转载自 <a href="https://juejin.im/post/5ceb79fef265da1bb47d4222" target="_blank" rel="noopener">https://juejin.im/post/5ceb79fef265da1bb47d4222</a><br><strong>公众号：狸猫技术窝</strong></p>
-</blockquote>
-<p><strong>作者：爱钓鱼的桌子哥，资深架构师</strong></p>
-<h3 id="目录"><a href="#目录" class="headerlink" title="目录"></a><strong>目录</strong></h3><p>1.有Broker的暴力路由：<strong>Kafka</strong></p>
-<p>2.有Broker的复杂路由：<strong>RabbitMQ</strong></p>
-<p>3.无Broker的通信流派：<strong>ZeroMQ</strong></p>
-<p>4.总结</p>
-<h3 id="写在前面"><a href="#写在前面" class="headerlink" title="写在前面"></a><strong>写在前面</strong></h3><p>我们知道，目前市面上的MQ包括Kafka、RabbitMQ、ZeroMQ、RocketMQ等等。</p>
-<p>那么他们之间究竟有什么本质区别，分别适用于什么场景呢？</p>
-<p>上述抛出的问题，同样在不少公司的Java工程师面试中出现，特别是当你简历上的技术栈包含了这些技术，面试官往往喜欢用这个问题，对你进行摸底考察。</p>
-<p>本文我们就一起来探讨一下。</p>
-<h3 id="（1）有Broker的暴力路由"><a href="#（1）有Broker的暴力路由" class="headerlink" title="（1）有Broker的暴力路由"></a><strong>（1）有Broker的暴力路由</strong></h3><p>这个流派最典型的就是<strong>Kafka</strong>，Kafka实际上为了提升性能，简化了MQ功能模型，仅仅提供了一些最基础的MQ相关的功能，但是大幅度优化和提升了吞吐量。</p>
-<p>首先，这个流派一定是有一个Broker角色的，也就是说，Kafka需要部署一套服务器集群，每台机器上都有一个Kafka Broker进程，这个进程就负责接收请求，存储数据，发送数据。</p>
-<p>Kafka的生产消费模型做的相对是比较暴力简单的，就是简单的数据流模型。</p>
-<p>简单来说，他有一个概念，叫做“<strong>Topic</strong>”，你可以往这个“Topic”里写数据，然后让别人从这里来消费。</p>
-<p>这个Topic可以划分为多个Partition，每个Partition放一台机器上，存储一部分数据。</p>
-<p>在写消息到Topic的时候，会自动把你这个消息给分发到某一个Partition上去。</p>
-<p>然后消费消息的时候，有一个<strong>Consumer Group</strong>的概念，你部署在多台机器上的Consumer可以组成一个Group，一个Partition只能给一个Consumer消费，一个Cosumer可以消费多个Partition，这是最最核心的一点。</p>
-<p>通过这个模型，保证一个Topic里的每条消息，只会交给Consumer Group里的一个Consumer来消费，形成了一个Queue（队列）的效果。</p>
-<p>假如你想要有一个Queue的效果，也就是希望不停的往Queue里写数据，然后多个消费者消费，每条消息就只能给一个消费者，那么通过Kafka来实现，其实就是生产者写多个Partition，每个Partition只能给Consumer Group中的一个Consumer来消费。如下图所示：</p>
-<p><img src="https://user-gold-cdn.xitu.io/2019/5/27/16af7d5d9e1690c5?imageView2/0/w/1280/h/960/ignore-error/1" alt></p>
-<p>如果要实现Publish/Subscribe的模型呢？就是说生产者发送的每条消息，都要让所有消费都消费到，怎么实现？</p>
-<p>那就让每个消费者都是一个独立的消费组，这样每条消息都会发送给所有的消费组，每个消费组里那唯一的一个消费者一定会消费到所有的消息。</p>
-<p><img src="https://user-gold-cdn.xitu.io/2019/5/27/16af7d5d918ca40f?imageView2/0/w/1280/h/960/ignore-error/1" alt></p>
-<p>但是除此之外，Kafka就没有任何其他的消费功能了，就是如此简单，所以属于一种比较暴力直接的流派。</p>
-<p>它就是简单的消费模型，实现最基础的Queue和Pub/Sub两种消费模型，但是内核中大幅度优化和提升了性能以及吞吐量。</p>
-<p>所以Kafka天生适合的场景，就是大数据领域的实时数据计算的场景。</p>
-<p>因为在大数据的场景下，通常是弱业务的场景，没有太多复杂的业务系统交互，而主要是大量的数据流入Kafka，然后进行实时计算。</p>
-<p>所以就是需要简单的消费模型，但是必须在内核中对吞吐量和性能进行大幅度的优化。</p>
-<p>因此Kafka技术通常是在大数据的实时数据计算领域中使用的，比如说每秒处理几十万条消息，甚至每秒处理上百万条消息。</p>
-<h3 id="（2）有Broker的复杂路由"><a href="#（2）有Broker的复杂路由" class="headerlink" title="（2）有Broker的复杂路由"></a>（2）有Broker的复杂路由</h3><p>第二个流派，就是<strong>RabbitMQ</strong>为代表的流派，他强调的不是说如何提升性能和吞吐量，关注的是说要提供非常强大、复杂而且完善的消息路由功能。</p>
-<p>所以对于RabbitMQ而言，他就不是那么简单的Topic-Partition的消费模型了。</p>
-<p>在RabbitMQ中引入了一个非常核心的概念，叫做<strong>Exchange</strong>，这个Exchange就是负责根据复杂的业务规则把消息路由到内部的不同的Queue里去。</p>
-<p>举个例子，如果要实现最简单的队列功能，就是让exchange往一个queue里写数据，然后多个消费者来消费这个queue里的数据，每条消息只能给一个消费者，那么可以是类似下面的方式。</p>
-<p><img src="https://user-gold-cdn.xitu.io/2019/5/27/16af7d5d91903b11?imageView2/0/w/1280/h/960/ignore-error/1" alt></p>
-<p>如果想要实现Pub/Sub的模型，就是一条消息要被所有的消费者给消费到，那么就可以让每个消费者都有一个自己的Queue，然后绑定到一个Exchange上去。</p>
-<p>接着，这个Exchange就设定把消息路由给所有的Queue即可，如下面这样。</p>
-<p>此时Exchange可以把每条消息都路由给所有的Queue，每个Consumer都可以从自己的Queue里拿到所有的消息。</p>
-<p><img src="https://user-gold-cdn.xitu.io/2019/5/27/16af7d5d91efcb5b?imageView2/0/w/1280/h/960/ignore-error/1" alt></p>
-<p>RabbitMQ这种流派，其实最核心的是，基于Exchange这个概念，他可以做很多复杂的事情。</p>
-<p>比如：如果你想要某个Consumer只能消费到<strong>某一类数据</strong>，那么Exchange可以把消息里比如带“XXX”前缀的消息路由给某个Queue。或者你可以限定某个Consumer就只能消费<strong>某一部分数据</strong>。总之在这里你可以做很多的限制，设置复杂的路由规则。</p>
-<p>但是也正是因为引入了这种复杂的消费模型，支持复杂的路由功能，导致RabbitMQ在内核以及架构设计上没法像Kafka做的那么的轻量级、高性能、可扩展、高吞吐，所以RabbitMQ在吞吐量上要比Kafka低一个数量级。</p>
-<p>所以这种流派的MQ，往往适合用在Java业务系统中，不同的业务系统需要进行复杂的消息路由。</p>
-<p>比如说业务系统A发送了10条消息，其中3条消息是给业务系统B的，7条消息是给业务系统C的，要实现这种复杂的路由模型，就必须依靠RabbitMQ来实现。</p>
-<p>当然，对于这种业务系统之间的消息流转而言，可能不需要那么高的吞吐量，可能每秒业务系统之间也就转发几十条或者几百条消息，那么就完全适合采用RabbitMQ来实现。</p>
-<h3 id="（3）无Broker的通信流派"><a href="#（3）无Broker的通信流派" class="headerlink" title="（3）无Broker的通信流派"></a>（3）无Broker的通信流派</h3><p><strong>ZeroMQ</strong>代表的是第三种MQ。说白了，他是不需要在服务器上部署的，就是一个客户端的库而已。</p>
-<p>也就是说，他主要是封装了底层的Socket网络通讯，然后一个系统要发送一条消息给另外一个消息消费 。</p>
-<p>通过ZeroMQ，本质就是底层ZeroMQ发送一条消息到另外一个系统上去。</p>
-<p>所以ZeroMQ是<strong>去中心化</strong>的，不需要跟Kafka、RabbitMQ一样在服务器上部署的。</p>
-<p>他主要是用来进行业务系统之间的网络通信的，有点类似于比如你是一个分布式系统架构，那么此时分布式架构中的各个子系统互相之间要通信，你是基于Dubbo RPC？还是Spring Cloud HTTP？</p>
-<p>可能上述两种你都不想要，就是要基于原始的Socket进行网络通信，简单的收发消息而已。</p>
-<p>此时就可以使用ZeroMQ作为分布式系统之间的消息通信，如下面那样。</p>
-<p><img src="https://user-gold-cdn.xitu.io/2019/5/27/16af7d5d91f778d7?imageView2/0/w/1280/h/960/ignore-error/1" alt></p>
-<h3 id="（4）总结"><a href="#（4）总结" class="headerlink" title="（4）总结"></a>（4）总结</h3><p>其实现在基本上MQ主要就是这三个流派，很多小众的MQ一般很少有人会用。</p>
-<p>而且用MQ的场景主要就是两大类：</p>
-<pre><code>1. </code></pre><p><strong>业务系统之间异步通信</strong><br>    1.<br><strong>大数据领域的实时数据计算</strong></p>
-<p>所以一般业务系统之间通信就是会采用RabbitMQ/RocketMQ，需要复杂的消息路由功能的支撑。</p>
-<p>大数据的实时计算场景会采用Kafka，需要简单的消费模型，但是超高的吞吐量。</p>
-<p>至于ZeroMQ，一般来说，少数分布式系统中子系统之间的分布式通信时会采用，作为轻量级的异步化的通信组件。</p>
-<p><strong>END</strong></p>
-<p><strong>作者简介：</strong></p>
-<p><strong>爱钓鱼的桌子哥，资深架构师</strong></p>
-<p>作者先后工作于滴滴、百度、字节跳动等国内一线互联网大厂，从事基础架构相关工作。带领团队设计与构建了大规模的分布式存储系统、分布式消息中间件、分布式数据库，对分布式架构设计、系统高可用体系构建、基础中间件架构都有丰富的经验。</p>
-<p><strong>END</strong></p>
-<p>长按下图二维码，即刻关注【狸猫技术窝】 阿里、京东、美团、字节跳动 顶尖技术专家坐镇 为IT人打造一个 “有温度” 的技术窝！</p>
-<p><img src="https://user-gold-cdn.xitu.io/2019/4/23/16a4aea4c6855bb5?imageView2/0/w/1280/h/960/ignore-error/1" alt><br>作者：狸猫技术窝<br>链接：<a href="https://juejin.im/post/5ce1975af265da1bd42450b5" target="_blank" rel="noopener">https://juejin.im/post/5ce1975af265da1bd42450b5</a><br>来源：掘金<br>著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。</p>
-
-      
-
-      
-    </div>
-    <div class="article-info article-info-index">
-      
-      
-	<div class="article-tag tagcloud">
-		<i class="icon-price-tags icon"></i>
-		<ul class="article-tag-list">
-			 
-        		<li class="article-tag-list-item">
-        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color5">Java</a>
-        		</li>
-      		
-		</ul>
-	</div>
-
-      
-
-      
-        <p class="article-more-link">
-          <a class="article-more-a" href="/2019/05/28/熟练掌握各种MQ？那面试官很可能用这道题目先摸摸你的老底！/">展开全文 >></a>
-        </p>
-      
-
-      
-      <div class="clearfix"></div>
-    </div>
-  </div>
-</article>
-
-<aside class="wrap-side-operation">
-    <div class="mod-side-operation">
-        
-        <div class="jump-container" id="js-jump-container" style="display:none;">
-            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
-                <i class="icon-font icon-back"></i>
-            </a>
-            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
-                <i class="icon-font icon-plane jump-plane"></i>
-            </div>
-        </div>
-        
-        
-    </div>
-</aside>
-
-
-
-
-  
   
     <nav id="page-nav">
       <a class="extend prev" rel="prev" href="/">&laquo; Prev</a><a class="page-number" href="/">1</a><span class="page-number current">2</span><a class="page-number" href="/page/3/">3</a><a class="page-number" href="/page/4/">4</a><a class="page-number" href="/page/5/">5</a><a class="extend next" rel="next" href="/page/3/">Next &raquo;</a>
@@ -1541,18 +1720,6 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
               </li>
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color1">Linux</a>
-              </li>
-             
-              <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color1">Shell</a>
-              </li>
-             
-              <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color4">数据库</a>
-              </li>
-             
-              <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color1">shiro</a>
               </li>
              
@@ -1569,11 +1736,31 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
               </li>
              
               <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color4">分布式</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color1">Linux</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color1">Shell</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color4">数据库</a>
+              </li>
+             
+              <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color1">MySQL</a>
               </li>
              
               <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color4">JVM</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color1">Nginx</a>
               </li>
              
               <li class="article-tag-list-item">
@@ -1585,15 +1772,23 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
               </li>
              
               <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color3">算法</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color5">ZooKeeper</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color4">服务器</a>
+              </li>
+             
+              <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color3">架构</a>
               </li>
              
               <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color4">微服务</a>
-              </li>
-             
-              <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color4">服务器</a>
               </li>
              
               <li class="article-tag-list-item">
@@ -1606,18 +1801,6 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
              
               <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color3">源码</a>
-              </li>
-             
-              <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color4">分布式</a>
-              </li>
-             
-              <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color3">算法</a>
-              </li>
-             
-              <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color5">ZooKeeper</a>
               </li>
              
               <li class="article-tag-list-item">

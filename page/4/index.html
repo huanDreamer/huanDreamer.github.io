@@ -152,6 +152,444 @@
           <div id="js-content" class="content-ll">
             
   
+    <article id="post-Java8新的异步编程方式CompletableFuture(1)" class="article article-type-post  article-index" itemscope itemprop="blogPost">
+  <div class="article-inner">
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2019/05/14/Java8新的异步编程方式CompletableFuture(1)/">Java8新的异步编程方式 CompletableFuture(一)</a>
+    </h1>
+  
+
+        
+        <a href="/2019/05/14/Java8新的异步编程方式CompletableFuture(1)/" class="archive-article-date">
+  	<time datetime="2019-05-14T03:45:42.042Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2019-05-14</time>
+</a>
+        
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <blockquote>
+<p>本文转载自 <a href="https://juejin.im/post/59eae61b51882549fc512b34" target="_blank" rel="noopener">https://juejin.im/post/59eae61b51882549fc512b34</a> </p>
+</blockquote>
+<h1 id="一-Future"><a href="#一-Future" class="headerlink" title="一. Future"></a>一. Future</h1><p>JDK 5引入了Future模式。Future接口是Java多线程Future模式的实现，在java.util.concurrent包中，可以来进行异步计算。</p>
+<p>Future模式是多线程设计常用的一种设计模式。Future模式可以理解成：我有一个任务，提交给了Future，Future替我完成这个任务。期间我自己可以去做任何想做的事情。一段时间之后，我就便可以从Future那儿取出结果。</p>
+<p>Future的接口很简单，只有五个方法。<br>`{</p>
+<pre><code>;
+
+;
+
+;
+
+;
+
+;</code></pre><p>}`</p>
+<p>Future接口的方法介绍如下：</p>
+<pre><code>* boolean cancel (boolean mayInterruptIfRunning) 取消任务的执行。参数指定是否立即中断任务执行，或者等等任务结束
+* boolean isCancelled () 任务是否已经取消，任务正常完成前将其取消，则返回 true
+* boolean isDone () 任务是否已经完成。需要注意的是如果任务正常终止、异常或取消，都将返回true
+* V get () throws InterruptedException, ExecutionException 等待任务执行结束，然后获得V类型的结果。InterruptedException 线程被中断异常， ExecutionException任务执行异常，如果任务被取消，还会抛出CancellationException
+* V get (long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException 同上面的get功能一样，多了设置超时时间。参数timeout指定超时时间，uint指定时间的单位，在枚举类TimeUnit中有相关的定义。如果计 算超时，将抛出TimeoutException</code></pre><p>一般情况下，我们会结合Callable和Future一起使用，通过ExecutorService的submit方法执行Callable，并返回Future。<br>`ExecutorService executor = Executors.newCachedThreadPool();</p>
+<pre><code>Future&lt;String&gt; future = executor.submit(() -&gt; { 
+    System.out.println();
+    Thread.sleep();
+     ;
+});
+
+ {
+    Thread.sleep();
+}  (InterruptedException e) {
+}
+
+System.out.println();  
+
+ {
+    System.out.println(future.get());  
+}  (InterruptedException e) {
+}  (ExecutionException e) {
+
+}  {
+    executor.shutdown();
+}`</code></pre><p>比起future.get()，其实更推荐使用get (long timeout, TimeUnit unit) 方法，设置了超时时间可以防止程序无限制的等待future的结果。</p>
+<h1 id="二-CompletableFuture介绍"><a href="#二-CompletableFuture介绍" class="headerlink" title="二. CompletableFuture介绍"></a>二. CompletableFuture介绍</h1><h2 id="2-1-Future模式的缺点"><a href="#2-1-Future模式的缺点" class="headerlink" title="2.1 Future模式的缺点"></a>2.1 Future模式的缺点</h2><pre><code>* Future虽然可以实现获取异步执行结果的需求，但是它没有提供通知的机制，我们无法得知Future什么时候完成。
+* 要么使用阻塞，在future.get()的地方等待future返回的结果，这时又变成同步操作。要么使用isDone()轮询地判断Future是否完成，这样会耗费CPU的资源。</code></pre><h2 id="2-2-CompletableFuture介绍"><a href="#2-2-CompletableFuture介绍" class="headerlink" title="2.2 CompletableFuture介绍"></a>2.2 CompletableFuture介绍</h2><p>Netty、Guava分别扩展了Java 的 Future 接口，方便异步编程。</p>
+<p>Java 8新增的CompletableFuture类正是吸收了所有Google Guava中ListenableFuture和SettableFuture的特征，还提供了其它强大的功能，让Java拥有了完整的非阻塞编程模型：Future、Promise 和 Callback(在Java8之前，只有无Callback 的Future)。</p>
+<p>CompletableFuture能够将回调放到与任务不同的线程中执行，也能将回调作为继续执行的同步函数，在与任务相同的线程中执行。它避免了传统回调最大的问题，那就是能够将控制流分离到不同的事件处理器中。</p>
+<p>CompletableFuture弥补了Future模式的缺点。在异步的任务完成后，需要用其结果继续操作时，无需等待。可以直接通过thenAccept、thenApply、thenCompose等方式将前面异步处理的结果交给另外一个异步事件处理线程来处理。</p>
+<h1 id="三-CompletableFuture特性"><a href="#三-CompletableFuture特性" class="headerlink" title="三. CompletableFuture特性"></a>三. CompletableFuture特性</h1><h2 id="3-1-CompletableFuture的静态工厂方法"><a href="#3-1-CompletableFuture的静态工厂方法" class="headerlink" title="3.1 CompletableFuture的静态工厂方法"></a>3.1 CompletableFuture的静态工厂方法</h2><table>
+<thead>
+<tr>
+<th align="center">方法名</th>
+<th align="center">描述</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center">runAsync(Runnable runnable)</td>
+<td align="center">使用ForkJoinPool.commonPool()作为它的线程池执行异步代码。</td>
+</tr>
+<tr>
+<td align="center">runAsync(Runnable runnable, Executor executor)</td>
+<td align="center">使用指定的thread pool执行异步代码。</td>
+</tr>
+<tr>
+<td align="center">supplyAsync(Supplier<u> supplier)</u></td>
+<td align="center">使用ForkJoinPool.commonPool()作为它的线程池执行异步代码，异步操作有返回值</td>
+</tr>
+<tr>
+<td align="center">supplyAsync(Supplier<u> supplier, Executor executor)</u></td>
+<td align="center">使用指定的thread pool执行异步代码，异步操作有返回值</td>
+</tr>
+</tbody></table>
+<p>runAsync 和 supplyAsync 方法的区别是runAsync返回的CompletableFuture是没有返回值的。<br>`CompletableFuture<void> future = CompletableFuture.runAsync(() -&gt; {<br>            System.out.println();<br>        });</void></p>
+<pre><code> {
+    future.get();
+}  (InterruptedException e) {
+    e.printStackTrace();
+}  (ExecutionException e) {
+    e.printStackTrace();
+}
+
+System.out.println();`</code></pre><p>而supplyAsync返回的CompletableFuture是由返回值的，下面的代码打印了future的返回值。</p>
+<p>`CompletableFuture<string> future = CompletableFuture.supplyAsync(() -&gt; );</string></p>
+<pre><code> {
+    System.out.println(future.get());
+}  (InterruptedException e) {
+    e.printStackTrace();
+}  (ExecutionException e) {
+    e.printStackTrace();
+}
+
+System.out.println();`</code></pre><h2 id="3-2-Completable"><a href="#3-2-Completable" class="headerlink" title="3.2 Completable"></a>3.2 Completable</h2><table>
+<thead>
+<tr>
+<th align="center">方法名</th>
+<th align="center">描述</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center">complete(T t)</td>
+<td align="center">完成异步执行，并返回future的结果</td>
+</tr>
+<tr>
+<td align="center">completeExceptionally(Throwable ex)</td>
+<td align="center">异步执行不正常的结束</td>
+</tr>
+</tbody></table>
+<p>future.get()在等待执行结果时，程序会一直block，如果此时调用complete(T t)会立即执行。<br>`CompletableFuture<string> future  = CompletableFuture.supplyAsync(() -&gt; );</string></p>
+<pre><code>future.complete();
+
+ {
+    System.out.println(future.get());
+}  (InterruptedException e) {
+    e.printStackTrace();
+}  (ExecutionException e) {
+    e.printStackTrace();
+}`</code></pre><p>执行结果：</p>
+<p><code>World</code></p>
+<p>可以看到future调用complete(T t)会立即执行。但是complete(T t)只能调用一次，后续的重复调用会失效。</p>
+<p>如果future已经执行完毕能够返回结果，此时再调用complete(T t)则会无效。<br>`CompletableFuture<string> future = CompletableFuture.supplyAsync(() -&gt; );</string></p>
+<pre><code> {
+    Thread.sleep();
+}  (InterruptedException e) {
+    e.printStackTrace();
+}
+
+future.complete();
+
+ {
+    System.out.println(future.get());
+}  (InterruptedException e) {
+    e.printStackTrace();
+}  (ExecutionException e) {
+    e.printStackTrace();
+}`</code></pre><p>执行结果：</p>
+<p><code>Hello</code></p>
+<p>如果使用completeExceptionally(Throwable ex)则抛出一个异常，而不是一个成功的结果。</p>
+<p>`CompletableFuture<string> future = CompletableFuture.supplyAsync(() -&gt; );</string></p>
+<pre><code>future.completeExceptionally( Exception());
+
+ {
+    System.out.println(future.get());
+}  (InterruptedException e) {
+    e.printStackTrace();
+}  (ExecutionException e) {
+    e.printStackTrace();
+}`</code></pre><p>执行结果：</p>
+<p><code>java.util.concurrent.ExecutionException: java.lang.Exception
+...</code></p>
+
+      
+
+      
+    </div>
+    <div class="article-info article-info-index">
+      
+      
+	<div class="article-tag tagcloud">
+		<i class="icon-price-tags icon"></i>
+		<ul class="article-tag-list">
+			 
+        		<li class="article-tag-list-item">
+        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color5">Java</a>
+        		</li>
+      		
+		</ul>
+	</div>
+
+      
+
+      
+        <p class="article-more-link">
+          <a class="article-more-a" href="/2019/05/14/Java8新的异步编程方式CompletableFuture(1)/">展开全文 >></a>
+        </p>
+      
+
+      
+      <div class="clearfix"></div>
+    </div>
+  </div>
+</article>
+
+<aside class="wrap-side-operation">
+    <div class="mod-side-operation">
+        
+        <div class="jump-container" id="js-jump-container" style="display:none;">
+            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
+                <i class="icon-font icon-back"></i>
+            </a>
+            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
+                <i class="icon-font icon-plane jump-plane"></i>
+            </div>
+        </div>
+        
+        
+    </div>
+</aside>
+
+
+
+
+  
+    <article id="post-Java8的CompletableFuture进阶之道" class="article article-type-post  article-index" itemscope itemprop="blogPost">
+  <div class="article-inner">
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2019/05/14/Java8的CompletableFuture进阶之道/">Java8的CompletableFuture进阶之道</a>
+    </h1>
+  
+
+        
+        <a href="/2019/05/14/Java8的CompletableFuture进阶之道/" class="archive-article-date">
+  	<time datetime="2019-05-14T03:26:08.008Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2019-05-14</time>
+</a>
+        
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <blockquote>
+<p>本文转载自 <a href="https://juejin.im/post/5ca47aa0e51d457131257269" target="_blank" rel="noopener">https://juejin.im/post/5ca47aa0e51d457131257269</a> </p>
+</blockquote>
+<h1 id="简介"><a href="#简介" class="headerlink" title="简介"></a>简介</h1><p>作为Java 8 Concurrency API改进而引入，本文是CompletableFuture类的功能和用例的介绍。同时在Java 9 也有对CompletableFuture有一些改进，之后再进入讲解。</p>
+<h1 id="Future计算"><a href="#Future计算" class="headerlink" title="Future计算"></a>Future计算</h1><p>Future异步计算很难操作，通常我们希望将任何计算逻辑视为一系列步骤。但是在异步计算的情况下，表示为回调的方法往往分散在代码中或者深深地嵌套在彼此内部。但是当我们需要处理其中一个步骤中可能发生的错误时，情况可能会变得更复杂。</p>
+<p>Futrue接口是Java 5中作为异步计算而新增的，但它没有任何方法去进行计算组合或者处理可能出现的错误。</p>
+<p>在Java 8中，引入了CompletableFuture类。与Future接口一起，它还实现了CompletionStage接口。此接口定义了可与其他Future组合成异步计算契约。</p>
+<p>CompletableFuture同时是一个组合和一个框架，具有大约50种不同的构成，结合，执行异步计算步骤和处理错误。</p>
+<p>如此庞大的API可能会令人难以招架，下文将调一些重要的做重点介绍。</p>
+<h1 id="使用CompletableFuture作为Future实现"><a href="#使用CompletableFuture作为Future实现" class="headerlink" title="使用CompletableFuture作为Future实现"></a>使用CompletableFuture作为Future实现</h1><p>首先，CompletableFuture类实现Future接口，因此你可以将其用作Future实现，但需要额外的完成实现逻辑。</p>
+<p>例如，你可以使用无构参构造函数创建此类的实例，然后使用<code>complete</code>方法完成。消费者可以使用get方法来阻塞当前线程，直到<code>get()</code>结果。</p>
+<p>在下面的示例中，我们有一个创建CompletableFuture实例的方法，然后在另一个线程中计算并立即返回Future。</p>
+<p>计算完成后，该方法通过将结果提供给完整方法来完成Future：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">public Future&lt;String&gt; calculateAsync() throws InterruptedException &#123;</span><br><span class="line">    CompletableFuture&lt;String&gt; completableFuture </span><br><span class="line">      = new CompletableFuture&lt;&gt;();</span><br><span class="line"> </span><br><span class="line">    Executors.newCachedThreadPool().submit(() -&gt; &#123;</span><br><span class="line">        Thread.sleep(500);</span><br><span class="line">        completableFuture.complete(&quot;Hello&quot;);</span><br><span class="line">        return null;</span><br><span class="line">    &#125;);</span><br><span class="line"> </span><br><span class="line">    return completableFuture;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>为了分离计算，我们使用了<em>Executor</em> API ，这种创建和完成<em>CompletableFuture的方法</em>可以与任何并发包（包括原始线程）一起使用。</p>
+<p>请注意，<strong>该<code>calculateAsync</code>方法返回一个<code>Future</code>实例。</strong></p>
+<p>我们只是调用方法，接收<em>Future</em>实例并在我们准备阻塞结果时调用它的<em>get</em>方法。</p>
+<p>另请注意，<em>get</em>方法抛出一些已检查的异常，即<em>ExecutionException</em>（封装计算期间发生的异常）和<em>InterruptedException</em>（表示执行方法的线程被中断的异常）：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">Future&lt;String&gt; completableFuture = calculateAsync();</span><br><span class="line"> </span><br><span class="line">// ... </span><br><span class="line"> </span><br><span class="line">String result = completableFuture.get();</span><br><span class="line">assertEquals(&quot;Hello&quot;, result);</span><br></pre></td></tr></table></figure>
+
+<p>如果你已经知道计算的结果，也可以用变成同步的方式来返回结果。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">Future&lt;String&gt; completableFuture = </span><br><span class="line">  CompletableFuture.completedFuture(&quot;Hello&quot;);</span><br><span class="line"> </span><br><span class="line">// ...</span><br><span class="line"> </span><br><span class="line">String result = completableFuture.get();</span><br><span class="line">assertEquals(&quot;Hello&quot;, result);</span><br></pre></td></tr></table></figure>
+
+<p>作为在某些场景中，你可能希望取消Future任务的执行。</p>
+<p>假设我们没有找到结果并决定完全取消异步执行任务。这可以通过Future的取消方法完成。此方法<code>mayInterruptIfRunning</code>，但在CompletableFuture的情况下，它没有任何效果，因为中断不用于控制CompletableFuture的处理。</p>
+<p>这是异步方法的修改版本：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">public Future&lt;String&gt; calculateAsyncWithCancellation() throws InterruptedException &#123;</span><br><span class="line">    CompletableFuture&lt;String&gt; completableFuture = new CompletableFuture&lt;&gt;();</span><br><span class="line"> </span><br><span class="line">    Executors.newCachedThreadPool().submit(() -&gt; &#123;</span><br><span class="line">        Thread.sleep(500);</span><br><span class="line">        completableFuture.cancel(false);</span><br><span class="line">        return null;</span><br><span class="line">    &#125;);</span><br><span class="line"> </span><br><span class="line">    return completableFuture;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>当我们使用Future.get()方法阻塞结果时，<code>cancel()</code>表示取消执行，它将抛出CancellationException：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">Future&lt;String&gt; future = calculateAsyncWithCancellation();</span><br><span class="line">future.get(); // CancellationException</span><br></pre></td></tr></table></figure>
+
+<h1 id="API介绍"><a href="#API介绍" class="headerlink" title="API介绍"></a>API介绍</h1><h2 id="static方法说明"><a href="#static方法说明" class="headerlink" title="static方法说明"></a>static方法说明</h2><p>上面的代码很简单，下面介绍几个 <strong>static</strong> 方法，它们使用任务来实例化一个 CompletableFuture 实例。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">CompletableFuture.runAsync(Runnable runnable);</span><br><span class="line">CompletableFuture.runAsync(Runnable runnable, Executor executor);</span><br><span class="line"></span><br><span class="line">CompletableFuture.supplyAsync(Supplier&lt;U&gt; supplier);</span><br><span class="line">CompletableFuture.supplyAsync(Supplier&lt;U&gt; supplier, Executor executor)</span><br></pre></td></tr></table></figure>
+
+<pre><code>* runAsync 方法接收的是 Runnable 的实例，但是它没有返回值
+* supplyAsync 方法是JDK8函数式接口，无参数，会返回一个结果
+* 这两个方法是 executor 的升级，表示让任务在指定的线程池中执行，不指定的话，通常任务是在 ForkJoinPool.commonPool() 线程池中执行的。</code></pre><h2 id="supplyAsync-使用"><a href="#supplyAsync-使用" class="headerlink" title="supplyAsync()使用"></a>supplyAsync()使用</h2><p>静态方法<code>runAsync</code>和<code>supplyAsync</code>允许我们相应地从Runnable和Supplier功能类型中创建CompletableFuture实例。</p>
+<p>该Runnable的接口是在线程使用旧的接口，它不允许返回值。</p>
+<p>Supplier接口是一个不具有参数，并返回参数化类型的一个值的单个方法的通用功能接口。</p>
+<p>这允许将Supplier的实例作为lambda表达式提供，该表达式执行计算并返回结果：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">CompletableFuture&lt;String&gt; future</span><br><span class="line">  = CompletableFuture.supplyAsync(() -&gt; &quot;Hello&quot;);</span><br><span class="line"> </span><br><span class="line">// ...</span><br><span class="line"> </span><br><span class="line">assertEquals(&quot;Hello&quot;, future.get());</span><br></pre></td></tr></table></figure>
+
+<h2 id="thenRun-使用"><a href="#thenRun-使用" class="headerlink" title="thenRun()使用"></a>thenRun()使用</h2><p>在两个任务任务A，任务B中，如果既不需要任务A的值也不想在任务B中引用，那么你可以将Runnable lambda 传递给<code>thenRun()</code>方法。在下面的示例中，在调用future.get()方法之后，我们只需在控制台中打印一行：</p>
+<p>模板</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">CompletableFuture.runAsync(() -&gt; &#123;&#125;).thenRun(() -&gt; &#123;&#125;); </span><br><span class="line">CompletableFuture.supplyAsync(() -&gt; &quot;resultA&quot;).thenRun(() -&gt; &#123;&#125;);</span><br></pre></td></tr></table></figure>
+
+<pre><code>* 第一行用的是 `thenRun(Runnable runnable)`，任务 A 执行完执行 B，并且 B 不需要 A 的结果。
+* 第二行用的是 `thenRun(Runnable runnable)`，任务 A 执行完执行 B，会返回`resultA`，但是 B 不需要 A 的结果。</code></pre><p>实战</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">CompletableFuture&lt;String&gt; completableFuture </span><br><span class="line">  = CompletableFuture.supplyAsync(() -&gt; &quot;Hello&quot;);</span><br><span class="line"> </span><br><span class="line">CompletableFuture&lt;Void&gt; future = completableFuture</span><br><span class="line">  .thenRun(() -&gt; System.out.println(&quot;Computation finished.&quot;));</span><br><span class="line"> </span><br><span class="line">future.get();</span><br></pre></td></tr></table></figure>
+
+<h2 id="thenAccept-使用"><a href="#thenAccept-使用" class="headerlink" title="thenAccept()使用"></a>thenAccept()使用</h2><p>在两个任务任务A，任务B中，如果你不需要在Future中有返回值，则可以用 <code>thenAccept</code>方法接收将计算结果传递给它。最后的future.get（）调用返回Void类型的实例。</p>
+<p>模板</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">CompletableFuture.runAsync(() -&gt; &#123;&#125;).thenAccept(resultA -&gt; &#123;&#125;); </span><br><span class="line"></span><br><span class="line">CompletableFuture.supplyAsync(() -&gt; &quot;resultA&quot;).thenAccept(resultA -&gt; &#123;&#125;);</span><br></pre></td></tr></table></figure>
+
+<pre><code>* 第一行中，`runAsync`不会有返回值，第二个方法`thenAccept`，接收到的resultA值为null，同时任务B也不会有返回结果
+* 第二行中，`supplyAsync`有返回值，同时任务B不会有返回结果。</code></pre><p>实战</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">CompletableFuture&lt;String&gt; completableFuture</span><br><span class="line">  = CompletableFuture.supplyAsync(() -&gt; &quot;Hello&quot;);</span><br><span class="line"> </span><br><span class="line">CompletableFuture&lt;Void&gt; future = completableFuture</span><br><span class="line">  .thenAccept(s -&gt; System.out.println(&quot;Computation returned: &quot; + s));</span><br><span class="line"> </span><br><span class="line">future.get();</span><br></pre></td></tr></table></figure>
+
+<h2 id="thenApply-使用"><a href="#thenApply-使用" class="headerlink" title="thenApply()使用"></a>thenApply()使用</h2><p>在两个任务任务A，任务B中，任务B想要任务A计算的结果，可以用<code>thenApply</code>方法来接受一个函数实例，用它来处理结果，并返回一个Future函数的返回值：</p>
+<p>模板</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">CompletableFuture.runAsync(() -&gt; &#123;&#125;).thenApply(resultA -&gt; &quot;resultB&quot;);</span><br><span class="line">CompletableFuture.supplyAsync(() -&gt; &quot;resultA&quot;).thenApply(resultA -&gt; resultA + &quot; resultB&quot;);</span><br></pre></td></tr></table></figure>
+
+<pre><code>* 第二行用的是 thenApply(Function fn)，任务 A 执行完执行 B，B 需要 A 的结果，同时任务 B 有返回值。</code></pre><p>实战</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">CompletableFuture&lt;String&gt; completableFuture</span><br><span class="line">  = CompletableFuture.supplyAsync(() -&gt; &quot;Hello&quot;);</span><br><span class="line"> </span><br><span class="line">CompletableFuture&lt;String&gt; future = completableFuture</span><br><span class="line">  .thenApply(s -&gt; s + &quot; World&quot;);</span><br><span class="line"> </span><br><span class="line">assertEquals(&quot;Hello World&quot;, future.get());</span><br></pre></td></tr></table></figure>
+
+<p>当然，多个任务的情况下，如果任务 B 后面还有任务 C，往下继续调用 .thenXxx() 即可。</p>
+<h2 id="thenCompose-使用"><a href="#thenCompose-使用" class="headerlink" title="thenCompose()使用"></a>thenCompose()使用</h2><p>接下来会有一个很有趣的设计模式；</p>
+<p>CompletableFuture API 的最佳场景是能够在一系列计算步骤中组合CompletableFuture实例。</p>
+<p>这种组合结果本身就是CompletableFuture，允许进一步再续组合。这种方法在函数式语言中无处不在，通常被称为<code>monadic设计模式</code>。</p>
+<p>简单说，Monad就是一种设计模式，表示将一个运算过程，通过函数拆解成互相连接的多个步骤。你只要提供下一步运算所需的函数，整个运算就会自动进行下去。</p>
+<p>在下面的示例中，我们使用thenCompose方法按顺序组合两个Futures。</p>
+<p>请注意，此方法采用返回CompletableFuture实例的函数。该函数的参数是先前计算步骤的结果。这允许我们在下一个CompletableFuture的lambda中使用这个值：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">CompletableFuture&lt;String&gt; completableFuture </span><br><span class="line">  = CompletableFuture.supplyAsync(() -&gt; &quot;Hello&quot;)</span><br><span class="line">    .thenCompose(s -&gt; CompletableFuture.supplyAsync(() -&gt; s + &quot; World&quot;));</span><br><span class="line"> </span><br><span class="line">assertEquals(&quot;Hello World&quot;, completableFuture.get());</span><br></pre></td></tr></table></figure>
+
+<p>该thenCompose方法连同thenApply一样实现了结果的合并计算。但是他们的内部形式是不一样的，它们与Java 8中可用的Stream和Optional类的map和flatMap方法是有着类似的设计思路在里面的。</p>
+<p>两个方法都接收一个CompletableFuture并将其应用于计算结果，但thenCompose（flatMap）方法接收一个函数，该函数返回相同类型的另一个CompletableFuture对象。此功能结构允许将这些类的实例继续进行组合计算。</p>
+<h2 id="thenCombine"><a href="#thenCombine" class="headerlink" title="thenCombine()"></a>thenCombine()</h2><p>取两个任务的结果</p>
+<p>如果要执行两个独立的任务，并对其结果执行某些操作，可以用Future的thenCombine方法：</p>
+<p>模板</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">CompletableFuture&lt;String&gt; cfA = CompletableFuture.supplyAsync(() -&gt; &quot;resultA&quot;);</span><br><span class="line">CompletableFuture&lt;String&gt; cfB = CompletableFuture.supplyAsync(() -&gt; &quot;resultB&quot;);</span><br><span class="line"></span><br><span class="line">cfA.thenAcceptBoth(cfB, (resultA, resultB) -&gt; &#123;&#125;);</span><br><span class="line"></span><br><span class="line">cfA.thenCombine(cfB, (resultA, resultB) -&gt; &quot;result A + B&quot;);</span><br></pre></td></tr></table></figure>
+
+<p>实战</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">CompletableFuture&lt;String&gt; completableFuture </span><br><span class="line">  = CompletableFuture.supplyAsync(() -&gt; &quot;Hello&quot;)</span><br><span class="line">    .thenCombine(CompletableFuture.supplyAsync(</span><br><span class="line">      () -&gt; &quot; World&quot;), (s1, s2) -&gt; s1 + s2));</span><br><span class="line"> </span><br><span class="line">assertEquals(&quot;Hello World&quot;, completableFuture.get());</span><br></pre></td></tr></table></figure>
+
+<p>更简单的情况是，当你想要使用两个Future结果时，但不需要将任何结果值进行返回时，可以用<code>thenAcceptBoth</code>，它表示后续的处理不需要返回值，而 thenCombine 表示需要返回值：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">CompletableFuture future = CompletableFuture.supplyAsync(() -&gt; &quot;Hello&quot;)</span><br><span class="line">  .thenAcceptBoth(CompletableFuture.supplyAsync(() -&gt; &quot; World&quot;),</span><br><span class="line">    (s1, s2) -&gt; System.out.println(s1 + s2));</span><br></pre></td></tr></table></figure>
+
+<h1 id="thenApply-和thenCompose-之间的区别"><a href="#thenApply-和thenCompose-之间的区别" class="headerlink" title="thenApply()和thenCompose()之间的区别"></a>thenApply()和thenCompose()之间的区别</h1><p>在前面的部分中，我们展示了关于thenApply()和thenCompose()的示例。这两个API都是使用的CompletableFuture调用，但这两个API的使用是不同的。</p>
+<h2 id="thenApply"><a href="#thenApply" class="headerlink" title="thenApply()"></a>thenApply()</h2><p>此方法用于处理先前调用的<strong>结果</strong>。但是，要记住的一个关键点是返回类型是转换泛型中的类型，是同一个CompletableFuture。</p>
+<p>因此，当我们想要转换CompletableFuture 调用的结果时，效果是这样的 ：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">CompletableFuture&lt;Integer&gt; finalResult = compute().thenApply(s-&gt; s + 1);</span><br></pre></td></tr></table></figure>
+
+<h2 id="thenCompose"><a href="#thenCompose" class="headerlink" title="thenCompose()"></a>thenCompose()</h2><p>该thenCompose()方法类似于thenApply()在都返回一个新的计算结果。但是，thenCompose()使用前一个Future作为参数。它会直接使结果变新的Future，而不是我们在thenApply()中到的嵌套Future，而是用来连接两个CompletableFuture，是生成一个新的CompletableFuture：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">CompletableFuture&lt;Integer&gt; computeAnother(Integer i)&#123;</span><br><span class="line">    return CompletableFuture.supplyAsync(() -&gt; 10 + i);</span><br><span class="line">&#125;</span><br><span class="line">CompletableFuture&lt;Integer&gt; finalResult = compute().thenCompose(this::computeAnother);</span><br></pre></td></tr></table></figure>
+
+<p>因此，如果想要继续嵌套链接<em>CompletableFuture</em> 方法，那么最好使用<em>thenCompose()</em>。</p>
+<h1 id="并行运行多个任务"><a href="#并行运行多个任务" class="headerlink" title="并行运行多个任务"></a>并行运行多个任务</h1><p>当我们需要并行执行多个任务时，我们通常希望等待所有它们执行，然后处理它们的组合结果。</p>
+<p>该<code>CompletableFuture.allOf</code>静态方法允许等待所有的完成任务：</p>
+<p>API</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">public static CompletableFuture&lt;Void&gt; allOf(CompletableFuture&lt;?&gt;... cfs)&#123;...&#125;</span><br></pre></td></tr></table></figure>
+
+<p>实战</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">CompletableFuture&lt;String&gt; future1  </span><br><span class="line">  = CompletableFuture.supplyAsync(() -&gt; &quot;Hello&quot;);</span><br><span class="line">CompletableFuture&lt;String&gt; future2  </span><br><span class="line">  = CompletableFuture.supplyAsync(() -&gt; &quot;Beautiful&quot;);</span><br><span class="line">CompletableFuture&lt;String&gt; future3  </span><br><span class="line">  = CompletableFuture.supplyAsync(() -&gt; &quot;World&quot;);</span><br><span class="line"> </span><br><span class="line">CompletableFuture&lt;Void&gt; combinedFuture </span><br><span class="line">  = CompletableFuture.allOf(future1, future2, future3);</span><br><span class="line"> </span><br><span class="line">// ...</span><br><span class="line"> </span><br><span class="line">combinedFuture.get();</span><br><span class="line"> </span><br><span class="line">assertTrue(future1.isDone());</span><br><span class="line">assertTrue(future2.isDone());</span><br><span class="line">assertTrue(future3.isDone());</span><br></pre></td></tr></table></figure>
+
+<p>请注意，CompletableFuture.allOf()的返回类型是CompletableFuture 。这种方法的局限性在于它不会返回所有任务的综合结果。相反，你必须手动从Futures获取结果。幸运的是，CompletableFuture.join()方法和Java 8 Streams API可以解决：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">String combined = Stream.of(future1, future2, future3)</span><br><span class="line">  .map(CompletableFuture::join)</span><br><span class="line">  .collect(Collectors.joining(&quot; &quot;));</span><br><span class="line"> </span><br><span class="line">assertEquals(&quot;Hello Beautiful World&quot;, combined);</span><br></pre></td></tr></table></figure>
+
+<p>CompletableFuture 提供了 join() 方法，它的功能和 get() 方法是一样的，都是阻塞获取值，它们的区别在于 join() 抛出的是 unchecked Exception。这使得它可以在Stream.map（）方法中用作方法引用。</p>
+<h1 id="异常处理"><a href="#异常处理" class="headerlink" title="异常处理"></a>异常处理</h1><p>说到这里，我们顺便来说下 CompletableFuture 的异常处理。这里我们要介绍两个方法：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">public CompletableFuture&lt;T&gt; exceptionally(Function&lt;Throwable, ? extends T&gt; fn);</span><br><span class="line">public &lt;U&gt; CompletionStage&lt;U&gt; handle(BiFunction&lt;? super T, Throwable, ? extends U&gt; fn);</span><br></pre></td></tr></table></figure>
+
+<p>看下代码</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">CompletableFuture.supplyAsync(() -&gt; &quot;resultA&quot;)</span><br><span class="line">    .thenApply(resultA -&gt; resultA + &quot; resultB&quot;)</span><br><span class="line">    .thenApply(resultB -&gt; resultB + &quot; resultC&quot;)</span><br><span class="line">    .thenApply(resultC -&gt; resultC + &quot; resultD&quot;);</span><br></pre></td></tr></table></figure>
+
+<p>上面的代码中，任务 A、B、C、D 依次执行，如果任务 A 抛出异常（当然上面的代码不会抛出异常），那么后面的任务都得不到执行。如果任务 C 抛出异常，那么任务 D 得不到执行。</p>
+<p>那么我们怎么处理异常呢？看下面的代码，我们在任务 A 中抛出异常，并对其进行处理：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">CompletableFuture&lt;String&gt; future = CompletableFuture.supplyAsync(() -&gt; &#123;</span><br><span class="line">    throw new RuntimeException();</span><br><span class="line">&#125;)</span><br><span class="line">        .exceptionally(ex -&gt; &quot;errorResultA&quot;)</span><br><span class="line">        .thenApply(resultA -&gt; resultA + &quot; resultB&quot;)</span><br><span class="line">        .thenApply(resultB -&gt; resultB + &quot; resultC&quot;)</span><br><span class="line">        .thenApply(resultC -&gt; resultC + &quot; resultD&quot;);</span><br><span class="line"></span><br><span class="line">System.out.println(future.join());</span><br></pre></td></tr></table></figure>
+
+<p>上面的代码中，任务 A 抛出异常，然后通过<code>.exceptionally()</code> 方法处理了异常，并返回新的结果，这个新的结果将传递给任务 B。所以最终的输出结果是：</p>
+<p>errorResultA resultB resultC resultD<br> <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">String name = null;</span><br><span class="line"> </span><br><span class="line">// ...</span><br><span class="line"> </span><br><span class="line">CompletableFuture&lt;String&gt; completableFuture  </span><br><span class="line">  =  CompletableFuture.supplyAsync(() -&gt; &#123;</span><br><span class="line">      if (name == null) &#123;</span><br><span class="line">          throw new RuntimeException(&quot;Computation error!&quot;);</span><br><span class="line">      &#125;</span><br><span class="line">      return &quot;Hello, &quot; + name;</span><br><span class="line">  &#125;)&#125;).handle((s, t) -&gt; s != null ? s : &quot;Hello, Stranger!&quot;);</span><br><span class="line"> </span><br><span class="line">assertEquals(&quot;Hello, Stranger!&quot;, completableFuture.get());</span><br></pre></td></tr></table></figure></p>
+<p>当然，它们也可以都为 null，因为如果它作用的那个 CompletableFuture 实例没有返回值的时候，s 就是 null。</p>
+<h1 id="Async后缀方法"><a href="#Async后缀方法" class="headerlink" title="Async后缀方法"></a>Async后缀方法</h1><p><em>CompletableFuture</em>类中的API的大多数方法都有两个带有<em>Async</em>后缀的附加修饰。这些方法表示用于异步线程。</p>
+<p>没有<em>Async</em>后缀的方法使用调用线程运行下一个执行线程阶段。不带<em>Async</em>方法使用<em>ForkJoinPool.commonPool()</em>线程池的<em>fork / join</em>实现运算任务。带有<em>Async</em>方法使用传递式的<em>Executor</em>任务去运行。</p>
+<p>下面附带一个案例，可以看到有<em>thenApplyAsync</em>方法。在程序内部，线程被包装到<em>ForkJoinTask</em>实例中。这样可以进一步并行化你的计算并更有效地使用系统资源。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">CompletableFuture&lt;String&gt; completableFuture  </span><br><span class="line">  = CompletableFuture.supplyAsync(() -&gt; &quot;Hello&quot;);</span><br><span class="line"> </span><br><span class="line">CompletableFuture&lt;String&gt; future = completableFuture</span><br><span class="line">  .thenApplyAsync(s -&gt; s + &quot; World&quot;);</span><br><span class="line"> </span><br><span class="line">assertEquals(&quot;Hello World&quot;, future.get());</span><br></pre></td></tr></table></figure>
+
+<h1 id="JDK-9-CompletableFuture-API"><a href="#JDK-9-CompletableFuture-API" class="headerlink" title="JDK 9 CompletableFuture API"></a>JDK 9 CompletableFuture API</h1><p>在Java 9中， CompletableFuture API通过以下更改得到了进一步增强：</p>
+<pre><code>* 新工厂方法增加了
+* 支持延迟和超时
+* 改进了对子类化的支持。</code></pre><p>引入了新的实例API：</p>
+<pre><code>* Executor defaultExecutor()
+* CompletableFuturenewIncompleteFuture()
+* CompletableFuture copy()
+* CompletionStage minimalCompletionStage()
+* CompletableFuture completeAsync(Supplier&lt;? extends T&gt; supplier, Executor executor)
+* CompletableFuture completeAsync(Supplier&lt;? extends T&gt; supplier)
+* CompletableFuture orTimeout(long timeout, TimeUnit unit)
+* CompletableFuture completeOnTimeout(T value, long timeout, TimeUnit unit)</code></pre><p>还有一些静态实用方法：</p>
+<pre><code>* Executor delayedExecutor(long delay, TimeUnit unit, Executor executor)
+* Executor delayedExecutor(long delay, TimeUnit unit)
+* CompletionStagecompletedStage(U value)    * CompletionStagefailedStage(Throwable ex)    * CompletableFuturefailedFuture(Throwable ex)</code></pre><p>最后，为了解决超时问题，Java 9又引入了两个新功能：</p>
+<pre><code>* orTimeout()
+* completeOnTimeout()</code></pre><h1 id="结论"><a href="#结论" class="headerlink" title="结论"></a>结论</h1><p>在本文中，我们描述了CompletableFuture类的方法和典型用例。</p>
+
+      
+
+      
+    </div>
+    <div class="article-info article-info-index">
+      
+      
+	<div class="article-tag tagcloud">
+		<i class="icon-price-tags icon"></i>
+		<ul class="article-tag-list">
+			 
+        		<li class="article-tag-list-item">
+        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color5">Java</a>
+        		</li>
+      		
+		</ul>
+	</div>
+
+      
+
+      
+        <p class="article-more-link">
+          <a class="article-more-a" href="/2019/05/14/Java8的CompletableFuture进阶之道/">展开全文 >></a>
+        </p>
+      
+
+      
+      <div class="clearfix"></div>
+    </div>
+  </div>
+</article>
+
+<aside class="wrap-side-operation">
+    <div class="mod-side-operation">
+        
+        <div class="jump-container" id="js-jump-container" style="display:none;">
+            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
+                <i class="icon-font icon-back"></i>
+            </a>
+            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
+                <i class="icon-font icon-plane jump-plane"></i>
+            </div>
+        </div>
+        
+        
+    </div>
+</aside>
+
+
+
+
+  
     <article id="post-杂谈什么是伪共享（falsesharing）？" class="article article-type-post  article-index" itemscope itemprop="blogPost">
   <div class="article-inner">
     
@@ -1314,345 +1752,6 @@
 
 
   
-    <article id="post-高并发架构的TCP知识介绍" class="article article-type-post  article-index" itemscope itemprop="blogPost">
-  <div class="article-inner">
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2019/05/07/高并发架构的TCP知识介绍/">高并发架构的TCP知识介绍</a>
-    </h1>
-  
-
-        
-        <a href="/2019/05/07/高并发架构的TCP知识介绍/" class="archive-article-date">
-  	<time datetime="2019-05-07T06:21:38.038Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2019-05-07</time>
-</a>
-        
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <blockquote>
-<p>本文转载自 <a href="https://juejin.im/post/5cd103e2f265da03804383e1" target="_blank" rel="noopener">https://juejin.im/post/5cd103e2f265da03804383e1</a> </p>
-</blockquote>
-<p>做为一个有追求的程序员，不能只满足增删改查，我们要对系统全方面无死角掌控。掌握了这些基本的网络知识后，相信一方面日常排错中会事半功倍，另一方面日常架构中不得不考虑的高并发问题，理解了这些底层协议也是会如虎添翼。</p>
-<p>本文不会单纯给大家讲讲TCP三次握手、四次挥手就完事了。如果只是哪样的话，我直接贴几个连接就完事了。我希望把实际工作中的很多点能够串起来讲给大家。当然为了文章完整，我依然会从 <strong>三次握手</strong> 起头。</p>
-<h2 id="再说TCP状态变更过程"><a href="#再说TCP状态变更过程" class="headerlink" title="再说TCP状态变更过程"></a>再说TCP状态变更过程</h2><p>不管是三次握手、还是四次挥手，他们都是完成了TCP不同状态的切换。进而影响各种数据的传输情况。下面从三次握手开始分析。<br>本文图片有部分来自网络，若有侵权，告知即焚</p>
-<h3 id="三次握手"><a href="#三次握手" class="headerlink" title="三次握手"></a>三次握手</h3><p>来看看三次握手的图，估计大家看这图都快看吐了，不过为什么每次面试、回忆的时候还是想不起呢？我再来抄抄这锅剩饭吧！<br><img src="https://user-gold-cdn.xitu.io/2019/5/7/16a90774db961af1?imageView2/0/w/1280/h/960/ignore-error/1" alt="tcp-1st"></p>
-<p>首先当服务端处于 <strong>listen</strong> 状态的时候，我们就可以再客户端发起监听了，此时客户端会处于 <strong>SYN_SENT</strong> 状态。服务端收到这个消息会返回一个 <strong>SYN</strong> 并且同时 <strong>ACK</strong> 客户端的请求，之后服务端便处于 <strong>SYN_RCVD</strong> 状态。这个时候客户端收到了服务端的 <strong>SYN&amp;ACK</strong>，就会发送对服务端的 <strong>ACK</strong>，之后便处于 <strong>ESTABLISHED</strong> 状态。服务端收到了对自己的 <strong>ACK</strong> 后也会处于 <strong>ESTABLISHED</strong> 状态。</p>
-<p>经常在面试中可能有人提问：为什么握手要3次，不是2次或者4次呢？</p>
-<p>首先说4次握手，其实为了保证可靠性，这个握手次数可以一直循环下去；但是这没有一个终止就没有意义了。所以3次，保证了各方消息有来有回就足够了。当然这里可能有一种情况是，客户端发送的 <strong>ACK</strong> 在网络中被丢了。那怎么办？</p>
-<pre><code>1. 其实大部分时候，我们连接建立完成就会立刻发送数据，所以如果服务端没有收到 **ACK** 没关系，当收到数据就会认为连接已经建立；
-1. 如果连接建立后不立马传输数据，那么服务端认为连接没有建立成功会周期性重发 **SYN&amp;ACK** 直到客户端确认成功。</code></pre><p>再说为什么2次握手不行呢？2次握手我们可以想象是没有三次握手最后的 <strong>ACK</strong>, 在实际中确实会出现客户端发送 <strong>ACK</strong> 服务端没有收到的情况（上面的情况一），那么这是否说明两次握手也是可行的呢？ 看下情况二，2次握手当服务端发送消息后，就认为建立成功，而恰巧此时又没有数据传输。这就会带来一种资源浪费的情况。比如：客户端可能由于延时发送了多个连接情况，当服务端每收到一个请求回复后就认为连接建立成功，但是这其中很多求情都是延时产生的重复连接，浪费了很多宝贵的资源。</p>
-<p>因此综上所述，从资源节省、效率3次握手都是最合适的。话又回来三次握手的真实意义其实就是协商传输数据用的：<strong>序列号与窗口大小</strong>。</p>
-<p>下面我们通过抓包再来看一下真实的情况是否如上所述。</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">20:33:26.583598 IP 192.168.0.102.58165 &gt; 103.235.46.39.80: Flags [S], seq 621839080, win 65535, options [mss 1460,nop,wscale 6,nop,nop,TS val 1050275400 ecr 0,sackOK,eol], length 0</span><br><span class="line">20:33:26.660754 IP 103.235.46.39.80 &gt; 192.168.0.102.58165: Flags [S.], seq 1754967387, ack 621839081, win 8192, options [mss 1452,nop,wscale 5,nop,nop,nop,nop,nop,nop,nop,nop,nop,nop,nop,nop,sackOK,eol], length 0</span><br><span class="line">20:33:26.660819 IP 192.168.0.102.58165 &gt; 103.235.46.39.80: Flags [.], ack 1754967388, win 4096, length 0</span><br></pre></td></tr></table></figure>
-
-<p><strong>抓包：</strong> <code>sudo tcpdump -n host www.baidu.com -S</code></p>
-<pre><code>* `S` 表示 SYN
-* `.` 表示 ACK
-* `P` 表示 传输数据
-* `F` 表示 FIN</code></pre><h3 id="四次挥手"><a href="#四次挥手" class="headerlink" title="四次挥手"></a>四次挥手</h3><p>挥手，就是说数据传完了，同志们再见！</p>
-<p><img src="https://user-gold-cdn.xitu.io/2019/5/7/16a90774dcd5d27e?imageView2/0/w/1280/h/960/ignore-error/1" alt="tcp-3th"></p>
-<p>这里有个问题需要注意下，其实客户端、服务端都能够主动发起关闭操作，谁调用 <code>close()</code> 就先发送关闭的请求。当然一般的流程，发起建立连接的一方会主动发起关闭请求（http中）。</p>
-<p>关于4次挥手的过程，我就不多解释了，这里有两个重要的状态我需要解释下，这都是我亲自经历过的线上故障，<strong>close_wait</strong> 与 <strong>time_wait</strong>。</p>
-<p>先给大家一个命令，统计tcp的各种状态情况。下面表格内容就来自这个命令的统计。<br>netstat -n | awk ‘/^tcp/ {++S[$NF]} END {for(a in S) print a, S[a]}’</p>
-<table>
-<thead>
-<tr>
-<th align="center">Tcp状态</th>
-<th align="center">连接数</th>
-</tr>
-</thead>
-<tbody><tr>
-<td align="center">CLOSE_WAIT</td>
-<td align="center">505</td>
-</tr>
-<tr>
-<td align="center">ESTABLISHED</td>
-<td align="center">808</td>
-</tr>
-<tr>
-<td align="center">TIME_WAIT</td>
-<td align="center">3481</td>
-</tr>
-<tr>
-<td align="center">SYN_SENT</td>
-<td align="center">1</td>
-</tr>
-<tr>
-<td align="center">SYN_RECV</td>
-<td align="center">1</td>
-</tr>
-<tr>
-<td align="center">LAST_ACK</td>
-<td align="center">2</td>
-</tr>
-<tr>
-<td align="center">FIN_WAIT2</td>
-<td align="center">2</td>
-</tr>
-<tr>
-<td align="center">FIN_WAIT1</td>
-<td align="center">1</td>
-</tr>
-</tbody></table>
-<p><strong>大量的CLOSE_WAIT</strong> 这个在我之前的一篇文章 <a href="https://link.juejin.im?target=https%3A%2F%2Fdayutalk.cn%2F2018%2F12%2F08%2F%25E7%25BA%25BF%25E4%25B8%258A%25E5%25A4%25A7%25E9%2587%258FCLOSE_WAIT%25E5%2588%2586%25E6%259E%2590%2F" target="_blank" rel="noopener">线上大量CLOSE_WAIT原因分析</a> 已经有过介绍，它会导致大量的socket无法释放。而每个socket都是一个文件，是会占用资源的。这个问题主要是代码问题。它出现在被动关闭的一方（习惯称为server）。</p>
-<p><strong>大量的TIME_WAIT</strong> 这个问题在日常中经常看到，流量一高就出现大量的该情况。该状态出现在主动发起关闭的一方。该状态一般等待的时间设为 2MSL后自动关闭，<strong>MSL是Maximum Segment Lifetime，报文最大生存时间</strong>，如果报文超过这个时间，就会被丢弃。处于该状态下的socket也是不能被回收使用的。线上我就遇到这种情况，每次大流量的时候，每台机器处于该状态的socket就多达10w+，远远比处于 <code>Established</code> 状态的socket多的多，导致很多时候服务响应能力下降。这个一方面可以通过调整内核参数处理，另一方面避免使用太多的短链接，可以采用连接池来提升性能。另外在代码层面可能是由于某些地方没有关闭连接导致的，也需要检查业务代码。</p>
-<p>上面两个状态一定要牢记发生在哪一方，这方便我们快速定位问题。</p>
-<p>最后这里还是放上挥手时的抓包数据：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">20:33:26.750607 IP 192.168.0.102.58165 &gt; 103.235.46.39.80: Flags [F.], seq 621839159, ack 1754967720, win 4096, length 0</span><br><span class="line">20:33:26.827472 IP 103.235.46.39.80 &gt; 192.168.0.102.58165: Flags [.], ack 621839160, win 776, length 0</span><br><span class="line">20:33:26.827677 IP 103.235.46.39.80 &gt; 192.168.0.102.58165: Flags [F.], seq 1754967720, ack 621839160, win 776, length 0</span><br><span class="line">20:33:26.827729 IP 192.168.0.102.58165 &gt; 103.235.46.39.80: Flags [.], ack 1754967721, win 4096, length 0</span><br></pre></td></tr></table></figure>
-
-<p>不多不少，刚好4次。</p>
-<h3 id="TCP状态变更"><a href="#TCP状态变更" class="headerlink" title="TCP状态变更"></a>TCP状态变更</h3><p>网络上有一张TCP状态机的图，我觉得太复杂了，用自己的方式搞个简单点的容易理解的。我从两个角度来说明状态的变更。</p>
-<pre><code>* 一个是客户端
-* 一个是服务端</code></pre><p>看下面两张图的时候，请一定结合上面三次握手、四次挥手的时序图一起看，加深理解。</p>
-<h3 id="客户端状态变更"><a href="#客户端状态变更" class="headerlink" title="客户端状态变更"></a>客户端状态变更</h3><p><img src="https://user-gold-cdn.xitu.io/2019/5/7/16a90774ec12ff59?imageView2/0/w/1280/h/960/ignore-error/1" alt="tcp-4th"></p>
-<p>通过这张图，大家是否能够清晰明了的知道 TCP 在客户端上的变更情况了呢？</p>
-<h3 id="服务端状态变更"><a href="#服务端状态变更" class="headerlink" title="服务端状态变更"></a>服务端状态变更</h3><p><img src="https://user-gold-cdn.xitu.io/2019/5/7/16a90774eb5d5b79?imageView2/0/w/1280/h/960/ignore-error/1" alt="tcp-5th"></p>
-<p>这一张图描述了 TCP 状态在服务端的变迁。</p>
-<h2 id="TCP的流量控制与拥塞控制"><a href="#TCP的流量控制与拥塞控制" class="headerlink" title="TCP的流量控制与拥塞控制"></a>TCP的流量控制与拥塞控制</h2><p>我们常说TCP是面向连接的，UDP是无连接的。那么TCP这个面向连接主要解决的是什么问题呢？</p>
-<p>这里继续把三次握手的抓包数据贴出来分析下：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">20:33:26.583598 IP 192.168.0.102.58165 &gt; 103.235.46.39.80: Flags [S], seq 621839080, win 65535, options [mss 1460,nop,wscale 6,nop,nop,TS val 1050275400 ecr 0,sackOK,eol], length 0</span><br><span class="line">20:33:26.660754 IP 103.235.46.39.80 &gt; 192.168.0.102.58165: Flags [S.], seq 1754967387, ack 621839081, win 8192, options [mss 1452,nop,wscale 5,nop,nop,nop,nop,nop,nop,nop,nop,nop,nop,nop,nop,sackOK,eol], length 0</span><br><span class="line">20:33:26.660819 IP 192.168.0.102.58165 &gt; 103.235.46.39.80: Flags [.], ack 1754967388, win 4096, length 0</span><br></pre></td></tr></table></figure>
-
-<p>上面我们说到 <code>TCP</code> 的三次握手最重要的就是协商传输数据用的序列号。那这个序列号究竟有些什么用呢？这个序号能够帮助后续两端进行确认数据包是否收到，解决顺序、丢包问题；另外我们还可以看到有一个 <strong>win</strong> 字段，这是双方交流的窗口大小，这在每次传输数据过程中也会携带。主要是告诉对方，我窗口是这么大，别发多了或者别发太少。</p>
-<p>总结下，TCP的几个特点是：</p>
-<pre><code>* 顺序问题，依靠序号
-* 丢包问题，依靠序号
-* 流量控制，依靠滑动窗口
-* 拥塞控制，依靠拥塞窗口+滑动窗口
-* 连接维护，三次握手/四次挥手</code></pre><h3 id="顺序与丢包问题"><a href="#顺序与丢包问题" class="headerlink" title="顺序与丢包问题"></a>顺序与丢包问题</h3><p>这个问题其实应该很好理解。由于数据在传输前我们已经有序号了，这里注意一下这个序号是随机的，重复的概率极地，避免了程序发生乱入的可能性。</p>
-<p>由于我们每个数据包有序号，虽然发送与到达可能不是顺序的，但是TCP层收到数据后，可以根据序号进行重新排列；另外在这个排列过程中，发现有了1，2，3，5，6这几个包，一检查就知道4要么延时未到达，要么丢包了，等待重传。</p>
-<p>这里需要重要说明的一点是。为了提升效率，TCP其实并不是收到一个包就发一个ack。那是如何ACK的呢？还是以上面为例，TCP收到了1,2,3,5,6这几个包，它可能会发送一个 <code>ack ，seq=3</code> 的确认包，这样次一次确认了3个包。但是它不会发送 5,6 的ack。因为4没有收到啊！一旦4延时到达或者重发到达，就会发送一个 <code>ack, seq=6</code>，又一次确认了3个包。</p>
-<h3 id="流量控制与拥塞控制"><a href="#流量控制与拥塞控制" class="headerlink" title="流量控制与拥塞控制"></a>流量控制与拥塞控制</h3><p>这两个概念说实话，让我理解了挺长时间，主要是对它们各自控制的内容以及相互之间是否有作用一直没有闹清楚。</p>
-<p>先大概说下：</p>
-<pre><code>* 流量控制：是根据接收方的窗口大小来感知我这次能够传多少数据给对方；———— 滑动窗口
-* 拥塞控制：而拥塞控制主要是避免网络拥塞，它考虑的问题更多。根据综合因素来觉得发多少数据给对方；———— 滑动窗口&amp;拥塞窗口</code></pre><p>举个例子说下，比如：A给B发送数据，通过握手后，A知道B一次可以收1000的数据（B有这么大的处理能力），那么这个时候滑动窗口就可以设置成1000。那是不是最后真的可以一次发这么多数据给B呢？还不是，这时候得问问拥塞窗口，老兄，现在网络情况怎么样？一次运1000的数据有压力吗？拥塞窗口一通计算说不行，现在是高峰期，最多只能有600的货上路。最终这次传数据的时候就是 600 的标注。大家也可以关注抓包数据的 <strong>win</strong> 值，一直在动态调整。</p>
-<p>当然另外一种情况是滑动窗口比拥塞窗口小，虽然运输能力强，但是接收能力有限，这时候就要取滑动窗口的值来实际发生。所以它们二者之间是有关系的。</p>
-<p>所以具体到每次能够发送多少数据，有这么一个公式：<br>LastByteSend - LastByteAcked &lt;= min{cwnd,rwnd}</p>
-<pre><code>* LastByteSend 是最后一个发送的字节的序号
-* LastByteAcked 最后一个被确认的字节的序号</code></pre><p>这两个相减得到的是本次能够发送的数据，这个数据一定小于或等于 cwnd 与 rwnd 中最小的一个值。相信大家能够理清楚。</p>
-<p>那么这部分知识对于实际工作中有什么作用呢？指导意义就是：如果你的业务很重要、很核心一定不要混布；二是如果你的服务忽快忽慢，而确信依赖服务没有问题，检查下机器对应的网络情况；三是窗口这个速度控制机制，在我们进行服务设计的时候，非常具有参考意义。是不是有点消息队列的感觉？（很多消息队列都是匀速的，我们是否可以加一个窗口的概念来进行优化呢？）</p>
-<h2 id="是什么限制了你的连接"><a href="#是什么限制了你的连接" class="headerlink" title="是什么限制了你的连接"></a>是什么限制了你的连接</h2><p>到了最关键的地方了，精华我都是留到最后讲。下面放一张网上找的socket操作步骤图，画的太好了我就直接用了。<br><img src="https://user-gold-cdn.xitu.io/2019/5/7/16a90775097ada31?imageView2/0/w/1280/h/960/ignore-error/1" alt="tcp-6th"></p>
-<p>我们假设我的服务端就是 <code>Nginx</code> ，我来尝试解读一下。当客户端调用 <code>connect()</code> 时候就会发起三次握手，这次握手的时候有几个元素唯一确定了这次通信（或者说这个socket），<strong>[源IP:源Port， 目的IP:目的Port]</strong> ，当然这个socket还不是最终用来传输数据的socket，一旦握手完成后，服务端会在返回一个 <strong>socket</strong> 专门用来后续的数据传输。这里暂且把第一个socket叫 <strong>监听socket</strong>，第二个叫 <strong>传输socket</strong> 方便后文叙述。</p>
-<p>为什么要这么设计呢？大家想一想，如果监听的socket还要负责数据的收发，请问这个服务端的效率如何提升？什么东西、谁都往这个socket里边丢，太复杂！</p>
-<h3 id="提高连接常用套路"><a href="#提高连接常用套路" class="headerlink" title="提高连接常用套路"></a>提高连接常用套路</h3><p>到了这一步，我们现在先停下来算算自己的服务器机器能够有多少连接呢？这个极限又是如何一步步被突破呢？</p>
-<p>先说 <strong>监听socket</strong> ，服务器的prot一般都是固定的，服务器的ip当然也是固定的（单机）。那么上面的结构 <strong>[源IP:源Port， 目的IP:目的Port]</strong> 其实只有客户端的ip与端口可以发生变化。假设客户端用的是IPv4，那么理论连接数是：2^32(ip数) /* 2^16(端口数) = 2^48。</p>
-<p>看起来这个值蛮大的。但是真的能够有这么多连接吗？不可能的，因为每一个socket都需要消耗内存；以及每一个进程的文件描述符是有上限的。这些都限制了最终的连接数。</p>
-<p>那么如何进行调和呢？我知道的操作有：多进程、多线程、IO多路服用、协程等手段组合使用。</p>
-<h3 id="多进程"><a href="#多进程" class="headerlink" title="多进程"></a>多进程</h3><p>也就是监听是一个进程，一旦accept后，对于 <strong>传输socket</strong> 我们就fork一个新的子进程来处理。但是这种方式太重，fork一个进程、销毁一个进程都是特别费事的。单机对进程的创建上限也是有限制的。</p>
-<h3 id="多线程"><a href="#多线程" class="headerlink" title="多线程"></a>多线程</h3><p>线程比进程要轻量级的多，它会共享父进程的很多资源，比如：文件描述符、进程空间，它就是多了一个引用。因此它的创建、销毁更加容易。每一个 <strong>传输socket</strong> 在这里就交给了线程来处理。</p>
-<p>但是不管是多进程、还是多线程都存在一个问题，一个连接对应一个进程或者协程。这都很难逃脱 <strong>C10K</strong> 的问题。那么该怎么办呢？</p>
-<h3 id="IO多路复用"><a href="#IO多路复用" class="headerlink" title="IO多路复用"></a>IO多路复用</h3><p>IO多路复用是什么意思呢？在上面单纯的多进程、多线程模型中，一个进程或线程只能处理一个连接。用了IO多路复用后，我一个进程或线程就能处理多个连接。</p>
-<p>我们都知道 <code>Nginx</code> 非常高效，它的结构是：master + worker，worker 会在 80、443端口上来监听请求。它的worker一般设置为 cpu 的cores数，那么这么少的子进程是如何解决超多连接的呢？这里其实每个worker就采用了 epoll 模型（当然IO多路复用还有个select，这里就不说了）。</p>
-<p>处于监听状态的worker，会把所有 <strong>监听socket</strong> 加入到自己的epoll中。当这些socket都在epoll中时，如果某个socket有事件发生就会立即被回调唤醒（这涉及epoll的红黑树，讲不清楚不细说了）。这种模式，大大增加了每个进程可以管理的socket数量，上限直接可以上升到进程能够操作的最大文件描述符。</p>
-<p>一般机器可以设置百万级别文件描述符，所以单机单进程就是百万连接，<strong>epoll是解决C10K的利器，很多开源软件用到了它。</strong><br>这里说下，并不是所有的worker都是同时处于监听端口的状态，这涉及到nginx惊群、抢自旋锁的问题，不再本文范围内不多说。</p>
-<h3 id="关于ulimit"><a href="#关于ulimit" class="headerlink" title="关于ulimit"></a>关于ulimit</h3><p>在文章的最后，补充一些单机文件描述符设置的问题。我们常说连接数受限于文件描述符，这是为什么？</p>
-<p>因为在linux上一切皆文件，故每一个socket都是被当作一个文件看待，那么每个文件就会有一个文件描述符。在linux中每一个进程中都有一个数组保存了该进程需要的所有文件描述符。这个文件描述符其实就是这个数组的 <code>key</code> ，它的 <code>value</code> 是一个指针，指向的就是打开的对应文件。</p>
-<p>关于文件描述符有两点注意：</p>
-<pre><code>1. 它对应的其实是一个linux上的文件
-1. 文件描述符本身这个值在不同进程中是可以重复的</code></pre><p>另外补充一点，单机设置的ulimit的上线受限与系统的两个配置：<br>fs.nr_open，进程级别</p>
-<p>fs.file-max，系统级别</p>
-<p>fs.nr_open 总是应该小于等于 fs.file-max，这两个值的设置也不是随意可以操作，因为设置的越大，系统资源消耗越多，所以需要根据真实情况来进行设置。</p>
-<hr>
-<p>至此，本篇长文就完结了。这跟上篇 <a href="https://link.juejin.im?target=https%3A%2F%2Fdayutalk.cn%2F2019%2F04%2F25%2F%25E4%25BB%258E%25E5%25B8%25B8%25E8%25A7%2581%25E6%259E%25B6%25E6%259E%2584%25E8%25B0%2588CDN%25E4%25B8%258EDNS%2F" target="_blank" rel="noopener">高并发架构的CDN知识介绍</a> 属于一个系列，高并发架构需要理解的网络基础知识。</p>
-<p>后面还会写一下 HTTP/HTTPS 的知识。然后关于高并发网络相关的东西就算完结。我会开启下一个篇章。</p>
-<hr>
-<p>如果你想对网络协议了解更多，推荐一个课程：<br><img src="https://user-gold-cdn.xitu.io/2019/5/7/16a90774dd3eebbf?imageView2/0/w/1280/h/960/ignore-error/1" alt="tcp-7th"></p>
-
-      
-
-      
-    </div>
-    <div class="article-info article-info-index">
-      
-      
-	<div class="article-tag tagcloud">
-		<i class="icon-price-tags icon"></i>
-		<ul class="article-tag-list">
-			 
-        		<li class="article-tag-list-item">
-        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color3">架构</a>
-        		</li>
-      		 
-        		<li class="article-tag-list-item">
-        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color2">TCP/IP</a>
-        		</li>
-      		
-		</ul>
-	</div>
-
-      
-
-      
-        <p class="article-more-link">
-          <a class="article-more-a" href="/2019/05/07/高并发架构的TCP知识介绍/">展开全文 >></a>
-        </p>
-      
-
-      
-      <div class="clearfix"></div>
-    </div>
-  </div>
-</article>
-
-<aside class="wrap-side-operation">
-    <div class="mod-side-operation">
-        
-        <div class="jump-container" id="js-jump-container" style="display:none;">
-            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
-                <i class="icon-font icon-back"></i>
-            </a>
-            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
-                <i class="icon-font icon-plane jump-plane"></i>
-            </div>
-        </div>
-        
-        
-    </div>
-</aside>
-
-
-
-
-  
-    <article id="post-【干货走一波】千万级用户的大型网站，应该如何设计其高并发架构？" class="article article-type-post  article-index" itemscope itemprop="blogPost">
-  <div class="article-inner">
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2019/05/07/【干货走一波】千万级用户的大型网站，应该如何设计其高并发架构？/">【干货走一波】千万级用户的大型网站，应该如何设计其高并发架构？</a>
-    </h1>
-  
-
-        
-        <a href="/2019/05/07/【干货走一波】千万级用户的大型网站，应该如何设计其高并发架构？/" class="archive-article-date">
-  	<time datetime="2019-05-07T01:59:11.011Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2019-05-07</time>
-</a>
-        
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <blockquote>
-<p>本文转载自 <a href="https://juejin.im/post/5cceee97f265da03b20442df" target="_blank" rel="noopener">https://juejin.im/post/5cceee97f265da03b20442df</a> </p>
-</blockquote>
-<p><strong>公众号：狸猫技术窝</strong><br><strong>作者：原子弹大侠，阿里巴巴高级技术专家</strong></p>
-<p>目录 （1）单块架构</p>
-<p>（2）初步的高可用架构</p>
-<p>（3）千万级用户量的压力预估</p>
-<p>（4）服务器压力预估</p>
-<p>（5）业务垂直拆分</p>
-<p>（6）用分布式缓存抗下读请求</p>
-<p>（7）基于数据库主从架构做读写分离</p>
-<p>（8）总结</p>
-<p><strong>本文将会从一个大型的网站发展历程出发，一步一步的探索这个网站的架构是如何从单体架构，演化到分布式架构，然后演化到高并发架构的。</strong></p>
-<h2 id="（1）单块架构"><a href="#（1）单块架构" class="headerlink" title="（1）单块架构"></a>（1）单块架构</h2><p>一般一个网站刚开始建立的时候，用户量是很少的，大概可能就几万或者几十万的用户量，每天活跃的用户可能就几百或者几千个。</p>
-<p>这个时候一般网站架构都是采用单体架构来设计的，总共就部署3台服务器，1台应用服务器，1台数据库服务器，1台图片服务器。</p>
-<p>研发团队通常都在10人以内，就是在一个单块应用里写代码，然后写好之后合并代码，接着就是直接在线上的应用服务器上发布。很可能就是手动把应用服务器上的Tomcat给关掉，然后替换系统的代码war包，接着重新启动Tomcat。</p>
-<p>数据库一般就部署在一台独立的服务器上，存放网站的全部核心数据。</p>
-<p>然后在另外一台独立的服务器上部署NFS作为图片服务器，存放网站的全部图片。应用服务器上的代码会连接以及操作数据库以及图片服务器。如下图所示：</p>
-<p><img src="https://user-gold-cdn.xitu.io/2019/5/5/16a885a0451b894b?imageView2/0/w/1280/h/960/ignore-error/1" alt></p>
-<h2 id="（2）初步的高可用架构"><a href="#（2）初步的高可用架构" class="headerlink" title="（2）初步的高可用架构"></a>（2）初步的高可用架构</h2><p>但是这种纯单块系统架构下，有高可用问题存在，最大的问题就是应用服务器可能会故障，或者是数据库可能会故障</p>
-<p>所以在这个时期，一般稍微预算充足一点的公司，都会做一个初步的高可用架构出来。</p>
-<p>对于应用服务器而言，一般会集群化部署。当然所谓的集群化部署，在初期用户量很少的情况下，其实一般也就是部署两台应用服务器而已，然后前面会放一台服务器部署负载均衡设备，比如说LVS，均匀的把用户请求打到两台应用服务器上去。</p>
-<p>如果此时某台应用服务器故障了，还有另外一台应用服务器是可以使用的，这样就避免了单点故障问题。如下图所示：<br><img src="https://user-gold-cdn.xitu.io/2019/5/5/16a885a2519a865d?imageView2/0/w/1280/h/960/ignore-error/1" alt></p>
-<p>对于数据库服务器而言，此时一般也会使用主从架构，部署一台从库来从主库同步数据，这样一旦主库出现问题，可以迅速使用从库继续提供数据库服务，避免数据库故障导致整个系统都彻底故障不可用。如下图：</p>
-<p><img src="https://user-gold-cdn.xitu.io/2019/5/5/16a885a8fe3170fa?imageView2/0/w/1280/h/960/ignore-error/1" alt></p>
-<h2 id="（3）千万级用户量的压力预估"><a href="#（3）千万级用户量的压力预估" class="headerlink" title="（3）千万级用户量的压力预估"></a>（3）千万级用户量的压力预估</h2><p>这个假设这个网站预估的用户数是1000万，那么根据28法则，每天会来访问这个网站的用户占到20%，也就是200万用户每天会过来访问。</p>
-<p>通常假设平均每个用户每次过来会有30次的点击，那么总共就有6000万的点击（PV）。</p>
-<p>每天24小时，根据28法则，每天大部分用户最活跃的时间集中在（24小时 /* 0.2）≈ 5小时内，而大部分用户指的是（6000万点击 /* 0.8 ≈ 5000万点击）</p>
-<p>也就是说，在5小时内会有5000万点击进来。</p>
-<p>换算下来，在那5小时的活跃访问期内，大概每秒钟会有3000左右的请求量，然后这5小时中可能又会出现大量用户集中访问的高峰时间段。</p>
-<p>比如在集中半个小时内大量用户涌入形成高峰访问。根据线上经验，一般高峰访问是活跃访问的2~3倍。假设我们按照3倍来计算，那么5小时内可能有短暂的峰值会出现每秒有10000左右的请求。</p>
-<h2 id="（4）服务器压力预估"><a href="#（4）服务器压力预估" class="headerlink" title="（4）服务器压力预估"></a>（4）服务器压力预估</h2><p>大概知道了高峰期每秒钟可能会有1万左右的请求量之后，来看一下系统中各个服务器的压力预估。</p>
-<p>一般来说一台虚拟机部署的应用服务器，上面放一个Tomcat，也就支撑最多每秒几百的请求。</p>
-<p>按每秒支撑500的请求来计算，那么支撑高峰期的每秒1万访问量，需要部署20台应用服务。</p>
-<p>而且应用服务器对数据库的访问量又是要翻几倍的，因为假设一秒钟应用服务器接收到1万个请求，但是应用服务器为了处理每个请求可能要涉及到平均3~5次数据库的访问。</p>
-<p>按照3次数据库访问来算，那么每秒会对数据库形成3万次的请求。</p>
-<p>按照一台数据库服务器最高支撑每秒5000左右的请求量，此时需要通过6台数据库服务器才能支撑每秒3万左右的请求。</p>
-<p>图片服务器的压力同样会很大，因为需要大量的读取图片展示页面，这个不太好估算，但是大致可以推算出来每秒至少也会有几千次请求，因此也需要多台图片服务器来支撑图片访问的请求。</p>
-<h2 id="（5）业务垂直拆分"><a href="#（5）业务垂直拆分" class="headerlink" title="（5）业务垂直拆分"></a>（5）业务垂直拆分</h2><p>一般来说在这个阶段要做的第一件事儿就是业务的垂直拆分</p>
-<p>因为如果所有业务代码都混合在一起部署，会导致多人协作开发时难以维护。在网站到了千万级用户的时候，研发团队一般都有几十人甚至上百人。</p>
-<p>所以这时如果还是在一个单块系统里做开发，是一件非常痛苦的事情，此时需要做的就是进行业务的垂直拆分，把一个单块系统拆分为多个业务系统，然后一个小团队10个人左右就专门负责维护一个业务系统。如下图</p>
-<p><img src="https://user-gold-cdn.xitu.io/2019/5/5/16a885ae541528b8?imageView2/0/w/1280/h/960/ignore-error/1" alt></p>
-<h2 id="（6）分布式缓存扛下读请求"><a href="#（6）分布式缓存扛下读请求" class="headerlink" title="（6）分布式缓存扛下读请求"></a>（6）分布式缓存扛下读请求</h2><p>这个时候应用服务器层面一般没什么大问题，因为无非就是加机器就可以抗住更高的并发请求。</p>
-<p>现在估算出来每秒钟是1万左右的请求，部署个二三十台机器就没问题了。</p>
-<p>但是目前上述系统架构中压力最大的，其实是数据库层面 ，因为估算出来可能高峰期对数据库的读写并发会有3万左右的请求。</p>
-<p>此时就需要引入分布式缓存来抗下对数据库的读请求压力了，也就是引入Redis集群。</p>
-<p>一般来说对数据库的读写请求也大致遵循28法则，所以每秒3万的读写请求中，大概有2.4万左右是读请求</p>
-<p>这些读请求基本上90%都可以通过分布式缓存集群来抗下来，也就是大概2万左右的读请求可以通过 Redis集群来抗住。</p>
-<p>我们完全可以把热点的、常见的数据都在Redis集群里放一份作为缓存，然后对外提供缓存服务。</p>
-<p>在读数据的时候优先从缓存里读，如果缓存里没有，再从数据库里读取。这样2万读请求就落到Redis上了，1万读写请求继续落在数据库上。</p>
-<p>Redis一般单台服务器抗每秒几万请求是没问题的，所以Redis集群一般就部署3台机器，抗下每秒2万读请求是绝对没问题的。如下图所示：</p>
-<p><img src="https://user-gold-cdn.xitu.io/2019/5/5/16a885b167cac4c8?imageView2/0/w/1280/h/960/ignore-error/1" alt></p>
-<h2 id="（7）基于数据库主从架构做读写分离"><a href="#（7）基于数据库主从架构做读写分离" class="headerlink" title="（7）基于数据库主从架构做读写分离"></a>（7）基于数据库主从架构做读写分离</h2><p>此时数据库服务器还是存在每秒1万的请求，对于单台服务器来说压力还是过大。</p>
-<p>但是数据库一般都支持主从架构，也就是有一个从库一直从主库同步数据过去。此时可以基于主从架构做读写分离。</p>
-<p>也就是说，每秒大概6000写请求是进入主库，大概还有4000个读请求是在从库上去读，这样就可以把1万读写请求压力分摊到两台服务器上去。</p>
-<p>这么分摊过后，主库每秒最多6000写请求，从库每秒最多4000读请求，基本上可以勉强把压力给抗住。如下图：</p>
-<p><img src="https://user-gold-cdn.xitu.io/2019/5/5/16a885b2996544a7?imageView2/0/w/1280/h/960/ignore-error/1" alt></p>
-<h2 id="（8）总结"><a href="#（8）总结" class="headerlink" title="（8）总结"></a>（8）总结</h2><p>本文主要是探讨在千万级用户场景下的大型网站的高并发架构设计，也就是预估出了千万级用户的访问压力以及对应的后台系统为了要抗住高并发，在业务系统、缓存、数据库几个层面的架构设计以及抗高并发的分析。</p>
-<p>但是要记住，大型网站架构中共涉及的技术远远不止这些，还包括了MQ、CDN、静态化、分库分表、NoSQL、搜索、分布式文件系统、反向代理，等等很多话题，但是本文不能一一涉及，主要是在高并发这个角度分析一下系统如何抗下每秒上万的请求。</p>
-<p><strong>END</strong></p>
-<p>长按下图二维码，即刻关注【狸猫技术窝】 阿里、京东、美团、字节跳动 顶尖技术专家坐镇 为IT人打造一个 “有温度” 的技术窝！</p>
-<p><img src="https://user-gold-cdn.xitu.io/2019/4/23/16a4aea4c6855bb5?imageView2/0/w/1280/h/960/ignore-error/1" alt></p>
-
-      
-
-      
-    </div>
-    <div class="article-info article-info-index">
-      
-      
-	<div class="article-tag tagcloud">
-		<i class="icon-price-tags icon"></i>
-		<ul class="article-tag-list">
-			 
-        		<li class="article-tag-list-item">
-        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color5">Java</a>
-        		</li>
-      		
-		</ul>
-	</div>
-
-      
-
-      
-        <p class="article-more-link">
-          <a class="article-more-a" href="/2019/05/07/【干货走一波】千万级用户的大型网站，应该如何设计其高并发架构？/">展开全文 >></a>
-        </p>
-      
-
-      
-      <div class="clearfix"></div>
-    </div>
-  </div>
-</article>
-
-<aside class="wrap-side-operation">
-    <div class="mod-side-operation">
-        
-        <div class="jump-container" id="js-jump-container" style="display:none;">
-            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
-                <i class="icon-font icon-back"></i>
-            </a>
-            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
-                <i class="icon-font icon-plane jump-plane"></i>
-            </div>
-        </div>
-        
-        
-    </div>
-</aside>
-
-
-
-
-  
   
     <nav id="page-nav">
       <a class="extend prev" rel="prev" href="/page/3/">&laquo; Prev</a><a class="page-number" href="/">1</a><a class="page-number" href="/page/2/">2</a><a class="page-number" href="/page/3/">3</a><span class="page-number current">4</span><a class="page-number" href="/page/5/">5</a><a class="extend next" rel="next" href="/page/5/">Next &raquo;</a>
@@ -1762,18 +1861,6 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
               </li>
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color1">Linux</a>
-              </li>
-             
-              <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color1">Shell</a>
-              </li>
-             
-              <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color4">数据库</a>
-              </li>
-             
-              <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color1">shiro</a>
               </li>
              
@@ -1790,11 +1877,31 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
               </li>
              
               <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color4">分布式</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color1">Linux</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color1">Shell</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color4">数据库</a>
+              </li>
+             
+              <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color1">MySQL</a>
               </li>
              
               <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color4">JVM</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color1">Nginx</a>
               </li>
              
               <li class="article-tag-list-item">
@@ -1806,15 +1913,23 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
               </li>
              
               <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color3">算法</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color5">ZooKeeper</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color4">服务器</a>
+              </li>
+             
+              <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color3">架构</a>
               </li>
              
               <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color4">微服务</a>
-              </li>
-             
-              <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color4">服务器</a>
               </li>
              
               <li class="article-tag-list-item">
@@ -1827,18 +1942,6 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
              
               <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color3">源码</a>
-              </li>
-             
-              <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color4">分布式</a>
-              </li>
-             
-              <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color3">算法</a>
-              </li>
-             
-              <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color5">ZooKeeper</a>
               </li>
              
               <li class="article-tag-list-item">
