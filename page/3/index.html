@@ -152,6 +152,76 @@
           <div id="js-content" class="content-ll">
             
   
+    <article id="post-Effective Java" class="article article-type-post  article-index" itemscope itemprop="blogPost">
+  <div class="article-inner">
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h1 id="对象的创建和销毁"><a href="#对象的创建和销毁" class="headerlink" title="对象的创建和销毁"></a>对象的创建和销毁</h1><h3 id="一、使用静态工厂方法代替构造器"><a href="#一、使用静态工厂方法代替构造器" class="headerlink" title="一、使用静态工厂方法代替构造器"></a>一、使用静态工厂方法代替构造器</h3><ol>
+<li>静态工厂优势一：有名称。当一个类需要多个带有相同签名的构造器时，可以通过名称突出它们之间的区别</li>
+<li>静态工程优势二：不必每次都创建新的对象。可以将创建的实例缓存，或者是返回预先构建好的实例(工厂模式)。例如 <code>Boolean.valueOf(boolean)</code>。如果确保了每次返回的都是同一对象的话，可以使用<code>==</code>进行判断，提升效率</li>
+<li>静态工厂优势三：可以返回原返回类型的任何子类的对象，可以返回受保护的类的对象。例如<code>Collections.singletonList(T)</code>、<code>EnumSet</code>。</li>
+</ol>
+<h3 id="二、遇到多个构造器参数时要考虑用构造器"><a href="#二、遇到多个构造器参数时要考虑用构造器" class="headerlink" title="二、遇到多个构造器参数时要考虑用构造器"></a>二、遇到多个构造器参数时要考虑用构造器</h3><p>​    Builder 模式。这个就不必多少了，当构造器参数很多，并且都是可选时，推荐使用builder。也可以提供一个<code>DefaultInstance</code>，返回具有默认参数的对象。推荐一个工具 <a href="https://www.projectlombok.org/" target="_blank" rel="noopener">lombok</a> ,使用注解生成样板代码。</p>
+<h3 id="三、使用私有构造器或者枚举类型强化-Singleton-属性"><a href="#三、使用私有构造器或者枚举类型强化-Singleton-属性" class="headerlink" title="三、使用私有构造器或者枚举类型强化 Singleton 属性"></a>三、使用私有构造器或者枚举类型强化 Singleton 属性</h3><p>​    使构造器私有，通过创建<code>getInstance</code>方法，返回该类的唯一<code>private static final</code>的实例。好处在于，在不改变API的前提下，可以改变方法实现，从而对类是否为<code>Singleton</code>。但是客户端可以使用<code>AccessibleObject.setAccessible</code>方法，通过反射调用私有构造器。</p>
+<p>​    实现<code>Singleton</code>还可以使用<code>Enum</code>。</p>
+<h3 id="四、通过私有构造器强化不可变实例化的能力"><a href="#四、通过私有构造器强化不可变实例化的能力" class="headerlink" title="四、通过私有构造器强化不可变实例化的能力"></a>四、通过私有构造器强化不可变实例化的能力</h3><p>​    例如工具类，不希望客户端对它进行实例化（实例化没有任何意义），可以创建私有的无参构造函数进行屏蔽对象的创建。NERVER：企图通过做成抽象类来强制该类不能被实例化，这样会引起误解。</p>
+<h3 id="五、避免创建不必要的对象"><a href="#五、避免创建不必要的对象" class="headerlink" title="五、避免创建不必要的对象"></a>五、避免创建不必要的对象</h3><ol>
+<li><p>避免 <code>String s = new String(&quot;***&quot;)</code>的操作</p>
+</li>
+<li><p>需要重复使用的对象，应该将实例进行缓存，而不是每次都创建。例如判断一个人是否为2000年后出生，应该将<code>2000-1-1</code>进行缓存，再和他的出生日期进行比较</p>
+</li>
+<li><p><code>适配器模式</code>中，没有必要创建多个适配器对象。例如<code>Map.keySet()</code>方法，就会将<code>ks</code>对象进行缓存。每次都返回同一个对象</p>
+</li>
+<li><p>避免大量的<code>自动装箱</code>操作。</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">Long sum = <span class="number">0L</span>; 	<span class="comment">// 使用 long sum = 0L 可以避免自动装箱，节省大量资源</span></span><br><span class="line"><span class="keyword">for</span>(<span class="keyword">long</span>  i = <span class="number">0</span>; i &lt; Integer.MAX_VALUE; i ++) &#123;</span><br><span class="line">    sum += i;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+
+</li>
+</ol>
+
+      
+
+      
+    </div>
+    <div class="article-info article-info-index">
+      
+      
+      
+
+      
+        <p class="article-more-link">
+          <a class="article-more-a" href="/2019/05/30/Effective Java/">展开全文 >></a>
+        </p>
+      
+
+      
+      <div class="clearfix"></div>
+    </div>
+  </div>
+</article>
+
+<aside class="wrap-side-operation">
+    <div class="mod-side-operation">
+        
+        <div class="jump-container" id="js-jump-container" style="display:none;">
+            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
+                <i class="icon-font icon-back"></i>
+            </a>
+            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
+                <i class="icon-font icon-plane jump-plane"></i>
+            </div>
+        </div>
+        
+        
+    </div>
+</aside>
+
+
+
+
+  
     <article id="post-hello-world" class="article article-type-post  article-index" itemscope itemprop="blogPost">
   <div class="article-inner">
     
@@ -2159,400 +2229,9 @@ CompletableFuture.allOf(future1, future2, future3)
 
 
   
-    <article id="post-Java8新的异步编程方式CompletableFuture(2)" class="article article-type-post  article-index" itemscope itemprop="blogPost">
-  <div class="article-inner">
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2019/05/14/Java8新的异步编程方式CompletableFuture(2)/">Java8新的异步编程方式 CompletableFuture(二)</a>
-    </h1>
-  
-
-        
-        <a href="/2019/05/14/Java8新的异步编程方式CompletableFuture(2)/" class="archive-article-date">
-  	<time datetime="2019-05-14T03:46:06.006Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2019-05-14</time>
-</a>
-        
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <blockquote>
-<p>本文转载自 <a href="https://juejin.im/post/59eae6e4f265da430e4e4cb5" target="_blank" rel="noopener">https://juejin.im/post/59eae6e4f265da430e4e4cb5</a> </p>
-</blockquote>
-<p><a href="https://juejin.im/post/59eae61b51882549fc512b34" target="_blank" rel="noopener">上一篇文章</a>，讲述了Future模式的机制、缺点，CompletableFuture产生的由来、静态工厂方法、complete()方法等等。</p>
-<p>本文将继续整理CompletableFuture的特性。</p>
-<h2 id="3-3-转换"><a href="#3-3-转换" class="headerlink" title="3.3 转换"></a>3.3 转换</h2><p>我们可以通过CompletableFuture来异步获取一组数据，并对数据进行一些转换，类似RxJava、Scala的map、flatMap操作。</p>
-<h3 id="3-3-1-map"><a href="#3-3-1-map" class="headerlink" title="3.3.1 map"></a>3.3.1 map</h3><table>
-<thead>
-<tr>
-<th align="center">方法名</th>
-<th align="center">描述</th>
-</tr>
-</thead>
-<tbody><tr>
-<td align="center">thenApply(Function&lt;? super T,? extends U&gt; fn)</td>
-<td align="center">接受一个Function&lt;? super T,? extends U&gt;参数用来转换CompletableFuture</td>
-</tr>
-<tr>
-<td align="center">thenApplyAsync(Function&lt;? super T,? extends U&gt; fn)</td>
-<td align="center">接受一个Function&lt;? super T,? extends U&gt;参数用来转换CompletableFuture，使用ForkJoinPool</td>
-</tr>
-<tr>
-<td align="center">thenApplyAsync(Function&lt;? super T,? extends U&gt; fn, Executor executor)</td>
-<td align="center">接受一个Function&lt;? super T,? extends U&gt;参数用来转换CompletableFuture，使用指定的线程池</td>
-</tr>
-</tbody></table>
-<p>thenApply的功能相当于将CompletableFuture<t>转换成CompletableFuture<u>。
-`CompletableFuture<string> future = CompletableFuture.supplyAsync(() -&gt; );</string></u></t></p>
-<pre><code>future = future.thenApply( Function&lt;String, String&gt;() {
-
-
-    {
-
-         s + ;
-    }
-}).thenApply( Function&lt;String, String&gt;() {
-
-    {
-
-         s.toUpperCase();
-    }
-});
-
- {
-    System.out.println(future.get());
-}  (InterruptedException e) {
-    e.printStackTrace();
-}  (ExecutionException e) {
-    e.printStackTrace();
-}`</code></pre><p>再用lambda表达式简化一下</p>
-<p>`CompletableFuture<string> future = CompletableFuture.supplyAsync(() -&gt; )<br>                .thenApply(s -&gt; s + ).thenApply(String::toUpperCase);</string></p>
-<pre><code> {
-    System.out.println(future.get());
-}  (InterruptedException e) {
-    e.printStackTrace();
-}  (ExecutionException e) {
-    e.printStackTrace();
-}`</code></pre><p>执行结果：</p>
-<p><code>HELLO WORLD</code></p>
-<p>下面的例子，展示了数据流的类型经历了如下的转换：String -&gt; Integer -&gt; Double。</p>
-<p>`CompletableFuture<double> future = CompletableFuture.supplyAsync(() -&gt; )<br>                .thenApply(Integer::parseInt)<br>                .thenApply(i-&gt;i*);</double></p>
-<pre><code> {
-    System.out.println(future.get());
-}  (InterruptedException e) {
-    e.printStackTrace();
-}  (ExecutionException e) {
-    e.printStackTrace();
-}`</code></pre><p>执行结果：</p>
-<p>``</p>
-<h3 id="3-3-2-flatMap"><a href="#3-3-2-flatMap" class="headerlink" title="3.3.2 flatMap"></a>3.3.2 flatMap</h3><table>
-<thead>
-<tr>
-<th align="center">方法名</th>
-<th align="center">描述</th>
-</tr>
-</thead>
-<tbody><tr>
-<td align="center">thenCompose(Function&lt;? super T, ? extends CompletionStage<u>&gt; fn)</u></td>
-<td align="center">在异步操作完成的时候对异步操作的结果进行一些操作，并且仍然返回CompletableFuture类型。</td>
-</tr>
-<tr>
-<td align="center">thenComposeAsync(Function&lt;? super T, ? extends CompletionStage<u>&gt; fn)</u></td>
-<td align="center">在异步操作完成的时候对异步操作的结果进行一些操作，并且仍然返回CompletableFuture类型。使用ForkJoinPool。</td>
-</tr>
-<tr>
-<td align="center">thenComposeAsync(Function&lt;? super T, ? extends CompletionStage<u>&gt; fn,Executor executor)</u></td>
-<td align="center">在异步操作完成的时候对异步操作的结果进行一些操作，并且仍然返回CompletableFuture类型。使用指定的线程池。</td>
-</tr>
-</tbody></table>
-<p>thenCompose可以用于组合多个CompletableFuture，将前一个结果作为下一个计算的参数，它们之间存在着先后顺序。<br>`CompletableFuture<string> future = CompletableFuture.supplyAsync(() -&gt; )<br>                .thenCompose(s -&gt; CompletableFuture.supplyAsync(() -&gt; s + ));</string></p>
-<pre><code> {
-    System.out.println(future.get());
-}  (InterruptedException e) {
-    e.printStackTrace();
-}  (ExecutionException e) {
-    e.printStackTrace();
-}`</code></pre><p>执行结果：</p>
-<p><code>Hello World</code></p>
-<p>下面的例子展示了多次调用thenCompose()</p>
-<p>`CompletableFuture<double> future = CompletableFuture.supplyAsync(() -&gt; )<br>                .thenCompose(s -&gt; CompletableFuture.supplyAsync(() -&gt; s + ))<br>                .thenCompose(s -&gt; CompletableFuture.supplyAsync(() -&gt; Double.parseDouble(s)));</double></p>
-<pre><code> {
-    System.out.println(future.get());
-}  (InterruptedException e) {
-    e.printStackTrace();
-}  (ExecutionException e) {
-    e.printStackTrace();
-}`</code></pre><p>执行结果：</p>
-<p>``</p>
-<h2 id="3-4-组合"><a href="#3-4-组合" class="headerlink" title="3.4 组合"></a>3.4 组合</h2><table>
-<thead>
-<tr>
-<th align="center">方法名</th>
-<th align="center">描述</th>
-</tr>
-</thead>
-<tbody><tr>
-<td align="center">thenCombine(CompletionStage&lt;? extends U&gt; other, BiFunction&lt;? super T,? super U,? extends V&gt; fn)</td>
-<td align="center">当两个CompletableFuture都正常完成后，执行提供的fn，用它来组合另外一个CompletableFuture的结果。</td>
-</tr>
-<tr>
-<td align="center">thenCombineAsync(CompletionStage&lt;? extends U&gt; other, BiFunction&lt;? super T,? super U,? extends V&gt; fn)</td>
-<td align="center">当两个CompletableFuture都正常完成后，执行提供的fn，用它来组合另外一个CompletableFuture的结果。使用ForkJoinPool。</td>
-</tr>
-<tr>
-<td align="center">thenCombineAsync(CompletionStage&lt;? extends U&gt; other, BiFunction&lt;? super T,? super U,? extends V&gt; fn, Executor executor)</td>
-<td align="center">当两个CompletableFuture都正常完成后，执行提供的fn，用它来组合另外一个CompletableFuture的结果。使用指定的线程池。</td>
-</tr>
-</tbody></table>
-<p>现在有CompletableFuture<t>、CompletableFuture<u>和一个函数(T,U)-&gt;V，thenCompose就是将CompletableFuture<t>和CompletableFuture<u>变为CompletableFuture<v>。
-`CompletableFuture<string> future1 = CompletableFuture.supplyAsync(() -&gt; );<br>        CompletableFuture<integer> future2 = CompletableFuture.supplyAsync(() -&gt; );</integer></string></v></u></t></u></t></p>
-<pre><code>CompletableFuture&lt;Double&gt; future = future1.thenCombine(future2, (s, i) -&gt; Double.parseDouble(s + i));
-
- {
-    System.out.println(future.get());
-}  (InterruptedException e) {
-    e.printStackTrace();
-}  (ExecutionException e) {
-    e.printStackTrace();
-}`</code></pre><p>执行结果：</p>
-<p>``
-使用thenCombine()之后future1、future2之间是并行执行的，最后再将结果汇总。这一点跟thenCompose()不同。</p>
-<p>thenAcceptBoth跟thenCombine类似，但是返回CompletableFuture类型。</p>
-<table>
-<thead>
-<tr>
-<th align="center">方法名</th>
-<th align="center">描述</th>
-</tr>
-</thead>
-<tbody><tr>
-<td align="center">thenAcceptBoth(CompletionStage&lt;? extends U&gt; other, BiConsumer&lt;? super T,? super U&gt; action)</td>
-<td align="center">当两个CompletableFuture都正常完成后，执行提供的action，用它来组合另外一个CompletableFuture的结果。</td>
-</tr>
-<tr>
-<td align="center">thenAcceptBothAsync(CompletionStage&lt;? extends U&gt; other, BiConsumer&lt;? super T,? super U&gt; action)</td>
-<td align="center">当两个CompletableFuture都正常完成后，执行提供的action，用它来组合另外一个CompletableFuture的结果。使用ForkJoinPool。</td>
-</tr>
-<tr>
-<td align="center">thenAcceptBothAsync(CompletionStage&lt;? extends U&gt; other, BiConsumer&lt;? super T,? super U&gt; action, Executor executor)</td>
-<td align="center">当两个CompletableFuture都正常完成后，执行提供的action，用它来组合另外一个CompletableFuture的结果。使用指定的线程池。</td>
-</tr>
-<tr>
-<td align="center">`CompletableFuture<string> future1 = CompletableFuture.supplyAsync(() -&gt; );</string></td>
-<td align="center"></td>
-</tr>
-<tr>
-<td align="center">CompletableFuture<integer> future2 = CompletableFuture.supplyAsync(() -&gt; );</integer></td>
-<td align="center"></td>
-</tr>
-</tbody></table>
-<pre><code>CompletableFuture&lt;Void&gt; future = future1.thenAcceptBoth(future2, (s, i) -&gt; System.out.println(Double.parseDouble(s + i)));
-
- {
-    future.get();
-}  (InterruptedException e) {
-    e.printStackTrace();
-}  (ExecutionException e) {
-    e.printStackTrace();
-}`</code></pre><p>执行结果：</p>
-<p>``</p>
-<h2 id="3-5-计算结果完成时的处理"><a href="#3-5-计算结果完成时的处理" class="headerlink" title="3.5 计算结果完成时的处理"></a>3.5 计算结果完成时的处理</h2><p>当CompletableFuture完成计算结果后，我们可能需要对结果进行一些处理。</p>
-<p>/#/#/#3.5.1 执行特定的Action</p>
-<table>
-<thead>
-<tr>
-<th align="center">方法名</th>
-<th align="center">描述</th>
-</tr>
-</thead>
-<tbody><tr>
-<td align="center">whenComplete(BiConsumer&lt;? super T,? super Throwable&gt; action)</td>
-<td align="center">当CompletableFuture完成计算结果时对结果进行处理，或者当CompletableFuture产生异常的时候对异常进行处理。</td>
-</tr>
-<tr>
-<td align="center">whenCompleteAsync(BiConsumer&lt;? super T,? super Throwable&gt; action)</td>
-<td align="center">当CompletableFuture完成计算结果时对结果进行处理，或者当CompletableFuture产生异常的时候对异常进行处理。使用ForkJoinPool。</td>
-</tr>
-<tr>
-<td align="center">whenCompleteAsync(BiConsumer&lt;? super T,? super Throwable&gt; action, Executor executor)</td>
-<td align="center">当CompletableFuture完成计算结果时对结果进行处理，或者当CompletableFuture产生异常的时候对异常进行处理。使用指定的线程池。</td>
-</tr>
-<tr>
-<td align="center">`CompletableFuture.supplyAsync(() -&gt; )</td>
-<td align="center"></td>
-</tr>
-<tr>
-<td align="center">.thenApply(s-&gt;s+)</td>
-<td align="center"></td>
-</tr>
-<tr>
-<td align="center">.thenApply(s-&gt;s+ )</td>
-<td align="center"></td>
-</tr>
-<tr>
-<td align="center">.thenApply(String::toLowerCase)</td>
-<td align="center"></td>
-</tr>
-<tr>
-<td align="center">.whenComplete((result, throwable) -&gt; System.out.println(result));`</td>
-<td align="center"></td>
-</tr>
-</tbody></table>
-<p>执行结果：</p>
-<p><code>hello world
- is completablefuture demo</code></p>
-<p>/#/#/#3.5.2 执行完Action可以做转换</p>
-<table>
-<thead>
-<tr>
-<th align="center">方法名</th>
-<th align="center">描述</th>
-</tr>
-</thead>
-<tbody><tr>
-<td align="center">handle(BiFunction&lt;? super T, Throwable, ? extends U&gt; fn)</td>
-<td align="center">当CompletableFuture完成计算结果或者抛出异常的时候，执行提供的fn</td>
-</tr>
-<tr>
-<td align="center">handleAsync(BiFunction&lt;? super T, Throwable, ? extends U&gt; fn)</td>
-<td align="center">当CompletableFuture完成计算结果或者抛出异常的时候，执行提供的fn，使用ForkJoinPool。</td>
-</tr>
-<tr>
-<td align="center">handleAsync(BiFunction&lt;? super T, Throwable, ? extends U&gt; fn, Executor executor)</td>
-<td align="center">当CompletableFuture完成计算结果或者抛出异常的时候，执行提供的fn，使用指定的线程池。</td>
-</tr>
-<tr>
-<td align="center">`CompletableFuture<double> future = CompletableFuture.supplyAsync(() -&gt; )</double></td>
-<td align="center"></td>
-</tr>
-<tr>
-<td align="center">.thenApply(s-&gt;s+)</td>
-<td align="center"></td>
-</tr>
-<tr>
-<td align="center">.handle((s, t) -&gt; s !=  ? Double.parseDouble(s) : );</td>
-<td align="center"></td>
-</tr>
-</tbody></table>
-<pre><code> {
-    System.out.println(future.get());
-}  (InterruptedException e) {
-    e.printStackTrace();
-}  (ExecutionException e) {
-    e.printStackTrace();
-}`</code></pre><p>执行结果：</p>
-<p>``</p>
-<p>在这里，handle()的参数是BiFunction，apply()方法返回R，相当于转换的操作。</p>
-<p>`{</p>
-<pre><code>;
-
-
- &lt;V&gt; {
-    Objects.requireNonNull(after);
-     (T t, U u) -&gt; after.apply(apply(t, u));
-}</code></pre><p>}`</p>
-<p>而whenComplete()的参数是BiConsumer，accept()方法返回void。</p>
-<p>`{</p>
-<pre><code>;
-
-
-{
-    Objects.requireNonNull(after);
-
-     (l, r) -&gt; {
-        accept(l, r);
-        after.accept(l, r);
-    };
-}</code></pre><p>}`
-所以，handle()相当于whenComplete()+转换。</p>
-<p>/#/#/#3.5.3 纯消费(执行Action)</p>
-<table>
-<thead>
-<tr>
-<th align="center">方法名</th>
-<th align="center">描述</th>
-</tr>
-</thead>
-<tbody><tr>
-<td align="center">thenAccept(Consumer&lt;? super T&gt; action)</td>
-<td align="center">当CompletableFuture完成计算结果，只对结果执行Action，而不返回新的计算值</td>
-</tr>
-<tr>
-<td align="center">thenAcceptAsync(Consumer&lt;? super T&gt; action)</td>
-<td align="center">当CompletableFuture完成计算结果，只对结果执行Action，而不返回新的计算值，使用ForkJoinPool。</td>
-</tr>
-<tr>
-<td align="center">thenAcceptAsync(Consumer&lt;? super T&gt; action, Executor executor)</td>
-<td align="center">当CompletableFuture完成计算结果，只对结果执行Action，而不返回新的计算值</td>
-</tr>
-</tbody></table>
-<p>thenAccept()是只会对计算结果进行消费而不会返回任何结果的方法。<br><code>CompletableFuture.supplyAsync(() -&gt; )
-                .thenApply(s-&gt;s+)
-                .thenApply(s-&gt;s+ )
-                .thenApply(String::toLowerCase)
-                .thenAccept(System.out::print);</code></p>
-<p>执行结果：</p>
-<p><code>hello world
- is completablefuture demo</code></p>
-
-      
-
-      
-    </div>
-    <div class="article-info article-info-index">
-      
-      
-	<div class="article-tag tagcloud">
-		<i class="icon-price-tags icon"></i>
-		<ul class="article-tag-list">
-			 
-        		<li class="article-tag-list-item">
-        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color5">Java</a>
-        		</li>
-      		
-		</ul>
-	</div>
-
-      
-
-      
-        <p class="article-more-link">
-          <a class="article-more-a" href="/2019/05/14/Java8新的异步编程方式CompletableFuture(2)/">展开全文 >></a>
-        </p>
-      
-
-      
-      <div class="clearfix"></div>
-    </div>
-  </div>
-</article>
-
-<aside class="wrap-side-operation">
-    <div class="mod-side-operation">
-        
-        <div class="jump-container" id="js-jump-container" style="display:none;">
-            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
-                <i class="icon-font icon-back"></i>
-            </a>
-            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
-                <i class="icon-font icon-plane jump-plane"></i>
-            </div>
-        </div>
-        
-        
-    </div>
-</aside>
-
-
-
-
-  
   
     <nav id="page-nav">
-      <a class="extend prev" rel="prev" href="/page/2/">&laquo; Prev</a><a class="page-number" href="/">1</a><a class="page-number" href="/page/2/">2</a><span class="page-number current">3</span><a class="page-number" href="/page/4/">4</a><a class="page-number" href="/page/5/">5</a><a class="extend next" rel="next" href="/page/4/">Next &raquo;</a>
+      <a class="extend prev" rel="prev" href="/page/2/">&laquo; Prev</a><a class="page-number" href="/">1</a><a class="page-number" href="/page/2/">2</a><span class="page-number current">3</span><a class="page-number" href="/page/4/">4</a><a class="page-number" href="/page/5/">5</a><a class="page-number" href="/page/6/">6</a><a class="extend next" rel="next" href="/page/4/">Next &raquo;</a>
     </nav>
   
 
@@ -2651,31 +2330,11 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
               </li>
              
               <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color2">Spring Boot</a>
+              </li>
+             
+              <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color2">RxJava</a>
-              </li>
-             
-              <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color3">后端</a>
-              </li>
-             
-              <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color1">shiro</a>
-              </li>
-             
-              <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color2">Vue.js</a>
-              </li>
-             
-              <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color1">Redis</a>
-              </li>
-             
-              <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color2">Spring</a>
-              </li>
-             
-              <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color4">分布式</a>
               </li>
              
               <li class="article-tag-list-item">
@@ -2691,7 +2350,27 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
               </li>
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color1">MySQL</a>
+                <a href="javascript:void(0)" class="js-tag color3">后端</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color2">Vue.js</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color1">shiro</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color2">Spring</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color1">Redis</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color4">分布式</a>
               </li>
              
               <li class="article-tag-list-item">
@@ -2699,7 +2378,7 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
               </li>
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color1">Nginx</a>
+                <a href="javascript:void(0)" class="js-tag color1">MySQL</a>
               </li>
              
               <li class="article-tag-list-item">
@@ -2708,6 +2387,10 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
              
               <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color5">java</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color1">Nginx</a>
               </li>
              
               <li class="article-tag-list-item">
@@ -2731,6 +2414,10 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
               </li>
              
               <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color3">源码</a>
+              </li>
+             
+              <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color5">HDFS</a>
               </li>
              
@@ -2739,15 +2426,7 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
               </li>
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color3">源码</a>
-              </li>
-             
-              <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color2">TCP/IP</a>
-              </li>
-             
-              <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color2">Spring Boot</a>
               </li>
             
             <div class="clearfix"></div>
