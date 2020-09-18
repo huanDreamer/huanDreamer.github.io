@@ -1,20 +1,42 @@
 <!DOCTYPE html>
 <html>
-<head>
-	<title>sillyfan</title>
-	<meta charset="utf-8">
-	<meta name="google" value="notranslate">
-	<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, minimum-scale=1.0">
-</head>
-<body style="text-align: center">
-
-	<div style="width: 80%; height: 100%; margin: 40px auto;">
-		<h1>The Days You Away</h1>
-		<h1 id = "d"></h1>
-	</div>
-
+	<head>
+		<title>
+			sillyfan
+		</title>
+		<meta charset="utf-8">
+		<meta name="google" value="notranslate">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, minimum-scale=1.0">
+	</head>
+	<body style="text-align: center; padding-top: 40px" id="body">
+	</body>
 	<script type="text/javascript">
-		document.getElementById("d").innerText =  Math.floor((new Date() - new Date('2018-7-9')) / 1000 / 60 / 60 / 24)
+		setTimeout(() => {
+    		var h1 = document.createElement("h1");
+    		h1.id = 'd'
+    		var a = document.createTextNode("The Days You Away");
+    		h1.appendChild(a);
+    		document.getElementById("body").appendChild(h1);
+		}, 50)
+
+		setTimeout(() => {
+		    var h2 = document.createElement("h1");
+		    h2.id = 'd'
+		    var a2 = document.createTextNode(Math.floor((new Date() - new Date('2018-7-9')) / 1000 / 60 / 60 / 24));
+		    h2.appendChild(a2);
+		    document.getElementById("body").appendChild(h2);
+		}, 800)
+
+		setTimeout(() => {
+		    var h3 = document.createElement("h3");
+		    h3.id = 'd'
+		    var a3 = document.createTextNode("Now I Am Missing You...");
+		    h3.appendChild(a3)
+		    document.getElementById("body").appendChild(h3);
+		}, 3000)
 	</script>
-</body>
+	<style type="text/css">
+		#d{ animation: anim 2s; } @keyframes anim { 0% {opacity: 0;} 100%{opacity:1;}}
+	</style>
+
 </html>
